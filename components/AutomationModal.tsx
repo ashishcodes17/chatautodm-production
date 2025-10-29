@@ -27,18 +27,25 @@ export default function AutomationModal({ isOpen, onClose }: AutomationModalProp
       badge: "quick",
       route: `/${wsid}/automations/story-builder`,
     },
-   {
-  title: "DM Auto Responder",
-  subtitle: "Automatically reply to direct messages with personalized responses and call-to-action buttons",
-  points: [
-    "Auto-reply to DMs",
-    "Keyword-based triggers",
-    "Personalized DM replies",
-    "Interactive buttons & link delivery"
-  ],
-  badge: "quick",
-  route: `/${wsid}/automations/dm-builder`,
-},
+    {
+      title: "Ice Breakers",
+      subtitle: "Help users start conversations with pre-set frequently asked questions",
+      points: ["Up to 4 custom questions", "Quick conversation starters", "Mobile-only feature", "Automated responses"],
+      badge: "quick",
+      route: `/${wsid}/automations/ice-breakers`,
+    },
+    {
+      title: "DM Auto Responder",
+      subtitle: "Automatically reply to direct messages with personalized responses and call-to-action buttons",
+      points: [
+        "Auto-reply to DMs",
+        "Keyword-based triggers",
+        "Personalized DM replies",
+        "Interactive buttons & link delivery",
+      ],
+      badge: "quick",
+      route: `/${wsid}/automations/dm-builder`,
+    },
 
   ]
 

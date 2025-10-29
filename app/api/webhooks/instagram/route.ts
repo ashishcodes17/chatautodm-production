@@ -790,6 +790,59 @@ async function handlePostback(messagingEvent: any, accountId: string, db: any) {
 
     console.log("✅ Found account:", account.username)
 
+    // 🧊 Check if this is an ICE BREAKER click (before checking user state)
+    // Ice breakers don't have user state yet - they initiate conversations
+    const iceBreakersAutomation = await db.collection("automations").findOne({
+      workspaceId: account.workspaceId,
+      type: "ice_breakers",
+      isActive: true,
+    })
+
+    if (iceBreakersAutomation) {
+      console.log("🧊 [Ice Breaker] Found automation, checking payload match...")
+      
+      // Check if payload matches any ice breaker question
+      const matchingQuestion = iceBreakersAutomation.iceBreakers?.call_to_actions?.find(
+        (q: any) => q.payload === payload
+      )
+
+      if (matchingQuestion) {
+        console.log("🧊 [Ice Breaker] Matched question:", matchingQuestion.question)
+        console.log("🧊 [Ice Breaker] Payload:", payload)
+        console.log("🧊 [Ice Breaker] Custom response:", matchingQuestion.response)
+
+        // Send the custom response message set by the user
+        const responseMessage = matchingQuestion.response || `Thanks for reaching out! You asked: "${matchingQuestion.question}"\n\nLet me help you with that! 😊`
+
+        const sent = await sendDirectMessage(
+          account.instagramUserId,
+          account.accessToken,
+          senderId,
+          responseMessage
+        )
+
+        if (sent) {
+          // Store contact
+          await storeOrUpdateContact(
+            account.instagramUserId,
+            senderId,
+            null,
+            "ice_breaker_click",
+            `Ice Breaker: ${matchingQuestion.question}`,
+            db,
+            account.workspaceId
+          )
+
+          // Update usage
+          await updateAccountUsage(account, "ice_breaker", "Ice Breakers", payload)
+
+          console.log("✅ [Ice Breaker] Response sent successfully")
+        }
+
+        return // Exit after handling ice breaker
+      }
+    }
+
     const userState = await db.collection("user_states").findOne({
       senderId: senderId,
       accountId: account.instagramUserId, // Use correct account ID field

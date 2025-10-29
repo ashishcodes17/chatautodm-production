@@ -107,23 +107,33 @@ export default function AutomationsPage() {
   }, [wsid, mutate])
 
   // DELETE automation
-const deleteAutomation = async (id: string) => {
+const deleteAutomation = async (automation: Automation) => {
   if (!confirm("Are you sure you want to delete this automation?")) return
 
   try {
-    const res = await fetch(`/api/automations/${id}`, { method: "DELETE" })
+    let res;
+    
+    // Ice breakers need special DELETE handling via Instagram API
+    if (automation.type === "ice_breakers") {
+      console.log("🧊 Deleting ice breakers via Instagram API...")
+      res = await fetch(`/api/workspaces/${wsid}/ice-breakers`, { method: "DELETE" })
+    } else {
+      // Regular automation delete
+      res = await fetch(`/api/automations/${automation._id}`, { method: "DELETE" })
+    }
+    
     if (!res.ok) {
       alert("Failed to delete automation. Please try again.")
       return
     }
 
     // Optimistic UI: remove from state immediately
-    setAutomations((prev) => prev.filter((a) => a._id !== id))
+    setAutomations((prev) => prev.filter((a) => a._id !== automation._id))
 
     // Keep SWR cache aligned
     mutate(`/api/workspaces/${wsid}/automations`, (prev: any) => ({
       ...(prev || {}),
-      automations: (prev?.automations || []).filter((a: Automation) => a._id !== id),
+      automations: (prev?.automations || []).filter((a: Automation) => a._id !== automation._id),
     }), false)
 
   } catch (err) {
@@ -218,7 +228,7 @@ const toggleActive = async (automation: Automation) => {
       case "persistent_menu":
         return `/${wsid}/automations/persistent-menu-builder?edit=${automation._id}`
       case "ice_breakers":
-        return `/${wsid}/automations/ice-breakers-builder?edit=${automation._id}`
+        return `/${wsid}/automations/ice-breakers`
       default:
         return `/${wsid}/automations/flow-builder?edit=${automation._id}`
     }
@@ -308,7 +318,7 @@ const toggleActive = async (automation: Automation) => {
                           <Button variant="outline" size="sm" onClick={() => toggleActive(automation)}>
                             {automation.isActive ? "Pause" : "Resume"}
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => deleteAutomation(automation._id)}>
+                          <Button variant="ghost" size="icon" onClick={() => deleteAutomation(automation)}>
                             <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700" />
                           </Button>
                         </td>
@@ -356,7 +366,7 @@ const toggleActive = async (automation: Automation) => {
                       <Button variant="secondary" size="sm" onClick={() => toggleActive(automation)}>
                         {automation.isActive ? "Pause" : "Resume"}
                       </Button>
-                      <Button variant="destructive" size="sm" onClick={() => deleteAutomation(automation._id)}>
+                      <Button variant="destructive" size="sm" onClick={() => deleteAutomation(automation)}>
                         <Trash2 className="h-4 w-4 mr-1" /> Delete
                       </Button>
                     </div>
