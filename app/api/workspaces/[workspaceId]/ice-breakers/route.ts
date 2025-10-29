@@ -24,42 +24,22 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
     }
 
     const db = await getDatabase()
-    const workspace = await db.collection("workspaces").findOne({ _id: workspaceId } as any)
-
-    if (!workspace) {
-      return NextResponse.json({ success: false, error: "Workspace not found" }, { status: 404 })
-    }
-
-    // Get Instagram account
-    const igAccount = await db.collection("instagram_accounts").findOne({
+    
+    // Get ice breakers from database (includes response field)
+    const automation = await db.collection("automations").findOne({
       workspaceId,
-      isConnected: true,
+      type: "ice_breakers",
     } as any)
 
-    if (!igAccount) {
-      return NextResponse.json({ success: false, error: "Instagram account not connected" }, { status: 404 })
+    if (!automation) {
+      return NextResponse.json({ success: true, iceBreakers: null })
     }
 
-    const { accessToken, instagramUserId } = igAccount
-
-    // Fetch ice breakers from Instagram API
-    const response = await fetch(
-      `https://graph.instagram.com/v24.0/${instagramUserId}/messenger_profile?fields=ice_breakers&access_token=${accessToken}`
-    )
-
-    if (!response.ok) {
-      const error = await response.json()
-      console.error("❌ Instagram API error:", error)
-      return NextResponse.json({ success: false, error: "Failed to fetch ice breakers" }, { status: 500 })
-    }
-
-    const data = await response.json()
-
-    console.log("✅ [Ice Breakers] Retrieved:", data)
+    console.log("✅ [Ice Breakers] Retrieved from DB:", automation.iceBreakers)
 
     return NextResponse.json({
       success: true,
-      iceBreakers: data?.data?.[0] || null,
+      iceBreakers: automation.iceBreakers || null,
     })
   } catch (error) {
     console.error("❌ Error fetching ice breakers:", error)
