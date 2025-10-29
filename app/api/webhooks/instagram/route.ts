@@ -630,6 +630,7 @@ async function handleStoryReplyFlowEnhanced(
         senderId,
         automation.actions.openingDM.message,
         transformButtons(automation.actions.openingDM.buttons) || [],
+        automation.actions.openingDM.image_url, // 🆕 Pass image URL
       )
 
       console.log("📤 Opening DM result:", openingSuccess)
@@ -707,6 +708,7 @@ async function handleStoryReplyFlowEnhanced(
         senderId,
         automation.actions.sendDM.message,
         transformButtons(automation.actions.sendDM.buttons) || [],
+        automation.actions.sendDM.image_url, // 🆕 Pass image URL
       )
 
       console.log("📤 Main DM result:", mainDMSuccess)
@@ -974,6 +976,7 @@ async function sendMainDM(automation: any, account: any, senderId: string, db: a
       senderId,
       automation.actions.sendDM.message,
       transformButtons(automation.actions.sendDM.buttons) || [],
+      automation.actions.sendDM.image_url, // 🆕 Pass image URL
     )
 
     if (mainDMSuccess) {
@@ -1048,6 +1051,7 @@ async function sendDirectMessageWithButtons(
   recipientId: string,
   messageText: string,
   buttons: any[] = [],
+  imageUrl?: string | null, // 🆕 Image URL parameter
 ): Promise<boolean> {
   try {
     console.log("📤 === SENDING DIRECT MESSAGE WITH BUTTONS ===")
@@ -1055,6 +1059,7 @@ async function sendDirectMessageWithButtons(
     console.log("📤 Recipient ID:", recipientId)
     console.log("📤 Message:", messageText.substring(0, 100))
     console.log("📤 Buttons:", JSON.stringify(buttons, null, 2))
+    console.log("📤 Image URL:", imageUrl || "none") // 🆕 Log image URL
 
     // First try sending with buttons if buttons exist
     if (buttons && buttons.length > 0) {
@@ -1095,6 +1100,18 @@ async function sendDirectMessageWithButtons(
         }
       })
 
+      // 🎨 Convert to Generic Template format (supports images)
+      const element: any = {
+        title: messageText,
+        buttons: formattedButtons,
+      }
+      
+      // 🆕 Add image_url if provided
+      if (imageUrl) {
+        element.image_url = imageUrl
+        console.log("🖼️ Adding image to Generic Template:", imageUrl)
+      }
+
       const buttonPayload = {
         recipient: {
           id: recipientId,
@@ -1103,15 +1120,14 @@ async function sendDirectMessageWithButtons(
           attachment: {
             type: "template",
             payload: {
-              template_type: "button",
-              text: messageText,
-              buttons: formattedButtons,
+              template_type: "generic",
+              elements: [element],
             },
           },
         },
       }
 
-      console.log("📤 Button payload:", JSON.stringify(buttonPayload, null, 2))
+      console.log("📤 Generic Template payload:", JSON.stringify(buttonPayload, null, 2))
 
   const buttonResponse = await fetch(`https://graph.instagram.com/v24.0/${instagramId}/messages`, {
         method: "POST",
@@ -1126,10 +1142,10 @@ async function sendDirectMessageWithButtons(
       console.log("📥 Button Response:", JSON.stringify(buttonResponseData, null, 2))
 
       if (buttonResponse.ok) {
-        console.log("✅ DM with buttons sent successfully!")
+        console.log("✅ DM with Generic Template sent successfully!")
         return true
       } else {
-        console.warn("⚠️ Instagram host failed, retrying Facebook host for buttons...")
+        console.warn("⚠️ Instagram host failed, retrying Facebook host for Generic Template...")
         try {
           const fbRes = await fetch(`https://graph.facebook.com/v24.0/${instagramId}/messages`, {
             method: "POST",
@@ -1137,15 +1153,15 @@ async function sendDirectMessageWithButtons(
             body: JSON.stringify(buttonPayload),
           })
           const fbData = await fbRes.json()
-          console.log("📥 Button Response (facebook host):", JSON.stringify(fbData, null, 2))
+          console.log("📥 Generic Template Response (facebook host):", JSON.stringify(fbData, null, 2))
           if (fbRes.ok) {
-            console.log("✅ DM with buttons sent successfully via facebook host!")
+            console.log("✅ DM with Generic Template sent successfully via facebook host!")
             return true
           }
         } catch (e) {
           console.error("❌ Retry error (facebook host):", e)
         }
-        console.error("❌ Failed to send DM with buttons:", buttonResponseData)
+        console.error("❌ Failed to send DM with Generic Template:", buttonResponseData)
       }
     }
 
@@ -1968,6 +1984,7 @@ async function handleCommentToDMFlow(
         commentId,
         automation.actions.openingDM.message,
         transformButtons(automation.actions.openingDM.buttons) || [],
+        automation.actions.openingDM.image_url, // 🆕 Pass image URL
       )
 
       console.log("📤 Opening DM private reply result:", openingSuccess)
@@ -2059,6 +2076,7 @@ async function handleCommentToDMFlow(
         commentId,
         automation.actions.sendDM.message,
         transformButtons(automation.actions.sendDM.buttons) || [],
+        automation.actions.sendDM.image_url, // 🆕 Pass image URL
       )
 
       console.log("📤 Main DM private reply result:", mainDMSuccess)
@@ -2096,16 +2114,29 @@ async function sendPrivateReplyWithButtons(
   commentId: string,
   message: string,
   buttons: any[] = [],
+  imageUrl?: string | null, // 🆕 Image URL parameter
 ) {
   try {
     console.log("💬 Sending private reply with buttons to comment:", commentId)
+    console.log("💬 Image URL:", imageUrl || "none") // 🆕 Log image URL
 
     let messagePayload: any
 
     if (buttons.length > 0) {
       const limitedButtons = buttons.slice(0, 3)
 
-      // Send button template as private reply
+      // 🎨 Convert to Generic Template format (supports images)
+      const element: any = {
+        title: message,
+        buttons: limitedButtons,
+      }
+      
+      // 🆕 Add image_url if provided
+      if (imageUrl) {
+        element.image_url = imageUrl
+        console.log("🖼️ Adding image to Generic Template (private reply):", imageUrl)
+      }
+
       messagePayload = {
         recipient: {
           comment_id: commentId,
@@ -2114,9 +2145,8 @@ async function sendPrivateReplyWithButtons(
           attachment: {
             type: "template",
             payload: {
-              template_type: "button",
-              text: message,
-              buttons: limitedButtons,
+              template_type: "generic",
+              elements: [element],
             },
           },
         },
@@ -2143,10 +2173,10 @@ async function sendPrivateReplyWithButtons(
     })
 
     const result = await response.json()
-    console.log("💬 Private reply with buttons response:", result)
+    console.log("💬 Private reply with Generic Template response:", result)
 
     if (response.ok && result.recipient_id) {
-      console.log("✅ Private reply with buttons sent successfully")
+      console.log("✅ Private reply with Generic Template sent successfully")
       return true
     } else {
       console.warn("⚠️ Instagram host failed, retrying Facebook host for private reply...")
@@ -2165,7 +2195,7 @@ async function sendPrivateReplyWithButtons(
       } catch (e) {
         console.error("❌ Retry error (facebook host):", e)
       }
-      console.error("❌ Failed to send private reply with buttons:", result)
+      console.error("❌ Failed to send private reply with Generic Template:", result)
       return false
     }
   } catch (error) {
@@ -2580,6 +2610,7 @@ async function handleDMAutomationFlowEnhanced(
         senderId,
         automation.actions.openingDM.message,
         transformButtons(automation.actions.openingDM.buttons) || [],
+        automation.actions.openingDM.image_url, // 🆕 Pass image URL
       )
 
       console.log("📤 Opening DM result:", openingSuccess)
@@ -2711,6 +2742,7 @@ async function handleDMAutomationFlowEnhanced(
           senderId,
           automation.actions.sendDM.message,
           transformButtons(automation.actions.sendDM.buttons) || [],
+          automation.actions.sendDM.image_url, // 🆕 Pass image URL
         )
       }
 

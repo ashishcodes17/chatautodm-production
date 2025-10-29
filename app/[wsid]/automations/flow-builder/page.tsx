@@ -69,6 +69,8 @@ export default function PostDMBuilder() {
   const [editingButton, setEditingButton] = useState<{ index: number; type: "dm" | "opening" } | null>(null)
   const [editingFollowButton, setEditingFollowButton] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [isUploadingOpeningImage, setIsUploadingOpeningImage] = useState(false)
     const router = useRouter()
 
   const [isTokenValid, setIsTokenValid] = useState(false)
@@ -78,8 +80,8 @@ export default function PostDMBuilder() {
   const [automation, setAutomation] = useState<{
     trigger: { anyReply: boolean; keywords: string[] }
     actions: {
-      sendDM: { message: string; buttons: DMButton[] }
-      openingDM: { enabled: boolean; message: string; buttons: DMButton[] }
+      sendDM: { message: string; buttons: DMButton[]; image_url?: string }
+      openingDM: { enabled: boolean; message: string; buttons: DMButton[]; image_url?: string }
       publicReply: { enabled: boolean; replies: { text: string; enabled: boolean }[] }
       askFollow: boolean
       askEmail: boolean
@@ -150,11 +152,13 @@ export default function PostDMBuilder() {
         sendDM: {
           message: apiAutomation?.actions?.sendDM?.message || "",
           buttons: mapButtonsBack(apiAutomation?.actions?.sendDM?.buttons || []),
+          image_url: apiAutomation?.actions?.sendDM?.image_url || undefined, // 🆕 Preserve image URL
         },
         openingDM: {
           enabled: apiAutomation?.actions?.openingDM?.enabled || false,
           message: apiAutomation?.actions?.openingDM?.message || "",
           buttons: mapButtonsBack(apiAutomation?.actions?.openingDM?.buttons || []),
+          image_url: apiAutomation?.actions?.openingDM?.image_url || undefined, // 🆕 Preserve image URL
         },
         publicReply: {
           enabled: apiAutomation?.actions?.publicReply?.enabled || false,
@@ -260,6 +264,120 @@ useEffect(() => {
       return true
     } catch {
       return false
+    }
+  }
+
+  // Handle image upload for main DM
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "dm" | "opening") => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File too large", {
+        description: "Image must be less than 5MB",
+      })
+      return
+    }
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Invalid file type", {
+        description: "Please upload an image file",
+      })
+      return
+    }
+
+    try {
+      if (type === "dm") {
+        setIsUploadingImage(true)
+      } else {
+        setIsUploadingOpeningImage(true)
+      }
+
+      const formData = new FormData()
+      formData.append("image", file)
+
+      const response = await axios.post("/api/upload-image", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+
+      if (response.data.success) {
+        const imageUrl = response.data.imageUrl
+
+        if (type === "dm") {
+          setAutomation({
+            ...automation,
+            actions: {
+              ...automation.actions,
+              sendDM: {
+                ...automation.actions.sendDM,
+                image_url: imageUrl,
+              },
+            },
+          })
+        } else {
+          setAutomation({
+            ...automation,
+            actions: {
+              ...automation.actions,
+              openingDM: {
+                ...automation.actions.openingDM,
+                image_url: imageUrl,
+              },
+            },
+          })
+        }
+
+        toast.success("Image uploaded", {
+          description: "Your image has been uploaded successfully",
+        })
+      } else {
+        toast.error("Upload failed", {
+          description: response.data.error || "Failed to upload image",
+        })
+      }
+    } catch (error: any) {
+      console.error("Image upload error:", error)
+      toast.error("Upload failed", {
+        description: error.message || "Failed to upload image",
+      })
+    } finally {
+      if (type === "dm") {
+        setIsUploadingImage(false)
+      } else {
+        setIsUploadingOpeningImage(false)
+      }
+      // Reset file input
+      e.target.value = ""
+    }
+  }
+
+  const removeImage = (type: "dm" | "opening") => {
+    if (type === "dm") {
+      setAutomation({
+        ...automation,
+        actions: {
+          ...automation.actions,
+          sendDM: {
+            ...automation.actions.sendDM,
+            image_url: undefined,
+          },
+        },
+      })
+    } else {
+      setAutomation({
+        ...automation,
+        actions: {
+          ...automation.actions,
+          openingDM: {
+            ...automation.actions.openingDM,
+            image_url: undefined,
+          },
+        },
+      })
     }
   }
 
@@ -673,6 +791,13 @@ useEffect(() => {
                       className="rounded-full mt-1"
                     />
                     <div className="bg-neutral-800 rounded-2xl px-3 py-1.5 max-w-[140px]">
+                      {automation.actions.openingDM.image_url && (
+                        <img
+                          src={automation.actions.openingDM.image_url}
+                          alt="Opening DM"
+                          className="w-full rounded-lg mb-1.5"
+                        />
+                      )}
                       <span className="text-white text-[10px] leading-tight">
                         {automation.actions.openingDM.message}
                       </span>
@@ -753,6 +878,13 @@ useEffect(() => {
                       className="rounded-full mt-1"
                     />
                     <div className="bg-neutral-800 rounded-2xl px-3 py-1.5 max-w-[140px]">
+                      {automation.actions.sendDM.image_url && (
+                        <img
+                          src={automation.actions.sendDM.image_url}
+                          alt="Main DM"
+                          className="w-full rounded-lg mb-1.5"
+                        />
+                      )}
                       <span className="text-white text-[10px] leading-tight">{automation.actions.sendDM.message}</span>
                       {automation.actions.sendDM.buttons.length > 0 && (
                         <div className="mt-1.5 space-y-1">
@@ -1073,6 +1205,61 @@ useEffect(() => {
               </svg>
               Add Link
             </button>
+
+            {/* Image Upload Section */}
+            <div className="mt-3">
+              {automation.actions.sendDM.image_url ? (
+                <div className="relative">
+                  <img
+                    src={automation.actions.sendDM.image_url}
+                    alt="DM Preview"
+                    className="w-full rounded-lg border border-gray-200"
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeImage("dm")
+                    }}
+                    className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M18 6L6 18M6 6l12 12"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <label className="w-full border-2 border-dashed border-gray-300 hover:border-purple-500 rounded-lg p-4 cursor-pointer transition-colors flex flex-col items-center gap-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageUpload(e, "dm")}
+                    onClick={(e) => e.stopPropagation()}
+                    className="hidden"
+                    disabled={isUploadingImage}
+                  />
+                  {isUploadingImage ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                      <span className="text-sm text-gray-600">Uploading...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-gray-400">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span className="text-sm font-medium text-gray-700">Upload Image</span>
+                      <span className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</span>
+                    </>
+                  )}
+                </label>
+              )}
+            </div>
           </div>
 
           {/* Main DM Buttons */}
@@ -1168,6 +1355,61 @@ useEffect(() => {
               />
 
               <div className="text-xs text-gray-400">{automation.actions.openingDM.message.length} / 640</div>
+
+              {/* Opening DM Image Upload Section */}
+              <div className="mt-3">
+                {automation.actions.openingDM.image_url ? (
+                  <div className="relative">
+                    <img
+                      src={automation.actions.openingDM.image_url}
+                      alt="Opening DM Preview"
+                      className="w-full rounded-lg border border-gray-200"
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeImage("opening")
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                          d="M18 6L6 18M6 6l12 12"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <label className="w-full border-2 border-dashed border-gray-300 hover:border-purple-500 rounded-lg p-4 cursor-pointer transition-colors flex flex-col items-center gap-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, "opening")}
+                      onClick={(e) => e.stopPropagation()}
+                      className="hidden"
+                      disabled={isUploadingOpeningImage}
+                    />
+                    {isUploadingOpeningImage ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                        <span className="text-sm text-gray-600">Uploading...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-gray-400">
+                          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span className="text-sm font-medium text-gray-700">Upload Image</span>
+                        <span className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</span>
+                      </>
+                    )}
+                  </label>
+                )}
+              </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Opening Buttons:</label>
@@ -1695,6 +1937,61 @@ useEffect(() => {
               </svg>
               Add Link
             </button>
+
+            {/* Image Upload Section */}
+            <div className="mt-3">
+              {automation.actions.sendDM.image_url ? (
+                <div className="relative">
+                  <img
+                    src={automation.actions.sendDM.image_url}
+                    alt="DM Preview"
+                    className="w-full rounded-lg border border-gray-200"
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeImage("dm")
+                    }}
+                    className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M18 6L6 18M6 6l12 12"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <label className="w-full border-2 border-dashed border-gray-300 hover:border-purple-500 rounded-lg p-4 cursor-pointer transition-colors flex flex-col items-center gap-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageUpload(e, "dm")}
+                    onClick={(e) => e.stopPropagation()}
+                    className="hidden"
+                    disabled={isUploadingImage}
+                  />
+                  {isUploadingImage ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                      <span className="text-sm text-gray-600">Uploading...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-gray-400">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span className="text-sm font-medium text-gray-700">Upload Image</span>
+                      <span className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</span>
+                    </>
+                  )}
+                </label>
+              )}
+            </div>
           </div>
 
           {/* Main DM Buttons */}
@@ -1790,6 +2087,61 @@ useEffect(() => {
               />
 
               <div className="text-xs text-gray-400">{automation.actions.openingDM.message.length} / 640</div>
+
+              {/* Opening DM Image Upload Section */}
+              <div className="mt-3">
+                {automation.actions.openingDM.image_url ? (
+                  <div className="relative">
+                    <img
+                      src={automation.actions.openingDM.image_url}
+                      alt="Opening DM Preview"
+                      className="w-full rounded-lg border border-gray-200"
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeImage("opening")
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                          d="M18 6L6 18M6 6l12 12"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <label className="w-full border-2 border-dashed border-gray-300 hover:border-purple-500 rounded-lg p-4 cursor-pointer transition-colors flex flex-col items-center gap-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, "opening")}
+                      onClick={(e) => e.stopPropagation()}
+                      className="hidden"
+                      disabled={isUploadingOpeningImage}
+                    />
+                    {isUploadingOpeningImage ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                        <span className="text-sm text-gray-600">Uploading...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-gray-400">
+                          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span className="text-sm font-medium text-gray-700">Upload Image</span>
+                        <span className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</span>
+                      </>
+                    )}
+                  </label>
+                )}
+              </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Opening Buttons:</label>

@@ -206,6 +206,7 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
         openingDM: {
           enabled: body.actions?.openingDM?.enabled || false,
           message: body.actions?.openingDM?.message || "",
+          image_url: body.actions?.openingDM?.image_url || null, // 🆕 Image URL support
           buttons: transformButtons(body.actions?.openingDM?.buttons || [], { username: workspaceUsername }),
         },
 
@@ -224,6 +225,7 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
         sendDM: {
           enabled: true,
           message: body.actions?.sendDM?.message || "",
+          image_url: body.actions?.sendDM?.image_url || null, // 🆕 Image URL support
           buttons: transformButtons(body.actions?.sendDM?.buttons || [], { username: workspaceUsername }),
         },
 
