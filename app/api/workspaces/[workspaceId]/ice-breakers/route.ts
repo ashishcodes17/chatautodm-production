@@ -71,10 +71,12 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
  * POST - Create/Update ice breakers on Instagram
  */
 export async function POST(request: NextRequest, { params }: { params: { workspaceId: string } }) {
+  console.log("🚀 [Ice Breakers POST] Endpoint hit!")
   try {
     const { workspaceId } = params
+    console.log("📍 [Ice Breakers] Workspace ID:", workspaceId)
+    
     const body = await request.json()
-
     console.log("📥 [Ice Breakers] Received data:", JSON.stringify(body, null, 2))
 
     const currentUser = await getCurrentUser()
@@ -142,10 +144,12 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
 
     if (!response.ok) {
       console.error("❌ Instagram API error:", responseData)
+      console.error("❌ Instagram API error details:", JSON.stringify(responseData, null, 2))
       return NextResponse.json(
         {
           success: false,
-          error: responseData.error?.message || "Failed to create ice breakers",
+          error: responseData.error?.message || responseData.error?.error_user_msg || "Failed to create ice breakers",
+          details: responseData.error,
         },
         { status: response.status }
       )
@@ -185,7 +189,7 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
       data: responseData,
     })
   } catch (error) {
-    console.error("❌ Error creating ice breakers:", error)
+    console.error("❌ [Ice Breakers] Unexpected error in POST:", error)
     return NextResponse.json({ success: false, error: "Failed to create ice breakers" }, { status: 500 })
   }
 }
