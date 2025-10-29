@@ -58,29 +58,47 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
     let snapshotId = null
     if (body.isNextPost === true || body.postId === "NEXT_POST") {
       console.log("🔄 [Next Post] Creating media snapshot before automation...")
+      console.log("🔄 [Next Post] Workspace data:", { 
+        workspaceId, 
+        userId: workspace.userId,
+        instagramUserId: workspace.instagramUserId,
+        hasAccessToken: !!workspace.accessToken 
+      })
       
       try {
-        // Call the snapshot API internally
+        // Try to get access token from instagram_accounts or workspace
         const igAccount = await db.collection("instagram_accounts").findOne({
           workspaceId,
           userId: workspace.userId,
         } as any)
 
-        if (igAccount && igAccount.accessToken) {
+        console.log("🔄 [Next Post] IG Account found:", !!igAccount)
+        console.log("🔄 [Next Post] IG Account has token:", !!igAccount?.accessToken)
+
+        // Use token from instagram_accounts or fallback to workspace
+        const accessToken = igAccount?.accessToken || workspace.accessToken
+        const instagramUserId = igAccount?.instagramUserId || workspace.instagramUserId
+
+        if (accessToken && instagramUserId) {
+          console.log("🔄 [Next Post] Fetching media with Instagram User ID:", instagramUserId)
+          
           // Fetch all current media IDs
           let allMediaIds: string[] = []
-          let mediaUrl = `https://graph.instagram.com/me/media?fields=id&access_token=${igAccount.accessToken}`
+          // Use /me/media endpoint (works with user access token)
+          let mediaUrl = `https://graph.instagram.com/me/media?fields=id&access_token=${accessToken}`
 
           while (mediaUrl) {
+            console.log("🔄 [Next Post] Fetching page:", mediaUrl.substring(0, 100) + "...")
             const mediaRes = await fetch(mediaUrl)
             const mediaJson = await mediaRes.json()
 
             if (!mediaJson.error) {
               const mediaIds = (mediaJson.data || []).map((m: any) => m.id)
               allMediaIds = allMediaIds.concat(mediaIds)
+              console.log(`🔄 [Next Post] Fetched ${mediaIds.length} media IDs, total: ${allMediaIds.length}`)
               mediaUrl = mediaJson.paging?.next || null
             } else {
-              console.error("❌ Failed to fetch media for snapshot:", mediaJson.error)
+              console.error("❌ [Next Post] Instagram API error:", mediaJson.error)
               break
             }
           }
@@ -99,10 +117,30 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
           snapshotId = snapshotResult.insertedId
           
           console.log(`✅ [Next Post] Created snapshot with ${allMediaIds.length} media IDs (ID: ${snapshotId})`)
+          
+          // Verify snapshot was actually created
+          if (!snapshotId || allMediaIds.length === 0) {
+            console.warn("⚠️ [Next Post] Snapshot created but may be empty or invalid")
+          }
+        } else {
+          console.error("❌ [Next Post] Missing accessToken or instagramUserId")
+          console.error("❌ [Next Post] accessToken exists:", !!accessToken)
+          console.error("❌ [Next Post] instagramUserId:", instagramUserId)
+          
+          // For Next Post automation, snapshot is REQUIRED
+          return NextResponse.json({ 
+            success: false, 
+            error: "Cannot create Next Post automation: Instagram account not properly connected" 
+          }, { status: 400 })
         }
       } catch (snapshotError) {
         console.error("❌ [Next Post] Failed to create snapshot:", snapshotError)
-        // Continue anyway - non-blocking
+        
+        // For Next Post automation, snapshot creation failure should be fatal
+        return NextResponse.json({ 
+          success: false, 
+          error: "Failed to create media snapshot for Next Post automation" 
+        }, { status: 500 })
       }
     }
 
