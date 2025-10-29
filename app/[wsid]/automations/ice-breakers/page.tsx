@@ -142,8 +142,13 @@ export default function IceBreakersPage() {
       }
     } catch (error: any) {
       console.error("Error saving ice breakers:", error)
+      console.error("Error response data:", error?.response?.data)
+      
+      const errorMsg = error?.response?.data?.error || error?.message || "Failed to save ice breakers"
+      const errorDetails = error?.response?.data?.errorDetails || error?.response?.data?.instagramError
+      
       toast.error("Unexpected Error", {
-        description: error?.response?.data?.error || "Failed to save ice breakers. Please try again.",
+        description: errorMsg + (errorDetails ? `\n${JSON.stringify(errorDetails)}` : ""),
       })
     } finally {
       setIsSubmitting(false)

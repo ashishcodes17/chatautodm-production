@@ -71,13 +71,13 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
  * POST - Create/Update ice breakers on Instagram
  */
 export async function POST(request: NextRequest, { params }: { params: { workspaceId: string } }) {
-  console.log("🚀 [Ice Breakers POST] Endpoint hit!")
+  console.log("🧊🧊🧊 ICE_BREAKER_API_START 🧊🧊🧊")
   try {
     const { workspaceId } = params
-    console.log("📍 [Ice Breakers] Workspace ID:", workspaceId)
+    console.log("🧊 WORKSPACE_ID:", workspaceId)
     
     const body = await request.json()
-    console.log("📥 [Ice Breakers] Received data:", JSON.stringify(body, null, 2))
+    console.log("🧊 RECEIVED_PAYLOAD:", JSON.stringify(body, null, 2))
 
     const currentUser = await getCurrentUser()
     if (!currentUser) {
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
       ],
     }
 
-    console.log("🔄 [Ice Breakers] Sending to Instagram:", JSON.stringify(payload, null, 2))
+    console.log("🧊 INSTAGRAM_PAYLOAD:", JSON.stringify(payload, null, 2))
 
     // Send to Instagram API
     const response = await fetch(
@@ -143,19 +143,19 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
     const responseData = await response.json()
 
     if (!response.ok) {
-      console.error("❌ Instagram API error:", responseData)
-      console.error("❌ Instagram API error details:", JSON.stringify(responseData, null, 2))
+      console.error("🧊❌ INSTAGRAM_API_ERROR:", JSON.stringify(responseData, null, 2))
       return NextResponse.json(
         {
           success: false,
           error: responseData.error?.message || responseData.error?.error_user_msg || "Failed to create ice breakers",
-          details: responseData.error,
+          errorDetails: responseData.error,
+          instagramError: responseData,
         },
         { status: response.status }
       )
     }
 
-    console.log("✅ [Ice Breakers] Created successfully:", responseData)
+    console.log("🧊✅ SUCCESS:", responseData)
 
     // Store in database for reference (with full data including response field)
     // We need the response field for webhook handling
@@ -188,9 +188,14 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
       success: true,
       data: responseData,
     })
-  } catch (error) {
-    console.error("❌ [Ice Breakers] Unexpected error in POST:", error)
-    return NextResponse.json({ success: false, error: "Failed to create ice breakers" }, { status: 500 })
+  } catch (error: any) {
+    console.error("🧊💥 EXCEPTION:", error?.message || error)
+    console.error("🧊💥 STACK:", error?.stack)
+    return NextResponse.json({ 
+      success: false, 
+      error: error?.message || "Failed to create ice breakers",
+      exception: String(error)
+    }, { status: 500 })
   }
 }
 
