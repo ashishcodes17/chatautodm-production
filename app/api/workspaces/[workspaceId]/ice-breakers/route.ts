@@ -116,16 +116,22 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
       payload: q.payload,
     }))
 
-    // CRITICAL: Instagram requires BOTH call_to_actions AND locale
-    // If using call_to_actions structure, locale is MANDATORY (even if it's "default")
-    const payload: any = {
+    // Format according to Instagram docs:
+    // - For default/single locale: DO NOT include locale field at all
+    // - For multiple locales: include locale field for each
+    const iceBreaker: any = {
+      call_to_actions: callToActions,
+    }
+
+    // Only add locale if explicitly specified (not "default")
+    // Omitting locale makes it the default ice breaker
+    if (body.locale && body.locale !== "default") {
+      iceBreaker.locale = body.locale
+    }
+
+    const payload = {
       platform: "instagram",
-      ice_breakers: [
-        {
-          call_to_actions: callToActions,
-          locale: body.locale && body.locale !== "default" ? body.locale : "en_US", // Default to en_US
-        },
-      ],
+      ice_breakers: [iceBreaker],
     }
 
     console.log("🧊 INSTAGRAM_PAYLOAD:", JSON.stringify(payload, null, 2))
