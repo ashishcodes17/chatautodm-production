@@ -107,29 +107,21 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
 
     const { accessToken, instagramUserId } = igAccount
 
-    // Prepare payload for Instagram API
-    // IMPORTANT: Instagram API only accepts "question" and "payload" fields
-    // We store "response" in our database but don't send it to Instagram
-    const instagramCallToActions = body.call_to_actions.map((q: any) => ({
+    // Prepare ice breakers exactly as shown in Instagram API docs
+    // Strip out "response" field - Instagram only accepts "question" and "payload"
+    const callToActions = body.call_to_actions.map((q: any) => ({
       question: q.question,
       payload: q.payload,
     }))
 
-    // Build ice breaker object according to Instagram API docs
-    // For default locale: { call_to_actions: [...] }
-    // For specific locale: { call_to_actions: [...], locale: "xx_XX" }
-    const iceBreaker: any = {
-      call_to_actions: instagramCallToActions,
-    }
-
-    // Only add locale if it's not default
-    if (body.locale && body.locale !== "default") {
-      iceBreaker.locale = body.locale
-    }
-
-    const payload = {
+    // Exact format from Instagram docs
+    const payload: any = {
       platform: "instagram",
-      ice_breakers: [iceBreaker],
+      ice_breakers: [
+        {
+          call_to_actions: callToActions,
+        },
+      ],
     }
 
     console.log("🔄 [Ice Breakers] Sending to Instagram:", JSON.stringify(payload, null, 2))
