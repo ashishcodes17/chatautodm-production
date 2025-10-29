@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
-import { writeFile, mkdir } from "fs/promises"
-import path from "path"
-import { existsSync } from "fs"
+import { getDatabase } from "@/lib/mongodb"
 
 // Image upload endpoint for automation images
-// Stores images in /public/uploads/automations/ and returns domain URL
+// Stores images in MongoDB and returns API URL
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
@@ -35,36 +33,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate unique filename
-    const timestamp = Date.now()
-    const randomString = Math.random().toString(36).substring(2, 15)
-    const extension = file.name.split(".").pop()
-    const filename = `automation_${timestamp}_${randomString}.${extension}`
-
-    // Create upload directory if it doesn't exist
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "automations")
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
-    }
-
-    // Convert file to buffer and save
+    // Convert file to buffer
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    const filepath = path.join(uploadDir, filename)
-    await writeFile(filepath, buffer)
+
+    // Store in MongoDB
+    const db = await getDatabase()
+    const imageDoc = {
+      filename: file.name,
+      contentType: file.type,
+      size: file.size,
+      data: buffer.toString("base64"), // Store as base64
+      uploadedAt: new Date(),
+    }
+
+    const result = await db.collection("automation_images").insertOne(imageDoc as any)
+    const imageId = result.insertedId.toString()
 
     // Generate URL - use domain from environment or request host
-    // This ensures the URL works both locally and on production (via Coolify)
     const host = request.headers.get("host") || "localhost:3000"
     const protocol = host.includes("localhost") ? "http" : "https"
-    const imageUrl = `${protocol}://${host}/uploads/automations/${filename}`
+    const imageUrl = `${protocol}://${host}/api/images/${imageId}`
 
-    console.log("📸 Image uploaded successfully:", imageUrl)
+    console.log("📸 Image uploaded to MongoDB:", imageUrl)
 
     return NextResponse.json({
       success: true,
       imageUrl,
-      filename,
+      imageId,
     })
   } catch (error: any) {
     console.error("❌ Error uploading image:", error)
