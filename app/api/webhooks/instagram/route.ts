@@ -1784,7 +1784,11 @@ async function processCommentAutomations(account: any, commentData: any, db: any
             { 
               _id: nextPostAutomation._id,
               isNextPost: true, // Double-check it's still in next-post mode
-              selectedPost: { $exists: false } // Ensure no race condition
+              $or: [
+                { selectedPost: { $exists: false } }, // Field doesn't exist
+                { selectedPost: null }, // Field is null
+                { selectedPost: "" } // Field is empty string
+              ]
             } as any,
             {
               $set: {
@@ -1798,10 +1802,18 @@ async function processCommentAutomations(account: any, commentData: any, db: any
           
           if (updateResult.modifiedCount > 0) {
             console.log(`✅ Step 3: Automation updated and linked to new post!`)
+            console.log(`✅ Step 3: Update result:`, updateResult)
             matchedAutomation = { ...nextPostAutomation, selectedPost: postId }
           } else {
-            console.log(`⚠️ Step 3: Race condition - automation already linked elsewhere`)
+            console.log(`⚠️ Step 3: Update failed - modifiedCount: ${updateResult.modifiedCount}`)
+            console.log(`⚠️ Step 3: Automation state:`, { 
+              _id: nextPostAutomation._id, 
+              isNextPost: nextPostAutomation.isNextPost,
+              selectedPost: nextPostAutomation.selectedPost 
+            })
           }
+        } else {
+          console.log(`⚠️ Step 3: No next-post automation found`)
         }
       }
     }
