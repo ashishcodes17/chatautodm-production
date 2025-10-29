@@ -108,11 +108,18 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
     const { accessToken, instagramUserId } = igAccount
 
     // Prepare payload for Instagram API
+    // IMPORTANT: Instagram API only accepts "question" and "payload" fields
+    // We store "response" in our database but don't send it to Instagram
+    const instagramCallToActions = body.call_to_actions.map((q: any) => ({
+      question: q.question,
+      payload: q.payload,
+    }))
+
     const payload: any = {
       platform: "instagram",
       ice_breakers: [
         {
-          call_to_actions: body.call_to_actions,
+          call_to_actions: instagramCallToActions,
         },
       ],
     }
@@ -151,7 +158,8 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
 
     console.log("✅ [Ice Breakers] Created successfully:", responseData)
 
-    // Store in database for reference
+    // Store in database for reference (with full data including response field)
+    // We need the response field for webhook handling
     await db.collection("automations").updateOne(
       {
         workspaceId,
@@ -164,7 +172,10 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
           type: "ice_breakers",
           name: "Ice Breakers",
           isActive: true,
-          iceBreakers: body,
+          iceBreakers: {
+            locale: body.locale,
+            call_to_actions: body.call_to_actions, // Store with response field for webhook use
+          },
           updatedAt: new Date(),
         },
         $setOnInsert: {
