@@ -109,29 +109,16 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
 
     const { accessToken, instagramUserId } = igAccount
 
-    // Prepare ice breakers exactly as shown in Instagram API docs
-    // Strip out "response" field - Instagram only accepts "question" and "payload"
-    const callToActions = body.call_to_actions.map((q: any) => ({
+    // Prepare ice breakers - try DIRECT format (question, payload) as per error message
+    // Instagram error says: "keysets must be of the form (question, payload) or (call_to_actions, locale)"
+    const iceBreakers = body.call_to_actions.map((q: any) => ({
       question: q.question,
       payload: q.payload,
     }))
 
-    // Format according to Instagram docs:
-    // - For default/single locale: DO NOT include locale field at all
-    // - For multiple locales: include locale field for each
-    const iceBreaker: any = {
-      call_to_actions: callToActions,
-    }
-
-    // Only add locale if explicitly specified (not "default")
-    // Omitting locale makes it the default ice breaker
-    if (body.locale && body.locale !== "default") {
-      iceBreaker.locale = body.locale
-    }
-
     const payload = {
       platform: "instagram",
-      ice_breakers: [iceBreaker],
+      ice_breakers: iceBreakers, // Direct array of {question, payload} objects
     }
 
     console.log("🧊 INSTAGRAM_PAYLOAD:", JSON.stringify(payload, null, 2))
