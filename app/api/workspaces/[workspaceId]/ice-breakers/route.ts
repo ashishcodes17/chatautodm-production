@@ -115,18 +115,21 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
       payload: q.payload,
     }))
 
-    const payload: any = {
-      platform: "instagram",
-      ice_breakers: [
-        {
-          call_to_actions: instagramCallToActions,
-        },
-      ],
+    // Build ice breaker object according to Instagram API docs
+    // For default locale: { call_to_actions: [...] }
+    // For specific locale: { call_to_actions: [...], locale: "xx_XX" }
+    const iceBreaker: any = {
+      call_to_actions: instagramCallToActions,
     }
 
-    // Add locale if not default
+    // Only add locale if it's not default
     if (body.locale && body.locale !== "default") {
-      payload.ice_breakers[0].locale = body.locale
+      iceBreaker.locale = body.locale
+    }
+
+    const payload = {
+      platform: "instagram",
+      ice_breakers: [iceBreaker],
     }
 
     console.log("🔄 [Ice Breakers] Sending to Instagram:", JSON.stringify(payload, null, 2))
