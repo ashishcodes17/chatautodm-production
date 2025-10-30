@@ -332,6 +332,20 @@ async function processMessagingEvent(messagingEvent: any, accountId: string, db:
     // Check if user is in a waiting state (e.g., awaiting_email) and handle it before automations
     try {
       const userState = await db.collection("user_states").findOne({ senderId, accountId: account.instagramUserId })
+      
+      // Extra safety: Make sure the user state sender is NOT the business account
+      if (userState && userState.senderId === account.instagramUserId) {
+        console.log("⚠️ Invalid user state: senderId is business account, deleting corrupt state")
+        await db.collection("user_states").deleteOne({ senderId, accountId: account.instagramUserId })
+        return
+      }
+      
+      if (userState && userState.senderId === account.instagramProfessionalId) {
+        console.log("⚠️ Invalid user state: senderId is professional account, deleting corrupt state")
+        await db.collection("user_states").deleteOne({ senderId, accountId: account.instagramUserId })
+        return
+      }
+      
       if (userState && userState.state === "awaiting_email") {
         console.log("📧 Detected awaiting_email state for user, processing email response")
         const messageText = messagingEvent.message?.text?.trim() || ""
@@ -1066,6 +1080,13 @@ async function sendMainDM(automation: any, account: any, senderId: string, db: a
 
 // Helper functions for user state management
 async function storeUserState(senderId: string, accountId: string, automationId: any, state: string, db: any) {
+  // 🚨 CRITICAL: Never store user state where senderId is the business account
+  // This prevents infinite loops where bot messages are processed as user responses
+  if (senderId === accountId) {
+    console.error("❌ CRITICAL: Attempted to store user state with senderId === accountId (business account). This would cause infinite loops. Blocking.")
+    return
+  }
+  
   await db.collection("user_states").replaceOne(
     { senderId, accountId },
     {
@@ -1080,6 +1101,12 @@ async function storeUserState(senderId: string, accountId: string, automationId:
 }
 
 async function updateUserState(senderId: string, accountId: string, automationId: any, state: string, db: any) {
+  // 🚨 CRITICAL: Never update user state where senderId is the business account
+  if (senderId === accountId) {
+    console.error("❌ CRITICAL: Attempted to update user state with senderId === accountId (business account). Blocking.")
+    return
+  }
+  
   await db.collection("user_states").updateOne(
     { senderId, accountId },
     {
