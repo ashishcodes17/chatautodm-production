@@ -728,8 +728,14 @@ async function handleStoryReplyFlowEnhanced(
         await updateAccountUsage(account, "main_dm", automation.name, messageText)
 
         // Send follow-up message if enabled
+        console.log("🔍 Checking follow-up:", {
+          exists: !!automation.actions?.followUp,
+          enabled: automation.actions?.followUp?.enabled,
+          message: automation.actions?.followUp?.message,
+          delay: automation.actions?.followUp?.delay
+        })
         if (automation.actions?.followUp?.enabled && automation.actions.followUp.message) {
-          console.log("📤 Scheduling follow-up message...")
+          console.log("📤 Scheduling follow-up message in", automation.actions.followUp.delay || 300000, "ms")
           setTimeout(async () => {
             try {
               const followUpSuccess = await sendDirectMessageWithButtons(
@@ -2101,8 +2107,14 @@ async function handleCommentToDMFlow(
         await clearUserState(commenterId, account.instagramUserId, db)
 
         // Send follow-up message if enabled
+        console.log("🔍 Checking follow-up for comment reply:", {
+          exists: !!automation.actions?.followUp,
+          enabled: automation.actions?.followUp?.enabled,
+          message: automation.actions?.followUp?.message,
+          delay: automation.actions?.followUp?.delay
+        })
         if (automation.actions?.followUp?.enabled && automation.actions.followUp.message) {
-          console.log("📤 Scheduling follow-up message for comment reply...")
+          console.log("📤 Scheduling follow-up message for comment reply in", automation.actions.followUp.delay || 300000, "ms")
           setTimeout(async () => {
             try {
               const followUpSuccess = await sendDirectMessageWithButtons(

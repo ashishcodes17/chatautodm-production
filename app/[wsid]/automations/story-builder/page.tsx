@@ -391,11 +391,21 @@ const handleSubmit = async () => {
   try {
     setIsSubmitting(true)
 
-    // 🧩 Step 1: Validate required fields
+    // 🧩 Step 1: Validate story selection
+    if (!automation.storyId) {
+      toast.error("Story Required", {
+        description: "Please select a story before saving your automation.",
+      })
+      setIsSubmitting(false)
+      return
+    }
+
+    // 🧩 Step 2: Validate required fields
     if (!automation.actions.sendDM.message.trim()) {
       toast.error("Missing Message", {
         description: "Please enter a main DM message before saving your automation.",
       })
+      setIsSubmitting(false)
       return
     }
 
