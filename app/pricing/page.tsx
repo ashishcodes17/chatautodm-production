@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import SiteFooter from "@/components/site-footer";
+// import SiteFooter from "@/components/site-footer";
 import FloatingNav from "@/components/pagenavbar";
 import { Footer } from "@/components/landing/footer";
 
@@ -421,7 +421,7 @@ function PlanComparisonTable() {
         </div>
         <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4 text-[11px] text-slate-500">
           <p className="max-w-xl">Feature limits (volumes, concurrency) scale by plan. Final numeric caps published before billing starts. "Coming" features arrive during the free launch window.</p>
-          <Link href="/login" className="rounded-md bg-slate-900 px-4 py-2 text-xs font-medium text-white hover:bg-slate-800">Start Free Today</Link>
+          <Link href="/" className="rounded-md bg-slate-900 px-4 py-2 text-xs font-medium text-white hover:bg-slate-800">Start Free Today</Link>
         </div>
       </div>
       {/* Mobile simplified list */}

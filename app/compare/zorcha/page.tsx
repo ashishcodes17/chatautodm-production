@@ -766,7 +766,7 @@ const LinkdmComparePage = () => {
               <p className="mt-6">No lock‑in • SOC2 in progress • Production‑grade infrastructure</p>
             </div>
             <div className="text-sm text-slate-400 mt-2">
-              <p>Need help deciding? <a href="/contact" className="underline hover:text-white">Contact us</a> for a personalized consultation.</p>
+              <p>Need help deciding? <a href="https://www.instagram.com/direct/t/17845981776481974/" className="underline hover:text-white">Contact us</a> for a personalized consultation.</p>
             </div>
           </div>
         </section>
