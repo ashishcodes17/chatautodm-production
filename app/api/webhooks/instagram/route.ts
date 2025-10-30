@@ -298,11 +298,17 @@ async function processMessagingEvent(messagingEvent: any, accountId: string, db:
     console.log("💬 Messaging event:", JSON.stringify(messagingEvent, null, 2))
 
     const senderId = messagingEvent.sender?.id
+    const recipientId = messagingEvent.recipient?.id
     const messageText = messagingEvent.message?.text || ""
     const messageId = messagingEvent.message?.mid
 
     if (!senderId) {
       console.log("❌ Missing sender ID")
+      return
+    }
+    
+    if (!recipientId) {
+      console.log("❌ Missing recipient ID")
       return
     }
 
@@ -327,7 +333,19 @@ async function processMessagingEvent(messagingEvent: any, accountId: string, db:
       return
     }
 
-    // Skip if sender is the business account itself
+    // 🔥 CRITICAL: Only process if RECIPIENT is the automation owner
+    // This ensures we only trigger automations when someone messages TO the bot account
+    // Skips webhooks received from the user's side (when both are registered on platform)
+    const isRecipientOwner = recipientId === account.instagramUserId || recipientId === account.instagramProfessionalId
+    
+    if (!isRecipientOwner) {
+      console.log(`⚠️ Recipient ${recipientId} is not automation owner (${account.instagramUserId}/${account.instagramProfessionalId}), skipping (likely sender-side webhook)`)
+      return
+    }
+    
+    console.log(`✅ Recipient ${recipientId} matches automation owner, processing message`)
+
+    // Skip if sender is the business account itself (should already be filtered by is_echo, but double-check)
     if (senderId === account.instagramUserId || senderId === account.instagramProfessionalId) {
       console.log("⚠️ Message is from business account, skipping")
       return
@@ -346,6 +364,22 @@ async function processMessagingEvent(messagingEvent: any, accountId: string, db:
     if (messageText && botMessagePatterns.some(pattern => messageText.includes(pattern))) {
       console.log("⚠️ Message text matches bot pattern, likely an echo without is_echo flag. Skipping.")
       return
+    }
+    
+    // 🚨 Check if we recently sent this exact message text to this user (within last 10 seconds)
+    // This catches cases where Instagram echoes our message back as if the user sent it
+    if (messageText) {
+      const recentBotMessage = await db.collection("webhook_logs").findOne({
+        "data.entry.messaging.message.text": messageText,
+        "data.entry.messaging.message.is_echo": true,
+        "data.entry.messaging.recipient.id": senderId,
+        timestamp: { $gte: new Date(Date.now() - 10000) } // Last 10 seconds
+      })
+      
+      if (recentBotMessage) {
+        console.log("⚠️ This exact message was recently sent by bot (found echo in logs), skipping duplicate")
+        return
+      }
     }
 
     // Check if user is in a waiting state (e.g., awaiting_email) and handle it before automations
