@@ -757,7 +757,7 @@ const LinkdmComparePage = () => {
             <Link href="/">
 
            <button className="bg-[#3076fd] text-slate-900 hover:bg-slate-100 font-medium px-8 py-4 rounded-lg inline-flex items-center space-x-2 shadow-lg hover:shadow-xl transition">
-            GET STARTED FREE
+            GET STARTED FREE!
             <ArrowRight className="h-5 w-5" />
            </button>
            </Link>
