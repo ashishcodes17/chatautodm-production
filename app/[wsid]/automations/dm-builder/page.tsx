@@ -33,6 +33,9 @@ interface DMAutomationState {
     reactHeart: boolean
     followMessage: string
     followButtons: FollowButton[]
+    emailMessage: string
+    emailButtons: DMButton[]
+    followUp: { enabled: boolean; message: string; delay: number }
   }
   storyId: string | null
   isActive: boolean
@@ -87,7 +90,7 @@ export default function Page() {
 
   const [automation, setAutomation] = useState<DMAutomationState>({
     trigger: {
-      anyReply: true,
+      anyReply: false, // Changed to false since we removed the toggle
       keywords: [],
     },
     actions: {
@@ -279,11 +282,21 @@ export default function Page() {
   try {
     setIsSubmitting(true)
 
+    // Validate at least one keyword
+    if (automation.trigger.keywords.length === 0) {
+      toast.error("Keywords Required", {
+        description: "Please add at least one keyword before saving your automation.",
+      })
+      setIsSubmitting(false)
+      return
+    }
+
     // Validate required fields
     if (!automation.actions.sendDM.message.trim()) {
       toast.error("Missing Message", {
         description: "Please enter a main DM message before saving.",
       })
+      setIsSubmitting(false)
       return
     }
 
@@ -914,6 +927,7 @@ export default function Page() {
             <h3 className="text-lg font-semibold text-gray-900">Setup Keywords</h3>
           </div>
 
+          {/* Any keyword toggle - commented out
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm text-gray-700">Any keyword</span>
             <Switch
@@ -930,6 +944,7 @@ export default function Page() {
               />
             </Switch>
           </div>
+          */}
 
           <div className="relative" onClick={(e) => e.stopPropagation()}>
             <input
@@ -1471,7 +1486,7 @@ export default function Page() {
               <h3 className="text-lg font-semibold text-gray-900">Setup Keywords</h3>
             </div>
 
-            <div className="flex items-center justify-between mb-4">
+            {/* <div className="flex items-center justify-between mb-4">
               <span className="text-sm text-gray-700">Any keyword</span>
               <Switch
                 checked={automation.trigger.anyReply}
@@ -1486,7 +1501,7 @@ export default function Page() {
                   }`}
                 />
               </Switch>
-            </div>
+            </div> */}
 
             <div className="relative" onClick={(e) => e.stopPropagation()}>
               <input

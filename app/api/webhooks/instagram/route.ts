@@ -999,6 +999,34 @@ async function sendMainDM(automation: any, account: any, senderId: string, db: a
       await updateAccountUsage(account, "main_dm", automation.name, "")
       await clearUserState(senderId, account.instagramUserId, db)
 
+      // Send follow-up message if enabled
+      console.log("🔍 Checking follow-up in sendMainDM:", {
+        exists: !!automation.actions?.followUp,
+        enabled: automation.actions?.followUp?.enabled,
+        message: automation.actions?.followUp?.message,
+        delay: automation.actions?.followUp?.delay
+      })
+      if (automation.actions?.followUp?.enabled && automation.actions.followUp.message) {
+        console.log("📤 Scheduling follow-up message in", automation.actions.followUp.delay || 300000, "ms")
+        setTimeout(async () => {
+          try {
+            const followUpSuccess = await sendDirectMessageWithButtons(
+              account.instagramUserId,
+              account.accessToken,
+              senderId,
+              automation.actions.followUp.message,
+              [],
+            )
+
+            if (followUpSuccess) {
+              await updateAccountUsage(account, "follow_up", automation.name, "")
+            }
+          } catch (followUpError) {
+            console.error("❌ Error sending follow-up message:", followUpError)
+          }
+        }, automation.actions.followUp.delay || 300000) // Default 5 minutes delay
+      }
+
       // Send branding message for free users
       await sendBrandingMessageIfNeeded(account, senderId, db, automation.name)
     }
@@ -2058,7 +2086,7 @@ async function handleCommentToDMFlow(
 
       if (emailSent) {
         // Set user state so subsequent incoming message will be treated as the email response
-        await updateUserState(commenterId, account.instagramUserId, automation._id, "awaiting_email", db)
+        await storeUserState(commenterId, account.instagramUserId, automation._id, "awaiting_email", db)
         await updateAccountUsage(account, "ask_email", automation.name, "")
         // Don't proceed to main DM - wait for user's reply
         await logAutomation(automation, commenterId, postId, commentText, true, account.instagramUserId, db)
@@ -2738,7 +2766,7 @@ async function handleDMAutomationFlowEnhanced(
 
       if (emailSent) {
         success = true
-        await updateUserState(senderId, account.instagramUserId, automation._id, "awaiting_email", db)
+        await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_email", db)
         await updateAccountUsage(account, "ask_email", automation.name, messageText)
 
         // Wait for email response
@@ -2804,6 +2832,34 @@ async function handleDMAutomationFlowEnhanced(
 
         await updateAccountUsage(account, "main_dm", automation.name, messageText)
         await clearUserState(senderId, account.instagramUserId, db)
+
+        // Send follow-up message if enabled
+        console.log("🔍 Checking follow-up in handleDMAutomationFlowEnhanced:", {
+          exists: !!automation.actions?.followUp,
+          enabled: automation.actions?.followUp?.enabled,
+          message: automation.actions?.followUp?.message,
+          delay: automation.actions?.followUp?.delay
+        })
+        if (automation.actions?.followUp?.enabled && automation.actions.followUp.message) {
+          console.log("📤 Scheduling follow-up message in", automation.actions.followUp.delay || 300000, "ms")
+          setTimeout(async () => {
+            try {
+              const followUpSuccess = await sendDirectMessageWithButtons(
+                account.instagramUserId,
+                account.accessToken,
+                senderId,
+                automation.actions.followUp.message,
+                [],
+              )
+
+              if (followUpSuccess) {
+                await updateAccountUsage(account, "follow_up", automation.name, "")
+              }
+            } catch (followUpError) {
+              console.error("❌ Error sending follow-up message:", followUpError)
+            }
+          }, automation.actions.followUp.delay || 300000) // Default 5 minutes delay
+        }
 
         // Send branding message for free users
         await sendBrandingMessageIfNeeded(account, senderId, db, automation.name)
