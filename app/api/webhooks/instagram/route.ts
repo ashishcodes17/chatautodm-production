@@ -135,6 +135,14 @@ export async function POST(request: NextRequest) {
         if (entry.messaging) {
           console.log("💬 Found messaging events:", entry.messaging.length)
           for (const messagingEvent of entry.messaging) {
+            console.log("🔍 Checking message:", {
+              is_echo: messagingEvent.message?.is_echo,
+              sender_id: messagingEvent.sender?.id,
+              entry_id: entry.id,
+              account_instagramUserId: account.instagramUserId,
+              account_professionalId: account.instagramProfessionalId
+            })
+            
             if (
               messagingEvent.message?.is_echo ||
               messagingEvent.sender?.id === entry.id ||
@@ -287,10 +295,25 @@ async function processMessagingEvent(messagingEvent: any, accountId: string, db:
 
     const senderId = messagingEvent.sender?.id
     const messageText = messagingEvent.message?.text || ""
+    const messageId = messagingEvent.message?.mid
 
     if (!senderId) {
       console.log("❌ Missing sender ID")
       return
+    }
+
+    // 🚨 Check for duplicate message processing (same message ID within last 60 seconds)
+    if (messageId) {
+      const recentLog = await db.collection("webhook_logs").findOne({
+        "data.entry.messaging.message.mid": messageId,
+        processed: true,
+        timestamp: { $gte: new Date(Date.now() - 60000) } // Last 60 seconds
+      })
+      
+      if (recentLog) {
+        console.log("⚠️ Duplicate message detected (already processed), skipping:", messageId)
+        return
+      }
     }
 
     const account = await findAccountByInstagramId(accountId, db)
@@ -301,7 +324,7 @@ async function processMessagingEvent(messagingEvent: any, accountId: string, db:
     }
 
     // Skip if sender is the business account itself
-    if (senderId === account.instagramUserId) {
+    if (senderId === account.instagramUserId || senderId === account.instagramProfessionalId) {
       console.log("⚠️ Message is from business account, skipping")
       return
     }
@@ -382,6 +405,14 @@ async function processMessagingEvent(messagingEvent: any, accountId: string, db:
   //   • type: "dm_automation" (plain buttons/text)
   //   • type: "generic_dm_automation" (carousel-like Generic Template)
   await processDMAutomationsEnhanced(account, messagingEvent, db)
+
+    // Mark this message as processed
+    if (messageId) {
+      await db.collection("webhook_logs").updateOne(
+        { "data.entry.messaging.message.mid": messageId },
+        { $set: { processed: true, processedAt: new Date() } }
+      )
+    }
 
     console.log("✅ Messaging event processed successfully")
   } catch (error) {
