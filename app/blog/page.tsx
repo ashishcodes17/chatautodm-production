@@ -5,26 +5,6 @@ import { Footer } from "@/components/landing/footer"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
-export const metadata: Metadata = {
-  title: "Blog - ChatAutoDM | Instagram Automation Tips & Strategies",
-  description:
-    "Discover the latest Instagram automation strategies, DM marketing tips, and social media growth tactics. Learn how to scale your business with ChatAutoDM.",
-  keywords: "Instagram automation, DM marketing, social media growth, Instagram business, automation strategies",
-  openGraph: {
-    title: "Blog - ChatAutoDM | Instagram Automation Tips & Strategies",
-    description:
-      "Discover the latest Instagram automation strategies, DM marketing tips, and social media growth tactics.",
-    type: "website",
-    url: "https://chatautodm.com/blog",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Blog - ChatAutoDM | Instagram Automation Tips & Strategies",
-    description:
-      "Discover the latest Instagram automation strategies, DM marketing tips, and social media growth tactics.",
-  },
-}
-
 const blogPosts = [
   {
     id: "instagram-dm-automation-guide",

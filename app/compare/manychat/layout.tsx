@@ -1,11 +1,11 @@
 // Server component (metadata here)
 import { ReactNode } from 'react';
+import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'ChatAutoDM vs Manychat — Free Instagram DM Automation Tool',
-  description:
-    'Compare ChatAutoDM with Manychat — a free Instagram DM automation tool for creators and businesses. Automate comments-to-DM, story replies, and lead collection effortlessly. Start growing your audience today!',
-  generator: 'Team ChatAutoDM',
+  title: 'ChatAutoDM vs ManyChat - Best ManyChat Alternative 2025 | Instagram Automation',
+  description: 'Compare ChatAutoDM with ManyChat — Save 80% with unlimited contacts, better Instagram automation. Free forever plan available. Start growing your audience today!',
+  keywords: ['ManyChat alternative', 'ChatAutoDM vs ManyChat', 'Instagram automation', 'Instagram DM automation', 'cheaper than ManyChat'],
 };
 
 export default function ManychatLayout({ children }: { children: ReactNode }) {

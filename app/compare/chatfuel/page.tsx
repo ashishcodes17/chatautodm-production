@@ -186,6 +186,80 @@ const LinkdmComparePage = () => {
   useEffect(() => {
     setIsVisible(true)
     
+    // Add structured data for SEO
+    const structuredData = {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "ChatAutoDM vs Chatfuel Comparison",
+      "description": "Comprehensive comparison between ChatAutoDM and Chatfuel Instagram automation platforms. Compare features, pricing, and capabilities.",
+      "url": "https://chatautodm.com/compare/chatfuel",
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://chatautodm.com"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Compare",
+            "item": "https://chatautodm.com/compare"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "ChatAutoDM vs Chatfuel",
+            "item": "https://chatautodm.com/compare/chatfuel"
+          }
+        ]
+      },
+      "mainEntity": {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is the best alternative to Chatfuel?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "ChatAutoDM is the best Chatfuel alternative, offering unlimited contacts, more affordable pricing, and powerful Instagram-focused automation features including DM automation, comment replies, and story mentions."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How much does ChatAutoDM cost compared to Chatfuel?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "ChatAutoDM offers a forever-free plan with unlimited features. Chatfuel starts at $15/month with limited contacts, while ChatAutoDM provides unlimited contacts and advanced automation at no cost."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does ChatAutoDM support Instagram automation like Chatfuel?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, ChatAutoDM is a Meta-verified technology provider supporting full Instagram automation including DM automation, comment-to-DM, story replies, and more - with better Instagram-specific features than Chatfuel."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is ChatAutoDM better than Chatfuel for Instagram?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "ChatAutoDM is specifically built for Instagram automation, while Chatfuel focuses on multiple platforms. This makes ChatAutoDM more specialized with deeper Instagram features, better pricing, and simpler setup for Instagram use cases."
+            }
+          }
+        ]
+      }
+    }
+
+    const script = document.createElement('script')
+    script.type = 'application/ld+json'
+    script.text = JSON.stringify(structuredData)
+    document.head.appendChild(script)
+    
     // Add custom CSS for animations
     const style = document.createElement('style')
     style.textContent = `
@@ -237,7 +311,7 @@ const LinkdmComparePage = () => {
       <div className="min-h-screen bg-white">
   <Navbar />
 
-  {/* Hero Section refined */}
+  {/* Hero Section - SEO optimized */}
   <section className="relative min-h-[70vh] pt-32 flex flex-col items-center justify-center overflow-hidden bg-white text-black px-4">
     <div className="absolute inset-0">
       {/* Optional background image */}
@@ -246,92 +320,95 @@ const LinkdmComparePage = () => {
     </div>
 
     <div className="relative z-10 text-center max-w-4xl">
-      {/* Logo placeholders */}
+      {/* Logo placeholders with proper SEO */}
       <div className="flex flex-wrap items-center justify-center gap-4 mb-10">
         <div className="flex items-center gap-2">
-          <h1 className="text-base md:text-lg font-bold">ChatAutoDM</h1>
+          <h2 className="text-base md:text-lg font-bold">ChatAutoDM</h2>
           <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
             <img
               src="/logo-branding2.png"
-              alt="ChatAutoDM Logo"
+              alt="ChatAutoDM Logo - Instagram Automation Platform"
               className="w-10 h-10 object-contain"
+              width={40}
+              height={40}
             />
           </div>
         </div>
 
-        <span className="font-bold text-base md:text-lg">vs</span>
+        <span className="font-bold text-base md:text-lg" aria-label="versus">vs</span>
 
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center overflow-hidden">
             <img
               src="/chatfuellogo.png"
-              alt="Chatfuel Logo"
+              alt="Chatfuel Logo - Facebook Messenger Bot"
               className="w-10 h-10 object-contain"
+              width={40}
+              height={40}
             />
           </div>
-          <h1 className="text-base md:text-lg font-bold">ChatFuel</h1>
+          <h2 className="text-base md:text-lg font-bold">ChatFuel</h2>
         </div>
       </div>
 
-      {/* Hero text */}
+      {/* Hero text - Primary H1 for SEO */}
       <h1 className="text-3xl md:text-5xl font-bold mb-3">
-        Looking for the best
+        Looking for the Best Chatfuel Alternative?
       </h1>
-      <h1 className="text-3xl md:text-5xl font-bold mb-6">
-        alternative to ChatFuel?
-      </h1>
+      <p className="text-xl md:text-2xl font-semibold mb-6 text-gray-800">
+        ChatAutoDM - Better Instagram Automation & Lower Cost
+      </p>
       <p className="text-base md:text-lg text-gray-700 mb-8">
-        The ultimate solution for automated messaging on social media.
+        Get unlimited contacts, Instagram-native features, and affordable pricing. Join 50,000+ businesses who switched from Chatfuel.
       </p>
 
       {/* CTA button */}
-      <Link href="/">
-  <button className="px-6 py-3 mb-12 bg-[#3076fd] hover:bg-[#1d5ddb] text-white font-semibold rounded-xl shadow-md transition">
-    Start Free
+      <Link href="/" aria-label="Start using ChatAutoDM for free">
+  <button className="px-6 py-3 mb-12 bg-[#3076fd] hover:bg-[#1d5ddb] text-white font-semibold rounded-xl shadow-md transition" aria-label="Get started with ChatAutoDM free trial">
+    Start Free - No Credit Card Required
   </button>
 </Link>
 
-      {/* Unique highlights */}
+      {/* Unique highlights - SEO rich content */}
       <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 mb-20 text-left">
-        <div className="bg-gray-50 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center">
+        <article className="bg-gray-50 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center">
           <div className="w-10 h-10 mx-auto mb-3 bg-[#3076fd]/10 rounded-full flex items-center justify-center text-[#3076fd] font-bold">
             ✓
           </div>
           <h3 className="text-[#3076fd] font-semibold mb-2">
-            Free Plan Forever
+            Instagram-Native Platform
           </h3>
           <p className="text-gray-600 text-sm">
-            Enjoy a forever-free plan with more features included.
+            Unlike Chatfuel's Facebook focus, ChatAutoDM is built specifically for Instagram automation with native features.
           </p>
-        </div>
+        </article>
 
-        <div className="bg-gray-50 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center">
+        <article className="bg-gray-50 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center">
           <div className="w-10 h-10 mx-auto mb-3 bg-[#3076fd]/10 rounded-full flex items-center justify-center text-[#3076fd] font-bold">
             💰
           </div>
           <h3 className="text-[#3076fd] font-semibold mb-2">
-            Affordable Pricing
+            More Affordable Pricing
           </h3>
           <p className="text-gray-600 text-sm">
-            Much lower-priced packs compared to ChatFuel.
+            Save money with transparent pricing and unlimited contacts. No per-user fees like Chatfuel.
           </p>
-        </div>
+        </article>
 
-        <div className="bg-gray-50 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center">
+        <article className="bg-gray-50 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center">
           <div className="w-10 h-10 mx-auto mb-3 bg-[#3076fd]/10 rounded-full flex items-center justify-center text-[#3076fd] font-bold">
             ⭐
           </div>
           <h3 className="text-[#3076fd] font-semibold mb-2">
-            5★ Human Support
+            24/7 Human Support
           </h3>
           <p className="text-gray-600 text-sm">
-            Real human support team available when you need help.
+            Get instant help from real automation experts. No bots, no waiting - just solutions when you need them.
           </p>
-        </div>
+        </article>
       </div>
     </div>
   </section>
-{/* </div> */}
 
       
       <div >

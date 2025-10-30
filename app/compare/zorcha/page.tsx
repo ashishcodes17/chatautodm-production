@@ -1,7 +1,6 @@
 'use client'
 export const dynamic = 'force-dynamic';
 
-
 import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -186,6 +185,72 @@ const LinkdmComparePage = () => {
   useEffect(() => {
     setIsVisible(true)
     
+    // Add structured data for SEO
+    const structuredData = {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "ChatAutoDM vs Zorcha Comparison",
+      "description": "Comprehensive comparison between ChatAutoDM and Zorcha Instagram automation platforms. Compare features, pricing, and capabilities.",
+      "url": "https://chatautodm.com/compare/zorcha",
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://chatautodm.com"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Compare",
+            "item": "https://chatautodm.com/compare"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "ChatAutoDM vs Zorcha",
+            "item": "https://chatautodm.com/compare/zorcha"
+          }
+        ]
+      },
+      "mainEntity": {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is the best alternative to Zorcha?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "ChatAutoDM is the best Zorcha alternative, offering unlimited contacts, more affordable pricing, and powerful Instagram automation features including DM automation, comment replies, and story mentions."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How much does ChatAutoDM cost compared to Zorcha?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "ChatAutoDM offers a forever-free plan with unlimited features. Zorcha starts at $15/month for only 1000 contacts, while ChatAutoDM provides unlimited contacts at a much lower cost."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does ChatAutoDM support Instagram automation?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, ChatAutoDM is a Meta-verified technology provider supporting full Instagram automation including DM automation, comment-to-DM, story replies, and more."
+            }
+          }
+        ]
+      }
+    }
+
+    const script = document.createElement('script')
+    script.type = 'application/ld+json'
+    script.text = JSON.stringify(structuredData)
+    document.head.appendChild(script)
+    
     // Add custom CSS for animations
     const style = document.createElement('style')
     style.textContent = `
@@ -226,6 +291,7 @@ const LinkdmComparePage = () => {
     
     return () => {
       document.head.removeChild(style)
+      document.head.removeChild(script)
     }
   }, [])
 
@@ -237,7 +303,7 @@ const LinkdmComparePage = () => {
       <div className="min-h-screen bg-white">
   <Navbar />
 
-  {/* Hero Section refined */}
+  {/* Hero Section - SEO optimized with proper heading hierarchy */}
   <section className="relative min-h-[70vh] pt-32 flex flex-col items-center justify-center overflow-hidden bg-white text-black px-4">
     <div className="absolute inset-0">
       {/* Optional background image */}
@@ -246,88 +312,92 @@ const LinkdmComparePage = () => {
     </div>
 
     <div className="relative z-10 text-center max-w-4xl">
-      {/* Logo placeholders */}
+      {/* Logo placeholders with proper alt tags */}
       <div className="flex flex-wrap items-center justify-center gap-4 mb-10">
         <div className="flex items-center gap-2">
-          <h1 className="text-base md:text-lg font-bold">ChatAutoDM</h1>
+          <h2 className="text-base md:text-lg font-bold">ChatAutoDM</h2>
           <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
             <img
               src="/logo-branding2.png"
-              alt="ChatAutoDM Logo"
+              alt="ChatAutoDM Logo - Instagram Automation Platform"
               className="w-10 h-10 object-contain"
+              width={40}
+              height={40}
             />
           </div>
         </div>
 
-        <span className="font-bold text-base md:text-lg">vs</span>
+        <span className="font-bold text-base md:text-lg" aria-label="versus">vs</span>
 
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center overflow-hidden">
             <img
               src="/zorchalogo.png"
-              alt=" Logo"
+              alt="Zorcha Logo - Instagram DM Tool"
               className="w-10 h-10 object-contain"
+              width={40}
+              height={40}
             />
           </div>
-          <h1 className="text-base md:text-lg font-bold">Zorcha</h1>
+          <h2 className="text-base md:text-lg font-bold">Zorcha</h2>
         </div>
       </div>
 
-      {/* Hero text */}
+      {/* Hero text - Primary H1 for SEO */}
       <h1 className="text-3xl md:text-5xl font-bold mb-3">
-        Looking for the best
+        Looking for the Best Zorcha Alternative?
       </h1>
-      <h1 className="text-3xl md:text-5xl font-bold mb-6">
-        alternative to Zorcha?
-      </h1>
+      <p className="text-xl md:text-2xl font-semibold mb-6 text-gray-800">
+        ChatAutoDM - The #1 Instagram Automation Platform
+      </p>
       <p className="text-base md:text-lg text-gray-700 mb-8">
-        The ultimate solution for automated messaging on social media.
+        Unlimited contacts, affordable pricing, and enterprise-grade Instagram DM automation. Trusted by 50,000+ businesses worldwide.
       </p>
 
       {/* CTA button */}
-      <Link href="/">
-  <button className="px-6 py-3 mb-12 bg-[#3076fd] hover:bg-[#1d5ddb] text-white font-semibold rounded-xl shadow-md transition">
-    Start Free
+      <Link href="/" aria-label="Start using ChatAutoDM for free">
+  <button className="px-6 py-3 mb-12 bg-[#3076fd] hover:bg-[#1d5ddb] text-white font-semibold rounded-xl shadow-md transition" aria-label="Get started with ChatAutoDM free trial">
+    Start Free - No Credit Card Required
   </button>
 </Link>
 
-      {/* Unique highlights */}
+      {/* Unique highlights - SEO rich content */}
       <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 mb-20 text-left">
-        <div className="bg-gray-50 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center">
+        <article className="bg-gray-50 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center">
           <div className="w-10 h-10 mx-auto mb-3 bg-[#3076fd]/10 rounded-full flex items-center justify-center text-[#3076fd] font-bold">
             ✓
           </div>
           <h3 className="text-[#3076fd] font-semibold mb-2">
-            Free Plan Forever
+            Forever Free Plan
           </h3>
           <p className="text-gray-600 text-sm">
-            Enjoy a forever-free plan with more features included.
+            Unlike Zorcha's limited free tier, enjoy unlimited Instagram automation features completely free. No hidden charges.
           </p>
-        </div>
+        </article>
 
-        <div className="bg-gray-50 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center">
+        <article className="bg-gray-50 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center">
           <div className="w-10 h-10 mx-auto mb-3 bg-[#3076fd]/10 rounded-full flex items-center justify-center text-[#3076fd] font-bold">
             💰
           </div>
           <h3 className="text-[#3076fd] font-semibold mb-2">
-            Affordable Pricing
+            80% More Affordable
           </h3>
           <p className="text-gray-600 text-sm">
-            Much lower-priced packs compared to Zorcha.
+            Save thousands yearly. ChatAutoDM costs 80% less than Zorcha while offering unlimited contacts and advanced features.
           </p>
-        </div>
+        </article>
 
-        <div className="bg-gray-50 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center">
+        <article className="bg-gray-50 rounded-2xl p-6 shadow-sm hover:shadow-md transition text-center">
           <div className="w-10 h-10 mx-auto mb-3 bg-[#3076fd]/10 rounded-full flex items-center justify-center text-[#3076fd] font-bold">
             ⭐
           </div>
           <h3 className="text-[#3076fd] font-semibold mb-2">
-            5★ Human Support
+            24/7 Human Support
           </h3>
           <p className="text-gray-600 text-sm">
-            Real human support team available when you need help.
+            Get instant help from real automation experts. No bots, no waiting - just solutions when you need them.
           </p>
-        </div>
+        </article>
       </div>
     </div>
   </section>
