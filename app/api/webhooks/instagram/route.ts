@@ -1061,9 +1061,9 @@ async function sendDirectMessageWithButtons(
     console.log("📤 Buttons:", JSON.stringify(buttons, null, 2))
     console.log("📤 Image URL:", imageUrl || "none") // 🆕 Log image URL
 
-    // First try sending with buttons if buttons exist
-    if (buttons && buttons.length > 0) {
-      const limitedButtons = buttons.slice(0, 3)
+    // Use Generic Template if buttons OR image exist
+    if ((buttons && buttons.length > 0) || imageUrl) {
+      const limitedButtons = buttons?.slice(0, 3) || []
 
       // Get user profile for profile URL replacement
       const userProfile = await getUserProfile(instagramId, accessToken, recipientId)
@@ -1103,7 +1103,11 @@ async function sendDirectMessageWithButtons(
       // 🎨 Convert to Generic Template format (supports images)
       const element: any = {
         title: messageText,
-        buttons: formattedButtons,
+      }
+      
+      // Add buttons only if present
+      if (formattedButtons.length > 0) {
+        element.buttons = formattedButtons
       }
       
       // 🆕 Add image_url if provided
@@ -2096,6 +2100,28 @@ async function handleCommentToDMFlow(
         await updateAccountUsage(account, "main_dm", automation.name, commentText)
         await clearUserState(commenterId, account.instagramUserId, db)
 
+        // Send follow-up message if enabled
+        if (automation.actions?.followUp?.enabled && automation.actions.followUp.message) {
+          console.log("📤 Scheduling follow-up message for comment reply...")
+          setTimeout(async () => {
+            try {
+              const followUpSuccess = await sendDirectMessageWithButtons(
+                account.instagramUserId,
+                account.accessToken,
+                commenterId,
+                automation.actions.followUp.message,
+                [],
+              )
+
+              if (followUpSuccess) {
+                await updateAccountUsage(account, "follow_up", automation.name, "")
+              }
+            } catch (followUpError) {
+              console.error("❌ Error sending follow-up message:", followUpError)
+            }
+          }, automation.actions.followUp.delay || 300000) // Default 5 minutes delay
+        }
+
         // Send branding message for free users
         await sendBrandingMessageIfNeeded(account, commenterId, db, automation.name)
       }
@@ -2122,13 +2148,17 @@ async function sendPrivateReplyWithButtons(
 
     let messagePayload: any
 
-    if (buttons.length > 0) {
+    if (buttons.length > 0 || imageUrl) { // 🆕 Use Generic Template if buttons OR image
       const limitedButtons = buttons.slice(0, 3)
 
       // 🎨 Convert to Generic Template format (supports images)
       const element: any = {
         title: message,
-        buttons: limitedButtons,
+      }
+      
+      // Add buttons only if present
+      if (limitedButtons.length > 0) {
+        element.buttons = limitedButtons
       }
       
       // 🆕 Add image_url if provided

@@ -2,7 +2,7 @@
 import { Sidebar } from "@/components/Sidebar"
 import Image from "next/image"
 import { useEffect, useState } from "react"
-import { Dialog, Switch } from "@headlessui/react"
+import { Dialog, Switch, DialogPanel, DialogTitle } from "@headlessui/react"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { Button } from "@/components/ui/button"
 import { toast, Toaster } from "sonner"
@@ -26,13 +26,14 @@ type FollowButton = { text: string; type: "profile" | "confirm" }
 interface StoryAutomationState {
   trigger: { anyReply: boolean; keywords: string[] }
   actions: {
-    sendDM: { message: string; buttons: DMButton[] }
-    openingDM: { enabled: boolean; message: string; buttons: DMButton[] }
+    sendDM: { message: string; buttons: DMButton[]; image_url?: string } // 🆕 Image support
+    openingDM: { enabled: boolean; message: string; buttons: DMButton[]; image_url?: string } // 🆕 Image support
     askFollow: boolean
     askEmail: boolean
     reactHeart: boolean
     followMessage: string
     followButtons: FollowButton[]
+    followUp: { enabled: boolean; message: string; delay: number } // 🆕 Follow-up message
   }
   storyId: string | null
 }
@@ -71,6 +72,9 @@ export default function Page() {
   const [editingButton, setEditingButton] = useState<{ index: number; type: "dm" | "opening" } | null>(null)
   const [editingFollowButton, setEditingFollowButton] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false) // 🆕 Image upload state
+  const [isUploadingOpeningImage, setIsUploadingOpeningImage] = useState(false) // 🆕 Opening DM image upload state
+  const ENABLE_OPENING_DM_IMAGE = false // 🚫 Disabled for now
 
   interface UserProfile {
     username: string
@@ -111,6 +115,11 @@ export default function Page() {
         { text: "Visit Profile", type: "profile" },
         { text: "I'm following ✅", type: "confirm" },
       ],
+      followUp: {
+        enabled: false,
+        message: "Hey! Just following up on my previous message. Let me know if you have any questions! 😊",
+        delay: 300000, // 5 minutes default (in milliseconds)
+      },
     },
     storyId: null,
   })
@@ -136,11 +145,13 @@ export default function Page() {
         sendDM: {
           message: apiAutomation?.actions?.sendDM?.message || "",
           buttons: mapButtonsBack(apiAutomation?.actions?.sendDM?.buttons || []),
+          image_url: apiAutomation?.actions?.sendDM?.image_url || null, // 🆕 Preserve image URL
         },
         openingDM: {
           enabled: apiAutomation?.actions?.openingDM?.enabled || false,
           message: apiAutomation?.actions?.openingDM?.message || "",
           buttons: mapButtonsBack(apiAutomation?.actions?.openingDM?.buttons || []),
+          image_url: apiAutomation?.actions?.openingDM?.image_url || null, // 🆕 Preserve image URL
         },
         askFollow: apiAutomation?.actions?.askFollow?.enabled || false,
         askEmail: apiAutomation?.actions?.askEmail?.enabled || false,
@@ -154,6 +165,11 @@ export default function Page() {
           }
           return { text: btn?.title || "I'm following ✅", type: "confirm" }
         }),
+        followUp: {
+          enabled: apiAutomation?.actions?.followUp?.enabled || false,
+          message: apiAutomation?.actions?.followUp?.message || "Hey! Just following up on my previous message. Let me know if you have any questions! 😊",
+          delay: apiAutomation?.actions?.followUp?.delay || 300000,
+        },
       },
       storyId: apiAutomation?.selectedStory || null,
     }
@@ -252,6 +268,120 @@ export default function Page() {
     } catch (error) {
       console.error("Failed to load more stories", error)
       setStoriesPagination((prev) => ({ ...prev, loading: false }))
+    }
+  }
+
+  // Handle image upload for main DM and opening DM
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "dm" | "opening") => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File too large", {
+        description: "Image must be less than 5MB",
+      })
+      return
+    }
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Invalid file type", {
+        description: "Please upload an image file",
+      })
+      return
+    }
+
+    try {
+      if (type === "dm") {
+        setIsUploadingImage(true)
+      } else {
+        setIsUploadingOpeningImage(true)
+      }
+
+      const formData = new FormData()
+      formData.append("image", file)
+
+      const response = await axios.post("/api/upload-image", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+
+      if (response.data.success) {
+        const imageUrl = response.data.imageUrl
+
+        if (type === "dm") {
+          setAutomation({
+            ...automation,
+            actions: {
+              ...automation.actions,
+              sendDM: {
+                ...automation.actions.sendDM,
+                image_url: imageUrl,
+              },
+            },
+          })
+        } else {
+          setAutomation({
+            ...automation,
+            actions: {
+              ...automation.actions,
+              openingDM: {
+                ...automation.actions.openingDM,
+                image_url: imageUrl,
+              },
+            },
+          })
+        }
+
+        toast.success("Image uploaded", {
+          description: "Your image has been uploaded successfully",
+        })
+      } else {
+        toast.error("Upload failed", {
+          description: response.data.error || "Failed to upload image",
+        })
+      }
+    } catch (error: any) {
+      console.error("Image upload error:", error)
+      toast.error("Upload failed", {
+        description: error.message || "Failed to upload image",
+      })
+    } finally {
+      if (type === "dm") {
+        setIsUploadingImage(false)
+      } else {
+        setIsUploadingOpeningImage(false)
+      }
+      // Reset file input
+      e.target.value = ""
+    }
+  }
+
+  const removeImage = (type: "dm" | "opening") => {
+    if (type === "dm") {
+      setAutomation({
+        ...automation,
+        actions: {
+          ...automation.actions,
+          sendDM: {
+            ...automation.actions.sendDM,
+            image_url: undefined,
+          },
+        },
+      })
+    } else {
+      setAutomation({
+        ...automation,
+        actions: {
+          ...automation.actions,
+          openingDM: {
+            ...automation.actions.openingDM,
+            image_url: undefined,
+          },
+        },
+      })
     }
   }
 
@@ -1007,6 +1137,61 @@ const handleSubmit = async () => {
               <div className="flex items-center gap-1"></div>
             </div>
 
+            {/* 🆕 Main DM Image Upload Section */}
+            <div className="mb-3">
+              {automation.actions.sendDM.image_url ? (
+                <div className="relative">
+                  <img
+                    src={automation.actions.sendDM.image_url}
+                    alt="Main DM Preview"
+                    className="w-full rounded-lg border border-gray-200"
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeImage("dm")
+                    }}
+                    className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M18 6L6 18M6 6l12 12"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <label className="w-full border-2 border-dashed border-gray-300 hover:border-purple-500 rounded-lg p-4 cursor-pointer transition-colors flex flex-col items-center gap-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageUpload(e, "dm")}
+                    onClick={(e) => e.stopPropagation()}
+                    className="hidden"
+                    disabled={isUploadingImage}
+                  />
+                  {isUploadingImage ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                      <span className="text-sm text-gray-600">Uploading...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-gray-400">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span className="text-sm font-medium text-gray-700">Upload Image</span>
+                      <span className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</span>
+                    </>
+                  )}
+                </label>
+              )}
+            </div>
+
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -1317,6 +1502,78 @@ const handleSubmit = async () => {
                 />
               </Switch>
             </div>
+
+            {/* Follow-up Message Toggle */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-700">Send follow-up message</span>
+              <Switch
+                checked={automation.actions.followUp.enabled}
+                onChange={(val) =>
+                  setAutomation({
+                    ...automation,
+                    actions: {
+                      ...automation.actions,
+                      followUp: { ...automation.actions.followUp, enabled: val },
+                    },
+                  })
+                }
+                className={`${automation.actions.followUp.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.followUp.enabled ? "translate-x-6" : "translate-x-1"}`}
+                />
+              </Switch>
+            </div>
+
+            {automation.actions.followUp.enabled && (
+              <div className="bg-gray-50 rounded-lg p-3 space-y-3 mt-3">
+                <textarea
+                  placeholder="Enter follow-up message..."
+                  value={automation.actions.followUp.message}
+                  onChange={(e) =>
+                    setAutomation({
+                      ...automation,
+                      actions: {
+                        ...automation.actions,
+                        followUp: { ...automation.actions.followUp, message: e.target.value },
+                      },
+                    })
+                  }
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                />
+                <div className="text-xs text-gray-400">{automation.actions.followUp.message.length} / 640</div>
+                
+                {/* Delay selector */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Send after:</label>
+                  <select
+                    value={automation.actions.followUp.delay}
+                    onChange={(e) =>
+                      setAutomation({
+                        ...automation,
+                        actions: {
+                          ...automation.actions,
+                          followUp: { ...automation.actions.followUp, delay: parseInt(e.target.value) },
+                        },
+                      })
+                    }
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  >
+                    <option value="60000">1 minute</option>
+                    <option value="300000">5 minutes</option>
+                    <option value="600000">10 minutes</option>
+                    <option value="1800000">30 minutes</option>
+                    <option value="3600000">1 hour</option>
+                    <option value="7200000">2 hours</option>
+                    <option value="21600000">6 hours</option>
+                    <option value="43200000">12 hours</option>
+                    <option value="86400000">24 hours</option>
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1556,6 +1813,61 @@ const handleSubmit = async () => {
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs text-gray-400">{automation.actions.sendDM.message.length} / 640</span>
                 <div className="flex items-center gap-1"></div>
+              </div>
+
+              {/* 🆕 Mobile Drawer - Image Upload Section */}
+              <div className="mb-3">
+                {automation.actions.sendDM.image_url ? (
+                  <div className="relative">
+                    <img
+                      src={automation.actions.sendDM.image_url}
+                      alt="Main DM Preview"
+                      className="w-full rounded-lg border border-gray-200"
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeImage("dm")
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                          d="M18 6L6 18M6 6l12 12"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <label className="w-full border-2 border-dashed border-gray-300 hover:border-purple-500 rounded-lg p-4 cursor-pointer transition-colors flex flex-col items-center gap-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, "dm")}
+                      onClick={(e) => e.stopPropagation()}
+                      className="hidden"
+                      disabled={isUploadingImage}
+                    />
+                    {isUploadingImage ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                        <span className="text-sm text-gray-600">Uploading...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-gray-400">
+                          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span className="text-sm font-medium text-gray-700">Upload Image</span>
+                        <span className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</span>
+                      </>
+                    )}
+                  </label>
+                )}
               </div>
 
               <button
@@ -1874,6 +2186,77 @@ const handleSubmit = async () => {
                   />
                 </Switch>
               </div>
+
+              {/* 🆕 Mobile Drawer - Follow-up Message */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-700">Send follow-up message</span>
+                <Switch
+                  checked={automation.actions.followUp.enabled}
+                  onChange={(val) =>
+                    setAutomation({
+                      ...automation,
+                      actions: {
+                        ...automation.actions,
+                        followUp: { ...automation.actions.followUp, enabled: val },
+                      },
+                    })
+                  }
+                  className={`${automation.actions.followUp.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.followUp.enabled ? "translate-x-6" : "translate-x-1"}`}
+                  />
+                </Switch>
+              </div>
+
+              {automation.actions.followUp.enabled && (
+                <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+                  <textarea
+                    placeholder="Enter follow-up message..."
+                    value={automation.actions.followUp.message}
+                    onChange={(e) =>
+                      setAutomation({
+                        ...automation,
+                        actions: {
+                          ...automation.actions,
+                          followUp: { ...automation.actions.followUp, message: e.target.value },
+                        },
+                      })
+                    }
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  />
+                  <div className="text-xs text-gray-400">{automation.actions.followUp.message.length} / 640</div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Send after:</label>
+                    <select
+                      value={automation.actions.followUp.delay}
+                      onChange={(e) =>
+                        setAutomation({
+                          ...automation,
+                          actions: {
+                            ...automation.actions,
+                            followUp: { ...automation.actions.followUp, delay: parseInt(e.target.value) },
+                          },
+                        })
+                      }
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    >
+                      <option value="60000">1 minute</option>
+                      <option value="300000">5 minutes</option>
+                      <option value="600000">10 minutes</option>
+                      <option value="1800000">30 minutes</option>
+                      <option value="3600000">1 hour</option>
+                      <option value="7200000">2 hours</option>
+                      <option value="21600000">6 hours</option>
+                      <option value="43200000">12 hours</option>
+                      <option value="86400000">24 hours</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

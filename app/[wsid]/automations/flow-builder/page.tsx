@@ -73,6 +73,9 @@ export default function PostDMBuilder() {
   const [isUploadingOpeningImage, setIsUploadingOpeningImage] = useState(false)
     const router = useRouter()
 
+  // Feature flags
+  const ENABLE_OPENING_DM_IMAGE = false // 🚫 Temporarily disabled for testing
+
   const [isTokenValid, setIsTokenValid] = useState(false)
   const [tokenChecked, setTokenChecked] = useState(false)
   const [isNextPost, setIsNextPost] = useState(false) // NEW: Track if this is a "Next Post" automation
@@ -88,6 +91,7 @@ export default function PostDMBuilder() {
       reactHeart: boolean
       followMessage: string
       followButtons: FollowButton[]
+      followUp: { enabled: boolean; message: string; delay: number } // 🆕 Follow-up message
     }
     postId: string | null
     isNextPost?: boolean // NEW: Flag for next post automations
@@ -126,6 +130,11 @@ export default function PostDMBuilder() {
         { text: "Visit Profile", type: "profile" },
         { text: "I'm following ✅", type: "confirm" },
       ],
+      followUp: {
+        enabled: false,
+        message: "Hey! Just following up on my previous message. Let me know if you have any questions! 😊",
+        delay: 300000, // 5 minutes default (in milliseconds)
+      },
     },
     postId: null,
   })
@@ -152,13 +161,13 @@ export default function PostDMBuilder() {
         sendDM: {
           message: apiAutomation?.actions?.sendDM?.message || "",
           buttons: mapButtonsBack(apiAutomation?.actions?.sendDM?.buttons || []),
-          image_url: apiAutomation?.actions?.sendDM?.image_url || undefined, // 🆕 Preserve image URL
+          image_url: apiAutomation?.actions?.sendDM?.image_url || null, // 🆕 Preserve image URL
         },
         openingDM: {
           enabled: apiAutomation?.actions?.openingDM?.enabled || false,
           message: apiAutomation?.actions?.openingDM?.message || "",
           buttons: mapButtonsBack(apiAutomation?.actions?.openingDM?.buttons || []),
-          image_url: apiAutomation?.actions?.openingDM?.image_url || undefined, // 🆕 Preserve image URL
+          image_url: apiAutomation?.actions?.openingDM?.image_url || null, // 🆕 Preserve image URL
         },
         publicReply: {
           enabled: apiAutomation?.actions?.publicReply?.enabled || false,
@@ -176,6 +185,11 @@ export default function PostDMBuilder() {
           }
           return { text: btn?.title || "I'm following ✅", type: "confirm" }
         }),
+        followUp: {
+          enabled: apiAutomation?.actions?.followUp?.enabled || false,
+          message: apiAutomation?.actions?.followUp?.message || "Hey! Just following up on my previous message. Let me know if you have any questions! 😊",
+          delay: apiAutomation?.actions?.followUp?.delay || 300000,
+        },
       },
       postId: apiAutomation?.selectedPost || null,
     }
@@ -411,6 +425,11 @@ useEffect(() => {
         postId: isNextPost ? "NEXT_POST" : automation.postId,
         isNextPost: isNextPost,
       }
+
+      console.log("📤 Sending automation data with image URLs:", {
+        sendDM_image: automationData.actions.sendDM.image_url,
+        openingDM_image: automationData.actions.openingDM.image_url,
+      })
 
       let response
       if (isEditMode && automationId) {
@@ -1357,6 +1376,7 @@ useEffect(() => {
               <div className="text-xs text-gray-400">{automation.actions.openingDM.message.length} / 640</div>
 
               {/* Opening DM Image Upload Section */}
+              {/*}
               <div className="mt-3">
                 {automation.actions.openingDM.image_url ? (
                   <div className="relative">
@@ -1410,6 +1430,7 @@ useEffect(() => {
                   </label>
                 )}
               </div>
+              */}
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Opening Buttons:</label>
@@ -1642,6 +1663,78 @@ useEffect(() => {
               </div>
             )}
 
+
+            {/* Follow-up Message Toggle */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-700">Send follow-up message</span>
+              <Switch
+                checked={automation.actions.followUp.enabled}
+                onChange={(val) =>
+                  setAutomation({
+                    ...automation,
+                    actions: {
+                      ...automation.actions,
+                      followUp: { ...automation.actions.followUp, enabled: val },
+                    },
+                  })
+                }
+                className={`${automation.actions.followUp.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.followUp.enabled ? "translate-x-6" : "translate-x-1"}`}
+                />
+              </Switch>
+            </div>
+
+            {automation.actions.followUp.enabled && (
+              <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+                <textarea
+                  placeholder="Enter follow-up message..."
+                  value={automation.actions.followUp.message}
+                  onChange={(e) =>
+                    setAutomation({
+                      ...automation,
+                      actions: {
+                        ...automation.actions,
+                        followUp: { ...automation.actions.followUp, message: e.target.value },
+                      },
+                    })
+                  }
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                />
+                <div className="text-xs text-gray-400">{automation.actions.followUp.message.length} / 640</div>
+                
+                {/* Delay selector */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Send after:</label>
+                  <select
+                    value={automation.actions.followUp.delay}
+                    onChange={(e) =>
+                      setAutomation({
+                        ...automation,
+                        actions: {
+                          ...automation.actions,
+                          followUp: { ...automation.actions.followUp, delay: parseInt(e.target.value) },
+                        },
+                      })
+                    }
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  >
+                    <option value="60000">1 minute</option>
+                    <option value="300000">5 minutes</option>
+                    <option value="600000">10 minutes</option>
+                    <option value="1800000">30 minutes</option>
+                    <option value="3600000">1 hour</option>
+                    <option value="7200000">2 hours</option>
+                    <option value="21600000">6 hours</option>
+                    <option value="43200000">12 hours</option>
+                    <option value="86400000">24 hours</option>
+                  </select>
+                </div>
+              </div>
+            )}
 
             {/*
 
@@ -2089,6 +2182,7 @@ useEffect(() => {
               <div className="text-xs text-gray-400">{automation.actions.openingDM.message.length} / 640</div>
 
               {/* Opening DM Image Upload Section */}
+              {/*
               <div className="mt-3">
                 {automation.actions.openingDM.image_url ? (
                   <div className="relative">
@@ -2142,6 +2236,7 @@ useEffect(() => {
                   </label>
                 )}
               </div>
+              */}
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Opening Buttons:</label>
@@ -2359,6 +2454,77 @@ useEffect(() => {
               </div>
             )}
 
+            {/* Follow-up Message */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-700">Send follow-up message</span>
+              <Switch
+                checked={automation.actions.followUp.enabled}
+                onChange={(val) =>
+                  setAutomation({
+                    ...automation,
+                    actions: {
+                      ...automation.actions,
+                      followUp: { ...automation.actions.followUp, enabled: val },
+                    },
+                  })
+                }
+                className={`${automation.actions.followUp.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.followUp.enabled ? "translate-x-6" : "translate-x-1"}`}
+                />
+              </Switch>
+            </div>
+
+            {automation.actions.followUp.enabled && (
+              <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+                <textarea
+                  placeholder="Enter your follow-up message..."
+                  value={automation.actions.followUp.message}
+                  onChange={(e) =>
+                    setAutomation({
+                      ...automation,
+                      actions: {
+                        ...automation.actions,
+                        followUp: { ...automation.actions.followUp, message: e.target.value },
+                      },
+                    })
+                  }
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                />
+                <div className="text-xs text-gray-400">{automation.actions.followUp.message.length} / 1000</div>
+
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Send after:</label>
+                  <select
+                    value={automation.actions.followUp.delay}
+                    onChange={(e) =>
+                      setAutomation({
+                        ...automation,
+                        actions: {
+                          ...automation.actions,
+                          followUp: { ...automation.actions.followUp, delay: parseInt(e.target.value) },
+                        },
+                      })
+                    }
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  >
+                    <option value={1}>1 minute</option>
+                    <option value={5}>5 minutes</option>
+                    <option value={10}>10 minutes</option>
+                    <option value={30}>30 minutes</option>
+                    <option value={60}>1 hour</option>
+                    <option value={120}>2 hours</option>
+                    <option value={360}>6 hours</option>
+                    <option value={720}>12 hours</option>
+                    <option value={1440}>24 hours</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
             {/* <div className="flex items-center justify-between">
               <span className="text-sm text-gray-700">Ask for emails in DMs</span>
               <Switch
@@ -2502,7 +2668,7 @@ useEffect(() => {
                         ...automation.actions.openingDM,
                         buttons: [
                           ...automation.actions.openingDM.buttons,
-                          { text: openingButtonText },
+                          { text: openingButtonText, link: "" },
                         ],
                       },
                     },
