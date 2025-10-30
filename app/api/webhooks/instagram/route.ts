@@ -1099,6 +1099,8 @@ async function sendMainDM(automation: any, account: any, senderId: string, db: a
 
       // Send follow-up message if enabled
       console.log("🔍 Checking follow-up in sendMainDM:", {
+        automationType: automation.type,
+        automationName: automation.name,
         exists: !!automation.actions?.followUp,
         enabled: automation.actions?.followUp?.enabled,
         message: automation.actions?.followUp?.message,
@@ -1106,23 +1108,34 @@ async function sendMainDM(automation: any, account: any, senderId: string, db: a
       })
       if (automation.actions?.followUp?.enabled && automation.actions.followUp.message) {
         console.log("📤 Scheduling follow-up message in", automation.actions.followUp.delay || 300000, "ms")
+        const followUpDelay = automation.actions.followUp.delay || 300000
+        const followUpMessage = automation.actions.followUp.message
+        
         setTimeout(async () => {
           try {
+            console.log(`⏰ EXECUTING follow-up message now for ${automation.name}`)
             const followUpSuccess = await sendDirectMessageWithButtons(
               account.instagramUserId,
               account.accessToken,
               senderId,
-              automation.actions.followUp.message,
+              followUpMessage,
               [],
             )
 
             if (followUpSuccess) {
+              console.log("✅ Follow-up message sent successfully")
               await updateAccountUsage(account, "follow_up", automation.name, "")
+            } else {
+              console.log("❌ Follow-up message failed to send")
             }
           } catch (followUpError) {
             console.error("❌ Error sending follow-up message:", followUpError)
           }
-        }, automation.actions.followUp.delay || 300000) // Default 5 minutes delay
+        }, followUpDelay)
+        
+        console.log(`✅ Follow-up scheduled to execute in ${followUpDelay}ms`)
+      } else {
+        console.log("⚠️ Follow-up NOT scheduled - either disabled or no message set")
       }
 
       // Send branding message for free users
