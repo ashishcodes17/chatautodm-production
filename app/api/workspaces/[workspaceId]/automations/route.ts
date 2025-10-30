@@ -230,9 +230,9 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
         },
 
         followUp: {
-          enabled: false, // Can be enabled later
-          message: "",
-          delay: 300000, // 5 minutes default
+          enabled: body.actions?.followUp?.enabled || false,
+          message: body.actions?.followUp?.message || "",
+          delay: body.actions?.followUp?.delay || 300000, // 5 minutes default
         },
       },
 

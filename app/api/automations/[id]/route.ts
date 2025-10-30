@@ -228,10 +228,14 @@ export async function PUT(
         sendDM: {
           enabled: true,
           message: a.sendDM?.message || "",
+          image_url: a.sendDM?.image_url || null,
           buttons: transformButtons(a.sendDM?.buttons || [], { username }),
         },
-        // keep followUp if it already exists to avoid accidental removal
-        ...(automation.actions?.followUp ? { followUp: automation.actions.followUp } : {}),
+        followUp: {
+          enabled: a.followUp?.enabled || false,
+          message: a.followUp?.message || "",
+          delay: a.followUp?.delay || 300000,
+        },
       }
     }
 
