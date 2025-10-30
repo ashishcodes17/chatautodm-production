@@ -140,16 +140,20 @@ export async function POST(request: NextRequest) {
               sender_id: messagingEvent.sender?.id,
               entry_id: entry.id,
               account_instagramUserId: account.instagramUserId,
-              account_professionalId: account.instagramProfessionalId
+              account_professionalId: account.instagramProfessionalId,
+              message_text: messagingEvent.message?.text?.substring(0, 50)
             })
             
-            if (
-              messagingEvent.message?.is_echo ||
-              messagingEvent.sender?.id === entry.id ||
-              messagingEvent.sender?.id === account.instagramUserId ||
-              messagingEvent.sender?.id === account.instagramProfessionalId
-            ) {
-              console.log("⚠️ Skipping echo message or business account message")
+            // 🚨 Check for echo messages or messages from business account
+            if (messagingEvent.message?.is_echo) {
+              console.log("⚠️ Skipping echo message (is_echo=true)")
+              continue
+            }
+            
+            if (messagingEvent.sender?.id === entry.id ||
+                messagingEvent.sender?.id === account.instagramUserId ||
+                messagingEvent.sender?.id === account.instagramProfessionalId) {
+              console.log("⚠️ Skipping message from business account (sender matches business)")
               continue
             }
 
@@ -326,6 +330,21 @@ async function processMessagingEvent(messagingEvent: any, accountId: string, db:
     // Skip if sender is the business account itself
     if (senderId === account.instagramUserId || senderId === account.instagramProfessionalId) {
       console.log("⚠️ Message is from business account, skipping")
+      return
+    }
+
+    // 🚨 Additional check: Skip if this message text matches common bot messages
+    // This prevents processing echo messages that might slip through without is_echo flag
+    const botMessagePatterns = [
+      "Please share your email address",
+      "Please enter a valid email address",
+      "Thank you! Your email has been saved successfully",
+      "Hey there! I'm so happy you're here",
+      "Oh no! It seems you're not following me"
+    ]
+    
+    if (messageText && botMessagePatterns.some(pattern => messageText.includes(pattern))) {
+      console.log("⚠️ Message text matches bot pattern, likely an echo without is_echo flag. Skipping.")
       return
     }
 
