@@ -87,7 +87,7 @@ export default function FeedbackFAB() {
                   <CheckCircle2 className="relative h-14 w-14 text-emerald-600" />
                 </div>
                 <h3 className="text-lg font-semibold">Thank you for the response</h3>
-                <p className="text-sm text-gray-600">have a gooood day :)</p>
+                <p className="text-sm text-gray-600">Have a Good Day! :)</p>
               </div>
               <div className="mt-4 flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setOpen(false)} className="rounded-full">
