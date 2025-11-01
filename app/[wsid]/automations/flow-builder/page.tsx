@@ -1110,7 +1110,7 @@ useEffect(() => {
         >
           <div className="flex items-center gap-3 mb-4">
             <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 2 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 3 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
             >
               2
             </div>
@@ -1199,19 +1199,29 @@ useEffect(() => {
             <textarea
               placeholder="Enter your message here..."
               value={automation.actions.sendDM.message}
-              onChange={(e) =>
+              onChange={(e) => {
+                const newMessage = e.target.value;
+                if (newMessage.length > 1000) {
+                  toast.error("Message too long", {
+                    description: "Main DM message cannot exceed 1000 characters",
+                  });
+                  return;
+                }
                 setAutomation({
                   ...automation,
-                  actions: { ...automation.actions, sendDM: { ...automation.actions.sendDM, message: e.target.value } },
-                })
-              }
+                  actions: { ...automation.actions, sendDM: { ...automation.actions.sendDM, message: newMessage } },
+                });
+              }}
               onFocus={() => setActiveStep(3)}
               onClick={(e) => e.stopPropagation()}
               className="w-full border-0 outline-none text-sm min-h-[60px] resize-none mb-2"
+              maxLength={1000}
             />
 
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-gray-400">{automation.actions.sendDM.message.length} / 640</span>
+              <span className={`text-xs ${automation.actions.sendDM.message.length > 1000 ? "text-red-500 font-semibold" : "text-gray-400"}`}>
+                {automation.actions.sendDM.message.length} / 1000
+              </span>
             </div>
 
             <button
@@ -2005,19 +2015,29 @@ useEffect(() => {
             <textarea
               placeholder="Enter your message here..."
               value={automation.actions.sendDM.message}
-              onChange={(e) =>
+              onChange={(e) => {
+                const newMessage = e.target.value;
+                if (newMessage.length > 1000) {
+                  toast.error("Message too long", {
+                    description: "Main DM message cannot exceed 1000 characters",
+                  });
+                  return;
+                }
                 setAutomation({
                   ...automation,
-                  actions: { ...automation.actions, sendDM: { ...automation.actions.sendDM, message: e.target.value } },
-                })
-              }
+                  actions: { ...automation.actions, sendDM: { ...automation.actions.sendDM, message: newMessage } },
+                });
+              }}
               onFocus={() => setActiveStep(3)}
               onClick={(e) => e.stopPropagation()}
               className="w-full border-0 outline-none text-sm min-h-[60px] resize-none mb-2"
+              maxLength={1000}
             />
 
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-gray-400">{automation.actions.sendDM.message.length} / 640</span>
+              <span className={`text-xs ${automation.actions.sendDM.message.length > 1000 ? "text-red-500 font-semibold" : "text-gray-400"}`}>
+                {automation.actions.sendDM.message.length} / 1000
+              </span>
             </div>
 
             <button
