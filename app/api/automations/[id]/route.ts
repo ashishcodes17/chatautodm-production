@@ -185,6 +185,11 @@ export async function PUT(
       setDoc.selectedPost = updates.postId ?? null
     }
 
+    // Map isNextPost flag when provided
+    if (Object.prototype.hasOwnProperty.call(updates, "isNextPost")) {
+      setDoc.isNextPost = !!updates.isNextPost
+    }
+
     // Map storyId -> selectedStory when provided
     if (Object.prototype.hasOwnProperty.call(updates, "storyId")) {
       setDoc.selectedStory = updates.storyId ?? null

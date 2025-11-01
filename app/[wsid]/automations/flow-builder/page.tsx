@@ -204,6 +204,11 @@ export default function PostDMBuilder() {
         if (resp.data?.success && resp.data?.automation) {
           const normalized = normalizeAutomationFromApi(resp.data.automation)
           setAutomation(normalized)
+          
+          // Set isNextPost flag if this is a Next Post automation
+          if (resp.data.automation?.isNextPost || resp.data.automation?.selectedPost === "NEXT_POST") {
+            setIsNextPost(true)
+          }
         }
       } catch (e: unknown) {
         const err = e as any

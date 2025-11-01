@@ -5,10 +5,6 @@ import { getDatabase } from "@/lib/mongodb";
 // Force dynamic since we are using SSE
 export const dynamic = "force-dynamic";
 
-// --- Shared broadcaster ---
-let clients: WritableStreamDefaultWriter<any>[] = [];
-let interval: NodeJS.Timer | null = null;
-
 // Function to compute stats
 const fetchStats = async () => {
   const db = await getDatabase();
@@ -40,66 +36,41 @@ const fetchStats = async () => {
   };
 };
 
-// Function to broadcast to all clients
-const broadcastStats = async () => {
-  if (clients.length === 0) return;
-
-  try {
-    const stats = await fetchStats();
-    const encoder = new TextEncoder();
-    const payload = `event: sync\ndata: ${JSON.stringify(stats)}\n\n`;
-
-    clients.forEach((client) => {
-      client.write(encoder.encode(payload));
-    });
-  } catch (err) {
-    const encoder = new TextEncoder();
-    const errorPayload = `event: error\ndata: ${JSON.stringify({ message: "stats_error" })}\n\n`;
-    clients.forEach((client) => client.write(encoder.encode(errorPayload)));
-  }
-};
-
-// Start global interval if not running
-const startInterval = () => {
-  if (!interval) {
-    interval = setInterval(broadcastStats, 2000);
-  }
-};
-
-// Stop interval if no clients
-const stopInterval = () => {
-  if (clients.length === 0 && interval) {
-    clearInterval(interval);
-    interval = null;
-  }
-};
-
 // SSE handler
 export async function GET(_request: NextRequest) {
+  const encoder = new TextEncoder();
+  
   const stream = new ReadableStream({
-    start(controller) {
-      const encoder = new TextEncoder();
-      const writer = controller.writable.getWriter();
-
-      // Add this client
-      clients.push(writer);
-
+    async start(controller) {
       // Send initial stats immediately
-      fetchStats()
-        .then((stats) => {
-          writer.write(encoder.encode(`event: sync\ndata: ${JSON.stringify(stats)}\n\n`));
-        })
-        .catch(() => {
-          writer.write(encoder.encode(`event: error\ndata: ${JSON.stringify({ message: "stats_error" })}\n\n`));
-        });
+      try {
+        const initialStats = await fetchStats();
+        controller.enqueue(encoder.encode(`event: sync\ndata: ${JSON.stringify(initialStats)}\n\n`));
+      } catch (err) {
+        controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ message: "stats_error" })}\n\n`));
+      }
 
-      startInterval();
+      // Create interval for this specific connection
+      const connectionInterval = setInterval(async () => {
+        try {
+          const stats = await fetchStats();
+          controller.enqueue(encoder.encode(`event: sync\ndata: ${JSON.stringify(stats)}\n\n`));
+        } catch (err) {
+          controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ message: "stats_error" })}\n\n`));
+        }
+      }, 2000);
 
-      controller.signal.addEventListener("abort", () => {
-        // Remove client
-        clients = clients.filter((c) => c !== writer);
-        stopInterval();
-      });
+      // Cleanup on client disconnect
+      const cleanup = () => {
+        clearInterval(connectionInterval);
+      };
+
+      // Handle abort signal
+      _request.signal.addEventListener("abort", cleanup);
+
+      return () => {
+        cleanup();
+      };
     },
   });
 
