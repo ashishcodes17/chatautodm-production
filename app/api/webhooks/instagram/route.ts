@@ -1916,12 +1916,14 @@ async function processCommentAutomations(account: any, commentData: any, db: any
 
     const commentText = commentData.text || ""
     const commenterId = commentData.from?.id
+    const commenterUsername = commentData.from?.username
     const commentId = commentData.id
     const postId = commentData.media?.id
 
     console.log("🔍 Processing for:", {
       commentText,
       commenterId,
+      commenterUsername,
       commentId,
       postId,
       accountId: account.instagramUserId,
@@ -2082,7 +2084,7 @@ async function processCommentAutomations(account: any, commentData: any, db: any
 
       if (shouldTrigger) {
         console.log(`🚀 Triggering comment automation: ${automation.name}`)
-        await handleCommentToDMFlow(automation, account, commenterId, commentText, commentId, postId, db)
+        await handleCommentToDMFlow(automation, account, commenterId, commenterUsername, commentText, commentId, postId, db)
         return // Exit after first match
       }
 
@@ -2099,6 +2101,7 @@ async function handleCommentToDMFlow(
   automation: any,
   account: any,
   commenterId: string,
+  commenterUsername: string,
   commentText: string,
   commentId: string,
   postId: string,
@@ -2248,7 +2251,7 @@ async function handleCommentToDMFlow(
         await storeOrUpdateContact(
           account.instagramUserId,
           commenterId,
-          null,
+          commenterUsername,
           "dm_sent",
           automation.name,
           db,
