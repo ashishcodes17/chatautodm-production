@@ -525,7 +525,7 @@ export default function PrivacyPolicy() {
         </p>
       </section>
 
-      <section id="contact" className="mb-12">
+      {/* <section id="contact" className="mb-12">
         <h2 className="font-montserrat font-bold text-2xl text-foreground mb-4 border-b-2 border-accent pb-2">
           13. Contact Information and Data Protection Officer
         </h2>
@@ -590,7 +590,10 @@ export default function PrivacyPolicy() {
             </li>
           </ul>
         </div>
-      </section>
+      </section> */}
+
+
+
     </LegalLayout>
   )
 }
