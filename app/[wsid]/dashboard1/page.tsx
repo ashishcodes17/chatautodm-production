@@ -10,14 +10,20 @@ import {
   Sparkles,
   Zap,
   Settings,
+  Menu,
+  Home,
+  LayoutDashboard,
+  Bot,
+  MessageSquare,
+  BarChart3,
+  UserCircle,
 } from "lucide-react";
 
-import { Sidebar } from "@/components/Sidebar";
 import AutomationModal from "@/components/AutomationModal";
-import MaintenanceModal from "@/components/MaintenanceModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url, { credentials: "include" });
@@ -36,6 +42,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [showAutomationModal, setShowAutomationModal] = React.useState(false);
   const [showMaintenanceModal, setShowMaintenanceModal] = React.useState(false);
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   // ✅ 1. Check authentication
   useEffect(() => {
@@ -109,14 +116,123 @@ export default function DashboardPage() {
   // ✅ Block non-authenticated users
   if (!isAuthenticated) return null;
 
+  const navItems = [
+    {
+      title: "Dashboard",
+      href: `/${wsid}/dashboard`,
+      icon: Home,
+      isActive: true,
+    },
+    {
+      title: "Automations",
+      href: `/${wsid}/automations`,
+      icon: Bot,
+    },
+    {
+      title: "Contacts",
+      href: `/${wsid}/contacts`,
+      icon: Users,
+    },
+    {
+      title: "Analytics",
+      href: `/${wsid}/dashboard`,
+      icon: BarChart3,
+    },
+    {
+      title: "Settings",
+      href: `/${wsid}/settings`,
+      icon: Settings,
+    },
+  ];
+
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 text-gray-900">
-      <Sidebar />
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-      <main className="flex-1 p-4 md:p-8 md:ml-64 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-8">
+      {/* Sidebar */}
+      <aside
+        className={`fixed top-0 left-0 z-50 h-screen w-64 bg-white border-r border-gray-200 transition-transform duration-300 lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Sidebar Header */}
+        <div className="h-16 border-b border-gray-200 flex items-center px-6">
+          <div className="flex items-center gap-2">
+            <div className="bg-purple-600 text-white flex aspect-square size-8 items-center justify-center rounded-lg">
+              <Sparkles className="size-4" />
+            </div>
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate font-semibold">ChatAutoDM</span>
+              <span className="truncate text-xs text-gray-600">Free Plan</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-4 space-y-1">
+          {navItems.map((item) => (
+            <button
+              key={item.title}
+              onClick={() => router.push(item.href)}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                item.isActive
+                  ? "bg-purple-50 text-purple-700"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.title}
+            </button>
+          ))}
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="border-t border-gray-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+              <UserCircle className="h-5 w-5 text-purple-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user?.username || "User"}</p>
+              <p className="text-xs text-gray-600 truncate">@{user?.username}</p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 lg:ml-64">
+        {/* Header */}
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center gap-2 sticky top-0 z-30">
+          <div className="flex items-center gap-2 px-4 w-full">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <Separator orientation="vertical" className="h-4 lg:block hidden" />
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-gray-600 hidden md:inline">Dashboard</span>
+              <span className="text-gray-400 hidden md:inline">/</span>
+              <span className="font-medium">Overview</span>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <div className="p-4 md:p-8 overflow-y-auto">
+          <div className="max-w-7xl mx-auto space-y-8">
           {/* 👋 Welcome Section */}
-          <div className="pt-12 md:pt-0">
+          <div>
             <h2 className="text-2xl md:text-3xl font-bold">
               Hello, {user?.username || "User"}!
             </h2>
@@ -221,6 +337,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+      </div>
       </main>
 
       {/* ✅ Modals */}
