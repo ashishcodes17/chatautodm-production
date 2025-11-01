@@ -984,7 +984,7 @@ useEffect(() => {
       src="/mobile-frame.png"
       alt="Phone Frame"
       fill
-      className="object-contain z-[50] pointer-events-none select-none"
+      className="object-contain z-[40] pointer-events-none select-none"
       priority
     />
     <div className="absolute top-[2.5%] left-[18.6%] w-[63%] h-[95.5%] rounded-[30px] overflow-hidden bg-black z-10 shadow-inner">
@@ -1779,7 +1779,7 @@ useEffect(() => {
         </div>
       </div>
       {/* Mobile Edit Button (added) */}
-      <div className="md:hidden fixed bottom-6 inset-x-0 flex justify-center z-[40]">
+      <div className="md:hidden fixed bottom-6 inset-x-0 flex justify-center z-[50]">
         <button
           onClick={() => setShowMobileDrawer(true)}
           className="bg-purple-600 text-white px-6 py-3 rounded-full shadow-lg"
