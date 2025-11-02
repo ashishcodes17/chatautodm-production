@@ -17,6 +17,9 @@ export function Sidebar() {
   const pathname = usePathname()
   const params = useParams()
   const wsid = params.wsid as string
+  
+  // ✅ Mobile sheet state control
+  const [mobileOpen, setMobileOpen] = React.useState(false)
 
   // Authenticated user
   const { data: user } = useSWR("/api/auth/me", fetcher)
@@ -104,7 +107,7 @@ export function Sidebar() {
   }
 
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="border-b border-gray-200/60 p-4 bg-gradient-to-r from-blue-50/50 to-purple-50/50">
@@ -132,6 +135,12 @@ export function Sidebar() {
             <Link
               key={route.href}
               href={route.href}
+              onClick={() => {
+                // ✅ Close mobile sheet when navigation link is clicked
+                if (isMobile) {
+                  setMobileOpen(false)
+                }
+              }}
               className={cn(
                 "group flex items-center rounded-lg px-2 py-2.5 text-sm font-medium transition-all",
                 pathname === route.href
@@ -292,19 +301,19 @@ export function Sidebar() {
     <>
       {/* Desktop Sidebar */}
       <div className="hidden md:flex bg-white fixed inset-y-0 left-0 z-30 w-70">
-        <SidebarContent />
+        <SidebarContent isMobile={false} />
       </div>
 
       {/* Mobile Sidebar */}
       <div className="md:hidden fixed top-4 left-4 z-40">
-        <Sheet>
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" size="icon" className="rounded-full shadow-md bg-white/80 backdrop-blur">
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-64">
-            <SidebarContent />
+            <SidebarContent isMobile={true} />
           </SheetContent>
         </Sheet>
       </div>
