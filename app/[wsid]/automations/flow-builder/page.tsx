@@ -11,7 +11,6 @@ import { toast, Toaster } from "sonner"
 
 
 import Image from "next/image"
-import { Sidebar } from "@/components/Sidebar"
 
 interface InstagramPost {
   id: string
@@ -979,7 +978,6 @@ useEffect(() => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100">
-      <Sidebar />
       <Toaster position="top-center" richColors closeButton />
 
  {/* Left: Mobile Preview */}
