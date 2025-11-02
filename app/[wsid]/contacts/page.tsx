@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { Sidebar } from "@/components/Sidebar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -226,13 +225,8 @@ export default function ContactsPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      
-        <Sidebar />
-      
-
-      <main className="flex-1 lg:ml-64 p-4 sm:p-6 lg:p-8">
-        <div className="max-w-7xl mx-auto">
+    <main className="p-4 sm:p-6 lg:p-8 overflow-y-auto">
+      <div className="max-w-7xl mx-auto">
           {/* Loading / Error State */}
           {error ? (
             <div className="text-center py-10">
@@ -579,7 +573,6 @@ export default function ContactsPage() {
           )}
         </div>
       </main>
-    </div>
   )
 
 }

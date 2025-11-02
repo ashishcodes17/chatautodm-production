@@ -411,7 +411,6 @@ import { useRouter, useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Sidebar } from "@/components/Sidebar"
 import { Separator } from "@/components/ui/separator"
 import {
   AlertDialog,
@@ -568,8 +567,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-4 md:p-6">
-      <Sidebar/>
+    <main className="p-4 md:p-6 overflow-y-auto">
       <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -805,7 +803,7 @@ export default function SettingsPage() {
           </Card>
         </div>
       </div>
-    </div>
+    </main>
   )
 
 }

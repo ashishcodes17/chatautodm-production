@@ -12,9 +12,7 @@ import {
   Settings,
 } from "lucide-react";
 
-import { Sidebar } from "@/components/Sidebar";
 import AutomationModal from "@/components/AutomationModal";
-import MaintenanceModal from "@/components/MaintenanceModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import MinimalBanner from "@/components/MinimalBanner";
 import FeedbackFAB from "@/components/feedback-fab"
@@ -35,60 +33,20 @@ export default function DashboardPage() {
   const params = useParams();
   const wsid = params.wsid as string;
 
-  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(true);
   const [showAutomationModal, setShowAutomationModal] = React.useState(false);
-  const [showMaintenanceModal, setShowMaintenanceModal] = React.useState(false);
 
-  // ✅ 1. Check authentication
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch("/api/auth/me", { credentials: "include" });
-        if (response.ok) {
-          setIsAuthenticated(true);
-        } else {
-          router.replace("/");
-        }
-      } catch (error) {
-        console.error("Auth check failed:", error);
-        router.replace("/");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, [router]);
-
-  // ✅ 2. Fetch workspace user data (includes ownership info)
+  // ✅ Use cached data from layout (no duplicate fetching)
   const { data: userData, error: userError } = useSWR(
-    wsid && isAuthenticated ? `/api/workspaces/${wsid}/user` : null,
-    fetcher
+    `/api/workspaces/${wsid}/user`,
+    fetcher,
+    { revalidateOnMount: false } // Use cache from layout
   );
 
   const { data: statsData } = useSWR(
-    wsid && isAuthenticated ? `/api/workspaces/${wsid}/stats` : null,
+    `/api/workspaces/${wsid}/stats`,
     fetcher,
-    { refreshInterval: 10000 }
+    { revalidateOnMount: false } // Use cache from layout
   );
-
-  // ✅ 3. Redirect if not workspace owner
-  useEffect(() => {
-    if (!userData && !userError) return; // still loading
-
-    if (userError || userData?.success === false) {
-      console.warn("Not authorized for this workspace");
-      router.replace("/");
-    }
-  }, [userData, userError, router]);
-
-  // ✅ 4. Auto-show maintenance modal after login
-  useEffect(() => {
-    if (isAuthenticated) {
-      setShowMaintenanceModal(true);
-    }
-  }, [isAuthenticated]);
 
   const user = userData?.user;
   const stats = statsData?.stats || {
@@ -97,10 +55,10 @@ export default function DashboardPage() {
     totalContacts: 0,
   };
 
-  // ✅ Loading state
-  if (isLoading || (!userData && !userError)) {
+  // ✅ Loading state (only show if no cached data)
+  if (!userData && !userError) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-purple-600 mx-auto mb-2"></div>
           <p className="text-gray-600 text-sm">Loading...</p>
@@ -109,14 +67,10 @@ export default function DashboardPage() {
     );
   }
 
-  // ✅ Block non-authenticated users
-  if (!isAuthenticated) return null;
-
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 text-gray-900">
-      <Sidebar />
+    <div className="flex-1 text-gray-900">
 
-      <main className="flex-1 p-4 md:p-8 md:ml-64 overflow-y-auto">
+      <main className="p-4 md:p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto space-y-8">
           {/* 👋 Welcome */}
           <div className="pt-12 md:pt-0">

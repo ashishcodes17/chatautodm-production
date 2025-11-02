@@ -5,7 +5,6 @@ import useSWR from "swr"
 import { useRouter, useParams } from "next/navigation"
 import { MessageCircle, Plus, Trash2, Edit, Activity, Zap, Camera, Menu, Sparkles } from "lucide-react"
 
-import { Sidebar } from "@/components/Sidebar"
 import { Button } from "@/components/ui/button"
 import AutomationModal from "@/components/AutomationModal"
 
@@ -62,11 +61,7 @@ export default function AutomationsPage() {
         if (Array.isArray(payload.automations)) {
           setAutomations(payload.automations)
           // keep SWR cache aligned silently
-          mutate(
-            `/api/workspaces/${wsid}/automations`,
-            (prev: any) => ({ ...(prev || {}), automations: payload.automations }),
-            { revalidate: false },
-          )
+          mutate({ ...data, automations: payload.automations }, { revalidate: false })
         }
       } catch {}
     })
@@ -131,10 +126,10 @@ const deleteAutomation = async (automation: Automation) => {
     setAutomations((prev) => prev.filter((a) => a._id !== automation._id))
 
     // Keep SWR cache aligned
-    mutate(`/api/workspaces/${wsid}/automations`, (prev: any) => ({
-      ...(prev || {}),
-      automations: (prev?.automations || []).filter((a: Automation) => a._id !== automation._id),
-    }), false)
+    mutate({
+      ...data,
+      automations: (data?.automations || []).filter((a: Automation) => a._id !== automation._id),
+    }, { revalidate: false })
 
   } catch (err) {
     console.error("Delete error:", err)
@@ -166,12 +161,10 @@ const toggleActive = async (automation: Automation) => {
       alert("Failed to update status. Please try again.")
     } else {
       // Update SWR cache silently
-      mutate(`/api/workspaces/${wsid}/automations`, (prev: any) => {
-        const updatedAutomations = (prev?.automations || []).map((a: Automation) =>
-          a._id === automation._id ? { ...a, isActive: newStatus } : a
-        )
-        return { ...(prev || {}), automations: updatedAutomations }
-      }, false)
+      const updatedAutomations = (data?.automations || []).map((a: Automation) =>
+        a._id === automation._id ? { ...a, isActive: newStatus } : a
+      )
+      mutate({ ...data, automations: updatedAutomations }, { revalidate: false })
     }
 
   } catch (err) {
@@ -235,12 +228,8 @@ const toggleActive = async (automation: Automation) => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Desktop Sidebar */}
-      <Sidebar />
-
-      <main className="flex-1 p-4 md:p-8 md:ml-64">
-        <div className="max-w-7xl mx-auto">
+    <main className="p-4 md:p-8 overflow-y-auto">
+      <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-3">
             <div>
@@ -376,10 +365,9 @@ const toggleActive = async (automation: Automation) => {
             </>
           )}
         </div>
-      </main>
 
-      {/* Modal */}
-      <AutomationModal isOpen={showAutomationModal} onClose={() => setShowAutomationModal(false)} />
-    </div>
+        {/* Modal */}
+        <AutomationModal isOpen={showAutomationModal} onClose={() => setShowAutomationModal(false)} />
+      </main>
   )
 }
