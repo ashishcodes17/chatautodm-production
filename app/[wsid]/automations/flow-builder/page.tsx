@@ -405,19 +405,21 @@ useEffect(() => {
 
       console.log("Submitting automation:", automation)
 
-      // Validate required fields
+      // ✅ Feature 3: Validate DM message is entered
       if (!automation.actions.sendDM.message.trim()) {
-        toast.error("Missing Message", {
-        description: "Please enter a main DM message before saving your automation.",
-      })
+        toast.error("Missing DM Message", {
+          description: "Please enter a DM message before going live.",
+        })
+        setIsSubmitting(false)
         return
       }
 
-      // Validate post selection (either specific post or next post)
+      // ✅ Feature 3: Validate post selection (either specific post or next post)
       if (!isNextPost && !automation.postId) {
         toast.error("No Post Selected", {
-          description: "Please select a post or enable 'Next Post' mode.",
+          description: "Please select a post or enable 'Next Post' mode before going live.",
         })
+        setIsSubmitting(false)
         return
       }
 
@@ -1136,6 +1138,16 @@ useEffect(() => {
             onKeyDown={(e) => {
               if (e.key === "Enter" && keywordInput.trim()) {
                 e.preventDefault()
+                
+                // ✅ Feature 2: Check if "Any keyword" mode is enabled
+                if (automation.trigger.anyReply) {
+                  toast.error("Already in Any Keyword Mode", {
+                    description: "Turn off 'Any keyword' to add specific keywords",
+                  })
+                  setKeywordInput("")
+                  return
+                }
+                
                 if (!automation.trigger.keywords.includes(keywordInput.trim())) {
                   setAutomation({
                     ...automation,
@@ -2623,6 +2635,14 @@ useEffect(() => {
                     if (editingButton) {
                       saveEditedButton()
                     } else {
+                      // ✅ Feature 1: Limit buttons to 3 maximum
+                      if (automation.actions.sendDM.buttons.length >= 3) {
+                        toast.error("Button Limit Reached", {
+                          description: "Only 3 buttons are supported per message",
+                        })
+                        return
+                      }
+                      
                       if (buttonText && link && validLink) {
                         setAutomation({
                           ...automation,
