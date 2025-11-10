@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
 
+// Handle OPTIONS for CORS preflight
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  })
+}
+
 // Serve images from MongoDB
 export async function GET(
   request: NextRequest,
@@ -33,12 +45,15 @@ export async function GET(
     // Convert base64 back to buffer
     const buffer = Buffer.from(image.data, "base64")
 
-    // Return image with proper headers
+    // Return image with proper headers for Facebook/Instagram scraper
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": image.contentType,
         "Content-Length": buffer.length.toString(),
         "Cache-Control": "public, max-age=31536000, immutable",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "X-Robots-Tag": "all",
       },
     })
   } catch (error: any) {
