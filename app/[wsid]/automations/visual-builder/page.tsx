@@ -157,7 +157,9 @@ export default function VisualFlowBuilder() {
   const connectNodes = (sourceId: string, targetId: string) => {
     const edgeId = `edge-${sourceId}-${targetId}`
     if (!edges.find((e) => e.id === edgeId)) {
-      setEdges([...edges, { id: edgeId, source: sourceId, target: targetId }])
+      const newEdge = { id: edgeId, source: sourceId, target: targetId }
+      setEdges([...edges, newEdge])
+      console.log('Edge created:', newEdge)
     }
   }
 
@@ -239,6 +241,7 @@ export default function VisualFlowBuilder() {
   const startConnection = (e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation()
     e.preventDefault()
+    console.log('Starting connection from:', nodeId)
     setConnectingFrom(nodeId)
     
     // Initialize connection line
@@ -256,9 +259,13 @@ export default function VisualFlowBuilder() {
     e.stopPropagation()
     e.preventDefault()
     
+    console.log('Completing connection to:', targetId, 'from:', connectingFrom)
+    
     if (connectingFrom && connectingFrom !== targetId) {
       connectNodes(connectingFrom, targetId)
-      toast.success("Nodes connected")
+      toast.success("Nodes connected", { 
+        description: `Connected to ${targetId}` 
+      })
     }
     
     setConnectingFrom(null)
@@ -469,24 +476,46 @@ export default function VisualFlowBuilder() {
           />
 
           {/* SVG Layer for Connections */}
-          <svg className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
+          <svg 
+            className="absolute inset-0 pointer-events-none w-full h-full" 
+            style={{ zIndex: 1 }}
+          >
+            {/* Arrow marker definition */}
+            <defs>
+              <marker
+                id="arrowhead"
+                markerWidth="10"
+                markerHeight="10"
+                refX="9"
+                refY="3"
+                orient="auto"
+                markerUnits="strokeWidth"
+              >
+                <polygon points="0 0, 10 3, 0 6" fill="#9333ea" />
+              </marker>
+            </defs>
+
             {/* Draw existing edges */}
             {edges.map((edge) => {
               const sourceNode = nodes.find((n) => n.id === edge.source)
               const targetNode = nodes.find((n) => n.id === edge.target)
               if (!sourceNode || !targetNode) return null
 
-              const startX = (sourceNode.position.x + 160) * scale + canvasPosition.x
-              const startY = (sourceNode.position.y + 100) * scale + canvasPosition.y
-              const endX = (targetNode.position.x + 160) * scale + canvasPosition.x
-              const endY = (targetNode.position.y) * scale + canvasPosition.y
+              // Calculate positions with proper scaling and offset
+              const x1 = (sourceNode.position.x + 160) * scale + canvasPosition.x
+              const y1 = (sourceNode.position.y + 120) * scale + canvasPosition.y // Bottom of source node
+              const x2 = (targetNode.position.x + 160) * scale + canvasPosition.x
+              const y2 = (targetNode.position.y - 8) * scale + canvasPosition.y // Top of target node
+
+              // React Flow style Bezier curve
+              const path = `M ${x1},${y1} C ${x1},${y1 + 50 * scale} ${x2},${y2 - 50 * scale} ${x2},${y2}`
 
               return (
                 <g key={edge.id}>
                   <path
-                    d={`M ${startX} ${startY} L ${endX} ${endY}`}
+                    d={path}
                     stroke="#9333ea"
-                    strokeWidth="2"
+                    strokeWidth={2 / scale}
                     fill="none"
                     markerEnd="url(#arrowhead)"
                   />
@@ -499,33 +528,25 @@ export default function VisualFlowBuilder() {
               const sourceNode = nodes.find((n) => n.id === connectingFrom)
               if (!sourceNode) return null
 
-              const startX = (sourceNode.position.x + 160) * scale + canvasPosition.x
-              const startY = (sourceNode.position.y + 100) * scale + canvasPosition.y
+              const x1 = (sourceNode.position.x + 160) * scale + canvasPosition.x
+              const y1 = (sourceNode.position.y + 120) * scale + canvasPosition.y
+
+              const x2 = connectionLine.x * scale + canvasPosition.x
+              const y2 = connectionLine.y * scale + canvasPosition.y
+
+              // React Flow style Bezier curve for preview
+              const path = `M ${x1},${y1} C ${x1},${y1 + 50 * scale} ${x2},${y2 - 50 * scale} ${x2},${y2}`
 
               return (
                 <path
-                  d={`M ${startX} ${startY} L ${connectionLine.x * scale + canvasPosition.x} ${connectionLine.y * scale + canvasPosition.y}`}
-                  stroke="#9333ea"
-                  strokeWidth="2"
+                  d={path}
+                  stroke="#3b82f6"
+                  strokeWidth={2 / scale}
                   strokeDasharray="5,5"
                   fill="none"
                 />
               )
             })()}
-
-            {/* Arrow marker definition */}
-            <defs>
-              <marker
-                id="arrowhead"
-                markerWidth="10"
-                markerHeight="10"
-                refX="9"
-                refY="3"
-                orient="auto"
-              >
-                <polygon points="0 0, 10 3, 0 6" fill="#9333ea" />
-              </marker>
-            </defs>
           </svg>
           {/* Nodes Container */}
           <div 
