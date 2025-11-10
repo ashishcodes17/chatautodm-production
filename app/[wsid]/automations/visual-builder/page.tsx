@@ -1,9 +1,10 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useState, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { toast, Toaster } from "sonner"
 import {
   MessageCircle,
@@ -14,14 +15,23 @@ import {
   Trash2,
   Copy,
   ChevronLeft,
+  Image as ImageIcon,
+  Clock,
+  UserCheck,
+  Mail,
+  Instagram,
+  Link as LinkIcon,
 } from "lucide-react"
 
 // Custom Node Types
 type NodeData = {
   label: string
-  type: "trigger" | "action" | "condition"
+  type: "trigger" | "content" | "condition"
+  subtype?: string
   message?: string
+  image?: string
   buttons?: Array<{ text: string; link: string }>
+  delay?: number
 }
 
 type FlowNode = {
@@ -29,6 +39,7 @@ type FlowNode = {
   type: string
   position: { x: number; y: number }
   data: NodeData
+  parentId?: string | null
 }
 
 type FlowEdge = {
@@ -42,61 +53,177 @@ export default function VisualFlowBuilder() {
   const router = useRouter()
   const wsid = params.wsid as string
 
-  const [nodes, setNodes] = useState<FlowNode[]>([
-    {
-      id: "trigger-1",
-      type: "trigger",
-      position: { x: 250, y: 50 },
-      data: { label: "User Comments", type: "trigger" },
-    },
-  ])
-
+  const [nodes, setNodes] = useState<FlowNode[]>([])
   const [edges, setEdges] = useState<FlowEdge[]>([])
   const [selectedNode, setSelectedNode] = useState<FlowNode | null>(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const [draggedNode, setDraggedNode] = useState<string | null>(null)
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const canvasRef = useRef<HTMLDivElement>(null)
 
-  // Node templates for the sidebar
-  const nodeTemplates = [
+  // Node templates categorized
+  const triggerTemplates = [
     {
       type: "trigger",
-      label: "Comment Trigger",
+      subtype: "comment",
+      label: "Post or Reel Comment",
       icon: MessageCircle,
       color: "bg-purple-500",
+      description: "When user comments",
     },
     {
-      type: "action",
-      label: "Send DM",
-      icon: MessageCircle,
-      color: "bg-blue-500",
+      type: "trigger",
+      subtype: "story_reply",
+      label: "Story Reply",
+      icon: Instagram,
+      color: "bg-pink-500",
+      description: "When user replies to story",
     },
     {
-      type: "condition",
-      label: "Check Follow",
-      icon: Settings,
-      color: "bg-green-500",
+      type: "trigger",
+      subtype: "dm",
+      label: "Direct Message",
+      icon: Mail,
+      color: "bg-indigo-500",
+      description: "When user DMs you",
     },
   ]
 
-  const addNode = (type: string) => {
+  const contentTemplates = [
+    {
+      type: "content",
+      subtype: "message",
+      label: "Send Message",
+      icon: MessageCircle,
+      color: "bg-blue-500",
+      description: "Send DM with buttons",
+    },
+  ]
+
+  const conditionTemplates = [
+    {
+      type: "condition",
+      subtype: "check_follow",
+      label: "Check if Following",
+      icon: UserCheck,
+      color: "bg-green-500",
+      description: "Verify follower status",
+    },
+    {
+      type: "condition",
+      subtype: "delay",
+      label: "Add Delay",
+      icon: Clock,
+      color: "bg-orange-500",
+      description: "Wait before next step",
+    },
+  ]
+
+  const addNode = (type: string, subtype: string, label: string, position?: { x: number; y: number }) => {
     const newNode: FlowNode = {
       id: `${type}-${Date.now()}`,
       type,
-      position: { x: 250, y: nodes.length * 150 + 100 },
+      position: position || { x: 250, y: nodes.length * 200 + 100 },
       data: {
-        label: type === "trigger" ? "New Trigger" : type === "action" ? "New Action" : "New Condition",
-        type: type as "trigger" | "action" | "condition",
+        label,
+        type: type as "trigger" | "content" | "condition",
+        subtype,
+        buttons: type === "content" ? [] : undefined,
       },
+      parentId: null,
     }
     setNodes([...nodes, newNode])
-    toast.success("Node added", { description: `${type} node added to canvas` })
+    toast.success("Node added", { description: `${label} added to canvas` })
   }
 
   const deleteNode = (id: string) => {
     setNodes(nodes.filter((n) => n.id !== id))
     setEdges(edges.filter((e) => e.source !== id && e.target !== id))
-    setSelectedNode(null)
+    if (selectedNode?.id === id) {
+      setSelectedNode(null)
+    }
     toast.success("Node deleted")
+  }
+
+  const connectNodes = (sourceId: string, targetId: string) => {
+    const edgeId = `edge-${sourceId}-${targetId}`
+    if (!edges.find((e) => e.id === edgeId)) {
+      setEdges([...edges, { id: edgeId, source: sourceId, target: targetId }])
+    }
+  }
+
+  const handleMouseDown = (e: React.MouseEvent, nodeId: string) => {
+    const node = nodes.find((n) => n.id === nodeId)
+    if (!node) return
+
+    setDraggingNodeId(nodeId)
+    const rect = (e.target as HTMLElement).getBoundingClientRect()
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    })
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!draggingNodeId || !canvasRef.current) return
+
+    const canvasRect = canvasRef.current.getBoundingClientRect()
+    const newX = e.clientX - canvasRect.left - dragOffset.x
+    const newY = e.clientY - canvasRect.top - dragOffset.y
+
+    setNodes(
+      nodes.map((n) =>
+        n.id === draggingNodeId ? { ...n, position: { x: Math.max(0, newX), y: Math.max(0, newY) } } : n
+      )
+    )
+  }
+
+  const handleMouseUp = () => {
+    setDraggingNodeId(null)
+  }
+
+  const addButton = () => {
+    if (!selectedNode || selectedNode.data.type !== "content") return
+    if ((selectedNode.data.buttons?.length || 0) >= 3) {
+      toast.error("Button Limit", { description: "Maximum 3 buttons allowed" })
+      return
+    }
+
+    const updatedButtons = [...(selectedNode.data.buttons || []), { text: "New Button", link: "" }]
+    const updatedNode = {
+      ...selectedNode,
+      data: { ...selectedNode.data, buttons: updatedButtons },
+    }
+
+    setNodes(nodes.map((n) => (n.id === selectedNode.id ? updatedNode : n)))
+    setSelectedNode(updatedNode)
+  }
+
+  const updateButton = (index: number, field: "text" | "link", value: string) => {
+    if (!selectedNode || !selectedNode.data.buttons) return
+
+    const updatedButtons = [...selectedNode.data.buttons]
+    updatedButtons[index] = { ...updatedButtons[index], [field]: value }
+
+    const updatedNode = {
+      ...selectedNode,
+      data: { ...selectedNode.data, buttons: updatedButtons },
+    }
+
+    setNodes(nodes.map((n) => (n.id === selectedNode.id ? updatedNode : n)))
+    setSelectedNode(updatedNode)
+  }
+
+  const removeButton = (index: number) => {
+    if (!selectedNode || !selectedNode.data.buttons) return
+
+    const updatedButtons = selectedNode.data.buttons.filter((_, i) => i !== index)
+    const updatedNode = {
+      ...selectedNode,
+      data: { ...selectedNode.data, buttons: updatedButtons },
+    }
+
+    setNodes(nodes.map((n) => (n.id === selectedNode.id ? updatedNode : n)))
+    setSelectedNode(updatedNode)
   }
 
   const handleSave = async () => {
@@ -104,12 +231,24 @@ export default function VisualFlowBuilder() {
   }
 
   const handleGoLive = async () => {
-    if (nodes.length < 2) {
-      toast.error("Incomplete Flow", {
-        description: "Add at least one trigger and one action before going live",
-      })
+    const triggerNode = nodes.find((n) => n.data.type === "trigger")
+    const contentNode = nodes.find((n) => n.data.type === "content")
+
+    if (!triggerNode) {
+      toast.error("Missing Trigger", { description: "Add a trigger to start your flow" })
       return
     }
+
+    if (!contentNode) {
+      toast.error("Missing Content", { description: "Add at least one message to send" })
+      return
+    }
+
+    if (contentNode.data.type === "content" && !contentNode.data.message?.trim()) {
+      toast.error("Empty Message", { description: "Enter a message to send" })
+      return
+    }
+
     toast.success("Flow Activated", { description: "Your automation is now live" })
   }
 
@@ -143,91 +282,151 @@ export default function VisualFlowBuilder() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar - Node Palette */}
-        <div className="w-64 bg-white border-r border-gray-200 p-4 overflow-y-auto">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">Add Components</h2>
+        <div className="w-72 bg-white border-r border-gray-200 p-4 overflow-y-auto">
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">Components</h2>
 
-          <div className="space-y-2">
-            {nodeTemplates.map((template) => (
-              <Card
-                key={template.type}
-                className="p-4 cursor-move hover:shadow-md transition-shadow border-2 border-gray-200 hover:border-purple-400"
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData("nodeType", template.type)
-                  setIsDragging(true)
-                }}
-                onDragEnd={() => setIsDragging(false)}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${template.color} text-white`}>
-                    <template.icon className="h-4 w-4" />
+          {/* Triggers */}
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">Triggers</h3>
+            <div className="space-y-2">
+              {triggerTemplates.map((template) => (
+                <Card
+                  key={template.subtype}
+                  className="p-3 cursor-pointer hover:shadow-md transition-shadow border border-gray-200 hover:border-purple-400"
+                  onClick={() => addNode(template.type, template.subtype, template.label)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${template.color} text-white shrink-0`}>
+                      <template.icon className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-gray-900">{template.label}</p>
+                      <p className="text-xs text-gray-500">{template.description}</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-sm text-gray-900">{template.label}</p>
-                    <p className="text-xs text-gray-500">Drag to canvas</p>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">Content</h3>
+            <div className="space-y-2">
+              {contentTemplates.map((template) => (
+                <Card
+                  key={template.subtype}
+                  className="p-3 cursor-pointer hover:shadow-md transition-shadow border border-gray-200 hover:border-blue-400"
+                  onClick={() => addNode(template.type, template.subtype, template.label)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${template.color} text-white shrink-0`}>
+                      <template.icon className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-gray-900">{template.label}</p>
+                      <p className="text-xs text-gray-500">{template.description}</p>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Conditions */}
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">Conditions</h3>
+            <div className="space-y-2">
+              {conditionTemplates.map((template) => (
+                <Card
+                  key={template.subtype}
+                  className="p-3 cursor-pointer hover:shadow-md transition-shadow border border-gray-200 hover:border-green-400"
+                  onClick={() => addNode(template.type, template.subtype, template.label)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${template.color} text-white shrink-0`}>
+                      <template.icon className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-gray-900">{template.label}</p>
+                      <p className="text-xs text-gray-500">{template.description}</p>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
           </div>
 
           <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-xs text-blue-900 font-medium mb-2">💡 Quick Tip</p>
             <p className="text-xs text-blue-700">
-              Drag nodes to the canvas and connect them to build your automation flow
+              Click on components to add them to the canvas. Drag nodes to reposition them.
             </p>
           </div>
         </div>
 
         {/* Canvas Area */}
         <div
+          ref={canvasRef}
           className="flex-1 relative bg-gradient-to-br from-gray-50 to-gray-100 overflow-auto"
           style={{
             backgroundImage: `radial-gradient(circle, #e5e7eb 1px, transparent 1px)`,
             backgroundSize: "20px 20px",
           }}
-          onDrop={(e) => {
-            e.preventDefault()
-            const nodeType = e.dataTransfer.getData("nodeType")
-            if (nodeType) {
-              addNode(nodeType)
-            }
-            setIsDragging(false)
-          }}
-          onDragOver={(e) => e.preventDefault()}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
         >
           {/* Nodes */}
-          <div className="p-8">
-            {nodes.map((node, index) => (
-              <div key={node.id} className="mb-6">
-                <Card
-                  className={`p-6 w-80 cursor-pointer transition-all ${
-                    selectedNode?.id === node.id
-                      ? "ring-2 ring-purple-500 shadow-lg"
-                      : "hover:shadow-md"
-                  }`}
-                  onClick={() => setSelectedNode(node)}
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`p-2 rounded-lg ${
-                          node.data.type === "trigger"
-                            ? "bg-purple-500"
-                            : node.data.type === "action"
-                            ? "bg-blue-500"
-                            : "bg-green-500"
-                        } text-white`}
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">{node.data.label}</p>
-                        <p className="text-xs text-gray-500 capitalize">{node.data.type}</p>
-                      </div>
-                    </div>
+          <div className="p-8 min-h-full">
+            {nodes.map((node, index) => {
+              const getNodeColor = () => {
+                if (node.data.type === "trigger") return "bg-purple-500"
+                if (node.data.type === "content") return "bg-blue-500"
+                return "bg-green-500"
+              }
 
-                    <div className="flex gap-1">
+              const getNodeIcon = () => {
+                if (node.data.subtype === "comment") return MessageCircle
+                if (node.data.subtype === "story_reply") return Instagram
+                if (node.data.subtype === "dm") return Mail
+                if (node.data.subtype === "message") return MessageCircle
+                if (node.data.subtype === "check_follow") return UserCheck
+                if (node.data.subtype === "delay") return Clock
+                return MessageCircle
+              }
+
+              const Icon = getNodeIcon()
+
+              return (
+                <div
+                  key={node.id}
+                  style={{
+                    position: "absolute",
+                    left: node.position.x,
+                    top: node.position.y,
+                    cursor: draggingNodeId === node.id ? "grabbing" : "grab",
+                  }}
+                >
+                  <Card
+                    className={`p-4 w-80 transition-all ${
+                      selectedNode?.id === node.id
+                        ? "ring-2 ring-purple-500 shadow-lg"
+                        : "hover:shadow-md"
+                    }`}
+                    onClick={() => setSelectedNode(node)}
+                    onMouseDown={(e) => handleMouseDown(e, node.id)}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${getNodeColor()} text-white shrink-0`}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm text-gray-900">{node.data.label}</p>
+                          <p className="text-xs text-gray-500 capitalize">{node.data.type}</p>
+                        </div>
+                      </div>
+
                       <Button
                         variant="ghost"
                         size="icon"
@@ -240,59 +439,58 @@ export default function VisualFlowBuilder() {
                         <Trash2 className="h-3 w-3 text-red-500" />
                       </Button>
                     </div>
-                  </div>
 
-                  {node.data.message && (
-                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-700">{node.data.message}</p>
+                    {node.data.message && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-lg">
+                        <p className="text-xs text-gray-700 line-clamp-2">{node.data.message}</p>
+                      </div>
+                    )}
+
+                    {node.data.image && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded flex items-center gap-2">
+                        <ImageIcon className="h-3 w-3 text-gray-500" />
+                        <p className="text-xs text-gray-600">Image attached</p>
+                      </div>
+                    )}
+
+                    {node.data.buttons && node.data.buttons.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {node.data.buttons.map((btn, i) => (
+                          <div key={i} className="p-2 bg-blue-50 rounded border border-blue-200">
+                            <p className="text-xs font-medium text-blue-900 truncate">{btn.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {node.data.subtype === "delay" && node.data.delay && (
+                      <div className="mt-2 p-2 bg-orange-50 rounded">
+                        <p className="text-xs text-orange-900">{node.data.delay} seconds delay</p>
+                      </div>
+                    )}
+                  </Card>
+
+                  {/* Connection indicator */}
+                  {index < nodes.length - 1 && (
+                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2">
+                      <div className="w-0.5 h-8 bg-gray-400"></div>
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-400 rounded-full"></div>
                     </div>
                   )}
-
-                  {node.data.buttons && node.data.buttons.length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      {node.data.buttons.map((btn, i) => (
-                        <div key={i} className="p-2 bg-purple-50 rounded border border-purple-200">
-                          <p className="text-xs font-medium text-purple-900">{btn.text}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-
-                {/* Connection Line */}
-                {index < nodes.length - 1 && (
-                  <div className="flex justify-center my-2">
-                    <div className="w-0.5 h-6 bg-gray-300"></div>
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {/* Add Node Button */}
-            {nodes.length > 0 && (
-              <div className="flex justify-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-dashed border-2"
-                  onClick={() => addNode("action")}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Step
-                </Button>
-              </div>
-            )}
+                </div>
+              )
+            })}
           </div>
 
           {/* Empty State */}
           {nodes.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-center">
                 <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
                   <MessageCircle className="h-8 w-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Start Building</h3>
-                <p className="text-gray-600 mb-4">Drag components from the left to get started</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Start Building Your Flow</h3>
+                <p className="text-gray-600 mb-4">Click on components from the left sidebar to add them</p>
               </div>
             </div>
           )}
@@ -336,28 +534,150 @@ export default function VisualFlowBuilder() {
                 />
               </div>
 
-              {selectedNode.data.type === "action" && (
+              {/* Message Editor for Content Nodes */}
+              {selectedNode.data.type === "content" && selectedNode.data.subtype === "message" && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 mb-2 block">Message</label>
+                    <textarea
+                      value={selectedNode.data.message || ""}
+                      onChange={(e) => {
+                        setNodes(
+                          nodes.map((n) =>
+                            n.id === selectedNode.id
+                              ? { ...n, data: { ...n.data, message: e.target.value } }
+                              : n
+                          )
+                        )
+                        setSelectedNode({
+                          ...selectedNode,
+                          data: { ...selectedNode.data, message: e.target.value },
+                        })
+                      }}
+                      rows={4}
+                      placeholder="Enter your message..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  {/* Image Upload */}
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 mb-2 block">Image (Optional)</label>
+                    <Input
+                      type="text"
+                      value={selectedNode.data.image || ""}
+                      onChange={(e) => {
+                        setNodes(
+                          nodes.map((n) =>
+                            n.id === selectedNode.id
+                              ? { ...n, data: { ...n.data, image: e.target.value } }
+                              : n
+                          )
+                        )
+                        setSelectedNode({
+                          ...selectedNode,
+                          data: { ...selectedNode.data, image: e.target.value },
+                        })
+                      }}
+                      placeholder="Image URL"
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* Buttons Editor */}
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 mb-2 block">
+                      Buttons (Max 3)
+                    </label>
+                    <div className="space-y-2">
+                      {selectedNode.data.buttons?.map((button, index) => (
+                        <div key={index} className="p-2 bg-gray-50 rounded border space-y-1">
+                          <Input
+                            type="text"
+                            value={button.text}
+                            onChange={(e) => updateButton(index, "text", e.target.value)}
+                            placeholder="Button text"
+                            className="w-full text-xs"
+                          />
+                          <Input
+                            type="text"
+                            value={button.link}
+                            onChange={(e) => updateButton(index, "link", e.target.value)}
+                            placeholder="Button link"
+                            className="w-full text-xs"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full text-xs h-6"
+                            onClick={() => removeButton(index)}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+
+                      {(!selectedNode.data.buttons || selectedNode.data.buttons.length < 3) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={addButton}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add Button
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Delay Editor for Delay Nodes */}
+              {selectedNode.data.type === "condition" && selectedNode.data.subtype === "delay" && (
                 <div>
-                  <label className="text-xs font-medium text-gray-700 mb-2 block">Message</label>
-                  <textarea
-                    value={selectedNode.data.message || ""}
+                  <label className="text-xs font-medium text-gray-700 mb-2 block">
+                    Delay Duration (seconds)
+                  </label>
+                  <Input
+                    type="number"
+                    value={selectedNode.data.delay || 0}
                     onChange={(e) => {
+                      const delay = parseInt(e.target.value) || 0
                       setNodes(
                         nodes.map((n) =>
                           n.id === selectedNode.id
-                            ? { ...n, data: { ...n.data, message: e.target.value } }
+                            ? { ...n, data: { ...n.data, delay } }
                             : n
                         )
                       )
                       setSelectedNode({
                         ...selectedNode,
-                        data: { ...selectedNode.data, message: e.target.value },
+                        data: { ...selectedNode.data, delay },
                       })
                     }}
-                    rows={4}
-                    placeholder="Enter your message..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    min="0"
+                    placeholder="Delay in seconds"
+                    className="w-full"
                   />
+                </div>
+              )}
+
+              {/* Info for Check Follow Node */}
+              {selectedNode.data.type === "condition" && selectedNode.data.subtype === "check_follow" && (
+                <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                  <p className="text-xs text-blue-900">
+                    This node checks if the user is following your Instagram account before proceeding.
+                  </p>
+                </div>
+              )}
+
+              {/* Info for Trigger Nodes */}
+              {selectedNode.data.type === "trigger" && (
+                <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                  <p className="text-xs text-purple-900">
+                    This trigger starts the automation when the specified event occurs.
+                  </p>
                 </div>
               )}
 
