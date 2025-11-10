@@ -1083,7 +1083,7 @@ useEffect(() => {
 
       {/* Right Sidebar with Card Layout - DESKTOP VIEW */}
       <div className="hidden md:block w-[450px] border-l border-gray-200 bg-gray-50 px-4 py-6 overflow-y-auto h-full space-y-4">
-        {/* Step 1: Select a Post Card */}
+        {/* Step 1: Select a Post Card - DESKTOP VIEW */}
         <div
           className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 1 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
           onClick={() => setActiveStep(1)}
@@ -1476,7 +1476,7 @@ useEffect(() => {
                   })
                 }
                 onClick={(e) => e.stopPropagation()}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[60px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[120px] resize-y focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
               />
 
               <div className="text-xs text-gray-400">{automation.actions.openingDM.message.length} / 640</div>
@@ -1738,7 +1738,7 @@ useEffect(() => {
                     setAutomation({ ...automation, actions: { ...automation.actions, followMessage: e.target.value } })
                   }
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[100px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[120px] resize-y focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 />
 
                 <div className="text-xs text-gray-400">{automation.actions.followMessage.length} / 640</div>
@@ -1920,13 +1920,13 @@ useEffect(() => {
         aria-label="Edit Flow"
       >
         <div className="p-4 border-b flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Edit Flow</h2>
+          <h2 className="text-lg font-semibold">Edit Flow - Mobile</h2>
           <button onClick={() => setShowMobileDrawer(false)} className="text-gray-600" aria-label="Close">
             ✕
           </button>
         </div>
         <div className="overflow-y-auto h-[calc(90vh-60px)] px-4 pb-6">
-{/* Step 1: Select a Post Card - MOBILE */}
+{/* Step 1: Select a Post Card - MOBILE VIEW */}
         <div
           className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 1 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
           onClick={() => setActiveStep(1)}
@@ -1940,7 +1940,7 @@ useEffect(() => {
             <h3 className="text-lg font-semibold text-gray-900">Select a Post</h3>
           </div>
 
-          {/* Next Post Toggle - Mobile */}
+          {/* Next Post Toggle - Mobile View */}
           <div className="flex items-center justify-between mb-4 p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-gray-900">⚡ Next Post</span>
