@@ -59,6 +59,16 @@ export default function VisualFlowBuilder() {
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const canvasRef = useRef<HTMLDivElement>(null)
+  
+  // Canvas panning state
+  const [canvasPosition, setCanvasPosition] = useState({ x: 0, y: 0 })
+  const [isPanning, setIsPanning] = useState(false)
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 })
+  const [scale, setScale] = useState(1)
+  
+  // Connection state
+  const [connectingFrom, setConnectingFrom] = useState<string | null>(null)
+  const [connectionLine, setConnectionLine] = useState<{ x: number; y: number } | null>(null)
 
   // Node templates categorized
   const triggerTemplates = [
@@ -151,34 +161,90 @@ export default function VisualFlowBuilder() {
     }
   }
 
-  const handleMouseDown = (e: React.MouseEvent, nodeId: string) => {
+  // Canvas panning handlers
+  const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    if (e.target === canvasRef.current || (e.target as HTMLElement).closest('.canvas-background')) {
+      setIsPanning(true)
+      setPanStart({ x: e.clientX - canvasPosition.x, y: e.clientY - canvasPosition.y })
+    }
+  }
+
+  const handleCanvasMouseMove = (e: React.MouseEvent) => {
+    // Handle canvas panning
+    if (isPanning) {
+      setCanvasPosition({
+        x: e.clientX - panStart.x,
+        y: e.clientY - panStart.y,
+      })
+      return
+    }
+
+    // Handle node dragging
+    if (draggingNodeId && canvasRef.current) {
+      const canvasRect = canvasRef.current.getBoundingClientRect()
+      const newX = (e.clientX - canvasRect.left - canvasPosition.x) / scale - dragOffset.x
+      const newY = (e.clientY - canvasRect.top - canvasPosition.y) / scale - dragOffset.y
+
+      setNodes(
+        nodes.map((n) =>
+          n.id === draggingNodeId ? { ...n, position: { x: newX, y: newY } } : n
+        )
+      )
+      return
+    }
+
+    // Handle connection line preview
+    if (connectingFrom && canvasRef.current) {
+      const canvasRect = canvasRef.current.getBoundingClientRect()
+      setConnectionLine({
+        x: (e.clientX - canvasRect.left - canvasPosition.x) / scale,
+        y: (e.clientY - canvasRect.top - canvasPosition.y) / scale,
+      })
+    }
+  }
+
+  const handleCanvasMouseUp = () => {
+    setIsPanning(false)
+    setDraggingNodeId(null)
+    setConnectingFrom(null)
+    setConnectionLine(null)
+  }
+
+  const handleNodeMouseDown = (e: React.MouseEvent, nodeId: string) => {
+    e.stopPropagation()
     const node = nodes.find((n) => n.id === nodeId)
     if (!node) return
 
     setDraggingNodeId(nodeId)
-    const rect = (e.target as HTMLElement).getBoundingClientRect()
     setDragOffset({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: 0,
+      y: 0,
     })
   }
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!draggingNodeId || !canvasRef.current) return
-
-    const canvasRect = canvasRef.current.getBoundingClientRect()
-    const newX = e.clientX - canvasRect.left - dragOffset.x
-    const newY = e.clientY - canvasRect.top - dragOffset.y
-
-    setNodes(
-      nodes.map((n) =>
-        n.id === draggingNodeId ? { ...n, position: { x: Math.max(0, newX), y: Math.max(0, newY) } } : n
-      )
-    )
+  // Handle zoom
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? 0.9 : 1.1
+    const newScale = Math.min(Math.max(0.3, scale * delta), 2)
+    setScale(newScale)
   }
 
-  const handleMouseUp = () => {
-    setDraggingNodeId(null)
+  // Start connection from a node
+  const startConnection = (e: React.MouseEvent, nodeId: string) => {
+    e.stopPropagation()
+    setConnectingFrom(nodeId)
+  }
+
+  // Complete connection to a node
+  const completeConnection = (e: React.MouseEvent, targetId: string) => {
+    e.stopPropagation()
+    if (connectingFrom && connectingFrom !== targetId) {
+      connectNodes(connectingFrom, targetId)
+      toast.success("Nodes connected")
+    }
+    setConnectingFrom(null)
+    setConnectionLine(null)
   }
 
   const addButton = () => {
@@ -368,17 +434,91 @@ export default function VisualFlowBuilder() {
         {/* Canvas Area */}
         <div
           ref={canvasRef}
-          className="flex-1 relative bg-gradient-to-br from-gray-50 to-gray-100 overflow-auto"
-          style={{
-            backgroundImage: `radial-gradient(circle, #e5e7eb 1px, transparent 1px)`,
-            backgroundSize: "20px 20px",
-          }}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
+          className="flex-1 relative bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden cursor-grab active:cursor-grabbing"
+          onMouseDown={handleCanvasMouseDown}
+          onMouseMove={handleCanvasMouseMove}
+          onMouseUp={handleCanvasMouseUp}
+          onWheel={handleWheel}
         >
-          {/* Nodes */}
-          <div className="p-8 min-h-full">
-            {nodes.map((node, index) => {
+          {/* Background Pattern */}
+          <div 
+            className="canvas-background absolute inset-0"
+            style={{
+              backgroundImage: `radial-gradient(circle, #e5e7eb 1px, transparent 1px)`,
+              backgroundSize: `${20 * scale}px ${20 * scale}px`,
+              backgroundPosition: `${canvasPosition.x}px ${canvasPosition.y}px`,
+            }}
+          />
+
+          {/* SVG Layer for Connections */}
+          <svg className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
+            {/* Draw existing edges */}
+            {edges.map((edge) => {
+              const sourceNode = nodes.find((n) => n.id === edge.source)
+              const targetNode = nodes.find((n) => n.id === edge.target)
+              if (!sourceNode || !targetNode) return null
+
+              const startX = (sourceNode.position.x + 160) * scale + canvasPosition.x
+              const startY = (sourceNode.position.y + 100) * scale + canvasPosition.y
+              const endX = (targetNode.position.x + 160) * scale + canvasPosition.x
+              const endY = (targetNode.position.y) * scale + canvasPosition.y
+
+              return (
+                <g key={edge.id}>
+                  <path
+                    d={`M ${startX} ${startY} L ${endX} ${endY}`}
+                    stroke="#9333ea"
+                    strokeWidth="2"
+                    fill="none"
+                    markerEnd="url(#arrowhead)"
+                  />
+                </g>
+              )
+            })}
+
+            {/* Draw connection preview line */}
+            {connectingFrom && connectionLine && (() => {
+              const sourceNode = nodes.find((n) => n.id === connectingFrom)
+              if (!sourceNode) return null
+
+              const startX = (sourceNode.position.x + 160) * scale + canvasPosition.x
+              const startY = (sourceNode.position.y + 100) * scale + canvasPosition.y
+
+              return (
+                <path
+                  d={`M ${startX} ${startY} L ${connectionLine.x * scale + canvasPosition.x} ${connectionLine.y * scale + canvasPosition.y}`}
+                  stroke="#9333ea"
+                  strokeWidth="2"
+                  strokeDasharray="5,5"
+                  fill="none"
+                />
+              )
+            })()}
+
+            {/* Arrow marker definition */}
+            <defs>
+              <marker
+                id="arrowhead"
+                markerWidth="10"
+                markerHeight="10"
+                refX="9"
+                refY="3"
+                orient="auto"
+              >
+                <polygon points="0 0, 10 3, 0 6" fill="#9333ea" />
+              </marker>
+            </defs>
+          </svg>
+          {/* Nodes Container */}
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{ 
+              transform: `translate(${canvasPosition.x}px, ${canvasPosition.y}px) scale(${scale})`,
+              transformOrigin: '0 0',
+              zIndex: 2,
+            }}
+          >
+            {nodes.map((node) => {
               const getNodeColor = () => {
                 if (node.data.type === "trigger") return "bg-purple-500"
                 if (node.data.type === "content") return "bg-blue-500"
@@ -400,6 +540,7 @@ export default function VisualFlowBuilder() {
               return (
                 <div
                   key={node.id}
+                  className="pointer-events-auto"
                   style={{
                     position: "absolute",
                     left: node.position.x,
@@ -407,14 +548,32 @@ export default function VisualFlowBuilder() {
                     cursor: draggingNodeId === node.id ? "grabbing" : "grab",
                   }}
                 >
+                  {/* Connection Handles */}
+                  <div
+                    className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-purple-500 rounded-full border-2 border-white shadow cursor-pointer hover:scale-125 transition-transform z-10"
+                    title="Connect from here"
+                    onMouseDown={(e) => {
+                      e.stopPropagation()
+                      completeConnection(e, node.id)
+                    }}
+                  />
+                  <div
+                    className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-purple-500 rounded-full border-2 border-white shadow cursor-pointer hover:scale-125 transition-transform z-10"
+                    title="Connect to next"
+                    onMouseDown={(e) => startConnection(e, node.id)}
+                  />
+
                   <Card
                     className={`p-4 w-80 transition-all ${
                       selectedNode?.id === node.id
                         ? "ring-2 ring-purple-500 shadow-lg"
                         : "hover:shadow-md"
                     }`}
-                    onClick={() => setSelectedNode(node)}
-                    onMouseDown={(e) => handleMouseDown(e, node.id)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelectedNode(node)
+                    }}
+                    onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
@@ -469,14 +628,6 @@ export default function VisualFlowBuilder() {
                       </div>
                     )}
                   </Card>
-
-                  {/* Connection indicator */}
-                  {index < nodes.length - 1 && (
-                    <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2">
-                      <div className="w-0.5 h-8 bg-gray-400"></div>
-                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-400 rounded-full"></div>
-                    </div>
-                  )}
                 </div>
               )
             })}
@@ -494,6 +645,16 @@ export default function VisualFlowBuilder() {
               </div>
             </div>
           )}
+
+          {/* Controls Guide */}
+          <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 text-xs space-y-1 pointer-events-auto z-50">
+            <p className="font-semibold text-gray-900 mb-2">Controls:</p>
+            <p className="text-gray-700">🖱️ <strong>Drag canvas</strong> - Pan around</p>
+            <p className="text-gray-700">🔍 <strong>Scroll</strong> - Zoom in/out</p>
+            <p className="text-gray-700">🎯 <strong>Drag nodes</strong> - Reposition</p>
+            <p className="text-gray-700">🔗 <strong>Click handles</strong> - Connect nodes</p>
+            <p className="text-gray-600 mt-2 pt-2 border-t">Zoom: {Math.round(scale * 100)}%</p>
+          </div>
         </div>
 
         {/* Right Sidebar - Properties */}
