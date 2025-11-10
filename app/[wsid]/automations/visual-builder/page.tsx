@@ -485,16 +485,15 @@ export default function VisualFlowBuilder() {
               {/* Gray arrow for main connections */}
               <marker
                 id="arrowhead"
-                markerWidth="10"
-                markerHeight="10"
-                refX="10"
-                refY="5"
+                markerWidth={10 / scale}
+                markerHeight={10 / scale}
+                refX={10 / scale}
+                refY={5 / scale}
                 orient="auto"
-                markerUnits="strokeWidth"
-                viewBox="0 0 10 10"
+                markerUnits="userSpaceOnUse"
               >
                 <path
-                  d="M 0 0 L 10 5 L 0 10 z"
+                  d={`M 0 0 L ${10 / scale} ${5 / scale} L 0 ${10 / scale} z`}
                   fill="#9ca3af"
                 />
               </marker>
@@ -502,16 +501,15 @@ export default function VisualFlowBuilder() {
               {/* Blue arrow for preview connections */}
               <marker
                 id="arrowhead-preview"
-                markerWidth="10"
-                markerHeight="10"
-                refX="10"
-                refY="5"
+                markerWidth={10 / scale}
+                markerHeight={10 / scale}
+                refX={10 / scale}
+                refY={5 / scale}
                 orient="auto"
-                markerUnits="strokeWidth"
-                viewBox="0 0 10 10"
+                markerUnits="userSpaceOnUse"
               >
                 <path
-                  d="M 0 0 L 10 5 L 0 10 z"
+                  d={`M 0 0 L ${10 / scale} ${5 / scale} L 0 ${10 / scale} z`}
                   fill="#60a5fa"
                 />
               </marker>
@@ -524,10 +522,13 @@ export default function VisualFlowBuilder() {
               if (!sourceNode || !targetNode) return null
 
               // Calculate positions with proper scaling and offset
+              // Source: bottom center of the node (node height is approximately 140px)
               const x1 = (sourceNode.position.x + 160) * scale + canvasPosition.x
-              const y1 = (sourceNode.position.y + 138) * scale + canvasPosition.y // Bottom of source node
+              const y1 = (sourceNode.position.y + 140) * scale + canvasPosition.y
+              
+              // Target: top center of the node
               const x2 = (targetNode.position.x + 160) * scale + canvasPosition.x
-              const y2 = (targetNode.position.y - 2) * scale + canvasPosition.y // Top of target node (no gap)
+              const y2 = (targetNode.position.y) * scale + canvasPosition.y
 
               // Calculate curve control points for smooth S-curve
               const distance = Math.abs(y2 - y1)
@@ -564,8 +565,9 @@ export default function VisualFlowBuilder() {
               const sourceNode = nodes.find((n) => n.id === connectingFrom)
               if (!sourceNode) return null
 
+              // Source: bottom center of the node
               const x1 = (sourceNode.position.x + 160) * scale + canvasPosition.x
-              const y1 = (sourceNode.position.y + 138) * scale + canvasPosition.y
+              const y1 = (sourceNode.position.y + 140) * scale + canvasPosition.y
 
               const x2 = connectionLine.x * scale + canvasPosition.x
               const y2 = connectionLine.y * scale + canvasPosition.y
