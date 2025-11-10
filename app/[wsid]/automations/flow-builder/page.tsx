@@ -1622,12 +1622,20 @@ useEffect(() => {
               </div>
 
               {automation.actions.publicReply.enabled && (
-                <div className="bg-gray-50 rounded-lg p-3 space-y-3">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Public Replies:</label>
+                <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-4 space-y-3 border border-purple-100">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        Public Replies
+                      </label>
+                      <span className="text-xs text-purple-600 font-medium">{automation.actions.publicReply.replies.filter(r => r.enabled).length} Active</span>
+                    </div>
                     {automation.actions.publicReply.replies.map((reply, index) => (
-                      <div key={index} className="flex items-center justify-between bg-white p-3 rounded-md border">
-                        <div className="flex items-center gap-2 flex-1">
+                      <div key={index} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200 hover:border-purple-300 transition-all group">
+                        <div className="flex items-start gap-3">
                           <Switch
                             checked={reply.enabled}
                             onChange={(val) => {
@@ -1641,46 +1649,49 @@ useEffect(() => {
                                 },
                               })
                             }}
-                            className={`${reply.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-5 w-9 items-center rounded-full transition-colors`}
+                            className={`${reply.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 mt-0.5`}
                           >
                             <span
                               className={`inline-block h-3 w-3 transform rounded-full bg-white transition ${reply.enabled ? "translate-x-5" : "translate-x-1"}`}
                             />
                           </Switch>
-                          <span className="text-sm text-gray-700 truncate flex-1">{reply.text}</span>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setEditingPublicReply(index)
-                            setPublicReplyText(reply.text)
-                            setShowPublicReplyModal(true)
-                          }}
-                          className="text-gray-500 hover:text-gray-700 ml-2"
-                        >
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-700 break-words leading-relaxed whitespace-pre-wrap">{reply.text}</p>
+                            <span className="text-xs text-gray-400 mt-1 inline-block">{reply.text.length} chars</span>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditingPublicReply(index)
+                              setPublicReplyText(reply.text)
+                              setShowPublicReplyModal(true)
+                            }}
+                            className="text-gray-400 hover:text-purple-600 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
                           >
-                            <path
-                              d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <path
-                              d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </button>
+                            <svg
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                     ))}
 
@@ -1691,7 +1702,7 @@ useEffect(() => {
                         setPublicReplyText("")
                         setShowPublicReplyModal(true)
                       }}
-                      className="w-full bg-purple-600 text-white py-2 rounded-md text-sm font-medium hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+                      className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:from-purple-700 hover:to-blue-700 transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
@@ -2439,12 +2450,20 @@ useEffect(() => {
               </div>
 
               {automation.actions.publicReply.enabled && (
-                <div className="bg-gray-50 rounded-lg p-3 space-y-3">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Public Replies:</label>
+                <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-4 space-y-3 border border-purple-100">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        Public Replies
+                      </label>
+                      <span className="text-xs text-purple-600 font-medium">{automation.actions.publicReply.replies.filter(r => r.enabled).length} Active</span>
+                    </div>
                     {automation.actions.publicReply.replies.map((reply, index) => (
-                      <div key={index} className="flex items-center justify-between bg-white p-3 rounded-md border">
-                        <div className="flex items-center gap-2 flex-1">
+                      <div key={index} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200 hover:border-purple-300 transition-all group">
+                        <div className="flex items-start gap-3">
                           <Switch
                             checked={reply.enabled}
                             onChange={(val) => {
@@ -2458,50 +2477,68 @@ useEffect(() => {
                                 },
                               })
                             }}
-                            className={`${reply.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-5 w-9 items-center rounded-full transition-colors`}
+                            className={`${reply.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 mt-0.5`}
                           >
                             <span
                               className={`inline-block h-3 w-3 transform rounded-full bg-white transition ${reply.enabled ? "translate-x-5" : "translate-x-1"}`}
                             />
                           </Switch>
-                          <span className="text-sm text-gray-700 truncate flex-1">{reply.text}</span>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setEditingPublicReply(index)
-                            setPublicReplyText(reply.text)
-                            setShowPublicReplyModal(true)
-                          }}
-                          className="text-gray-500 hover:text-gray-700 ml-2"
-                        >
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-700 break-words leading-relaxed whitespace-pre-wrap">{reply.text}</p>
+                            <span className="text-xs text-gray-400 mt-1 inline-block">{reply.text.length} chars</span>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditingPublicReply(index)
+                              setPublicReplyText(reply.text)
+                              setShowPublicReplyModal(true)
+                            }}
+                            className="text-gray-400 hover:text-purple-600 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
                           >
-                            <path
-                              d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <path
-                              d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </button>
+                            <svg
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                     ))}
 
-             
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditingPublicReply(null)
+                        setPublicReplyText("")
+                        setShowPublicReplyModal(true)
+                      }}
+                      className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:from-purple-700 hover:to-blue-700 transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                        <line x1="12" y1="8" x2="12" y2="16" stroke="currentColor" strokeWidth="2" />
+                        <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" strokeWidth="2" />
+                      </svg>
+                      Add Public Reply
+                    </button>
                   </div>
                 </div>
               )}
