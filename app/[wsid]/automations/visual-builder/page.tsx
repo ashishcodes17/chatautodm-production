@@ -480,18 +480,38 @@ export default function VisualFlowBuilder() {
             className="absolute inset-0 pointer-events-none w-full h-full" 
             style={{ zIndex: 1 }}
           >
-            {/* Arrow marker definition */}
+            {/* Arrow marker definitions */}
             <defs>
+              {/* Gray arrow for main connections */}
               <marker
                 id="arrowhead"
-                markerWidth="10"
-                markerHeight="10"
-                refX="9"
-                refY="3"
+                markerWidth="12"
+                markerHeight="12"
+                refX="10"
+                refY="6"
                 orient="auto"
-                markerUnits="strokeWidth"
+                markerUnits="userSpaceOnUse"
               >
-                <polygon points="0 0, 10 3, 0 6" fill="#9333ea" />
+                <path
+                  d="M 0 0 L 12 6 L 0 12 L 3 6 Z"
+                  fill="#9ca3af"
+                />
+              </marker>
+              
+              {/* Blue arrow for preview connections */}
+              <marker
+                id="arrowhead-preview"
+                markerWidth="12"
+                markerHeight="12"
+                refX="10"
+                refY="6"
+                orient="auto"
+                markerUnits="userSpaceOnUse"
+              >
+                <path
+                  d="M 0 0 L 12 6 L 0 12 L 3 6 Z"
+                  fill="#60a5fa"
+                />
               </marker>
             </defs>
 
@@ -503,19 +523,31 @@ export default function VisualFlowBuilder() {
 
               // Calculate positions with proper scaling and offset
               const x1 = (sourceNode.position.x + 160) * scale + canvasPosition.x
-              const y1 = (sourceNode.position.y + 120) * scale + canvasPosition.y // Bottom of source node
+              const y1 = (sourceNode.position.y + 130) * scale + canvasPosition.y // Bottom of source node
               const x2 = (targetNode.position.x + 160) * scale + canvasPosition.x
               const y2 = (targetNode.position.y - 8) * scale + canvasPosition.y // Top of target node
 
-              // React Flow style Bezier curve
-              const path = `M ${x1},${y1} C ${x1},${y1 + 50 * scale} ${x2},${y2 - 50 * scale} ${x2},${y2}`
+              // Calculate curve control points for smooth S-curve
+              const distance = Math.abs(y2 - y1)
+              const curveIntensity = Math.min(distance * 0.5, 100 * scale)
+
+              // React Flow style Bezier curve with better control points
+              const path = `M ${x1},${y1} C ${x1},${y1 + curveIntensity} ${x2},${y2 - curveIntensity} ${x2},${y2}`
 
               return (
                 <g key={edge.id}>
+                  {/* Thicker background line for better visibility */}
                   <path
                     d={path}
-                    stroke="#9333ea"
-                    strokeWidth={2 / scale}
+                    stroke="#e5e7eb"
+                    strokeWidth={4 / scale}
+                    fill="none"
+                  />
+                  {/* Main line */}
+                  <path
+                    d={path}
+                    stroke="#9ca3af"
+                    strokeWidth={2.5 / scale}
                     fill="none"
                     markerEnd="url(#arrowhead)"
                   />
@@ -529,21 +561,26 @@ export default function VisualFlowBuilder() {
               if (!sourceNode) return null
 
               const x1 = (sourceNode.position.x + 160) * scale + canvasPosition.x
-              const y1 = (sourceNode.position.y + 120) * scale + canvasPosition.y
+              const y1 = (sourceNode.position.y + 130) * scale + canvasPosition.y
 
               const x2 = connectionLine.x * scale + canvasPosition.x
               const y2 = connectionLine.y * scale + canvasPosition.y
 
+              // Calculate curve control points
+              const distance = Math.abs(y2 - y1)
+              const curveIntensity = Math.min(distance * 0.5, 100 * scale)
+
               // React Flow style Bezier curve for preview
-              const path = `M ${x1},${y1} C ${x1},${y1 + 50 * scale} ${x2},${y2 - 50 * scale} ${x2},${y2}`
+              const path = `M ${x1},${y1} C ${x1},${y1 + curveIntensity} ${x2},${y2 - curveIntensity} ${x2},${y2}`
 
               return (
                 <path
                   d={path}
-                  stroke="#3b82f6"
-                  strokeWidth={2 / scale}
-                  strokeDasharray="5,5"
+                  stroke="#60a5fa"
+                  strokeWidth={2.5 / scale}
+                  strokeDasharray={`${5 / scale},${5 / scale}`}
                   fill="none"
+                  markerEnd="url(#arrowhead-preview)"
                 />
               )
             })()}
