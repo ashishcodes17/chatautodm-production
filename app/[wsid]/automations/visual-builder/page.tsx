@@ -487,10 +487,11 @@ export default function VisualFlowBuilder() {
                 id="arrowhead"
                 markerWidth="10"
                 markerHeight="10"
-                refX="9"
+                refX="10"
                 refY="5"
-                orient="auto-start-reverse"
+                orient="auto"
                 markerUnits="strokeWidth"
+                viewBox="0 0 10 10"
               >
                 <path
                   d="M 0 0 L 10 5 L 0 10 z"
@@ -503,10 +504,11 @@ export default function VisualFlowBuilder() {
                 id="arrowhead-preview"
                 markerWidth="10"
                 markerHeight="10"
-                refX="9"
+                refX="10"
                 refY="5"
-                orient="auto-start-reverse"
+                orient="auto"
                 markerUnits="strokeWidth"
+                viewBox="0 0 10 10"
               >
                 <path
                   d="M 0 0 L 10 5 L 0 10 z"
@@ -523,9 +525,9 @@ export default function VisualFlowBuilder() {
 
               // Calculate positions with proper scaling and offset
               const x1 = (sourceNode.position.x + 160) * scale + canvasPosition.x
-              const y1 = (sourceNode.position.y + 140) * scale + canvasPosition.y // Bottom of source node (adjusted)
+              const y1 = (sourceNode.position.y + 138) * scale + canvasPosition.y // Bottom of source node
               const x2 = (targetNode.position.x + 160) * scale + canvasPosition.x
-              const y2 = (targetNode.position.y) * scale + canvasPosition.y // Top of target node (no gap)
+              const y2 = (targetNode.position.y - 2) * scale + canvasPosition.y // Top of target node (no gap)
 
               // Calculate curve control points for smooth S-curve
               const distance = Math.abs(y2 - y1)
@@ -540,7 +542,7 @@ export default function VisualFlowBuilder() {
                   <path
                     d={path}
                     stroke="#e5e7eb"
-                    strokeWidth={4}
+                    strokeWidth={4 / scale}
                     fill="none"
                     strokeLinecap="round"
                   />
@@ -548,7 +550,7 @@ export default function VisualFlowBuilder() {
                   <path
                     d={path}
                     stroke="#9ca3af"
-                    strokeWidth={2.5}
+                    strokeWidth={2.5 / scale}
                     fill="none"
                     strokeLinecap="round"
                     markerEnd="url(#arrowhead)"
@@ -563,7 +565,7 @@ export default function VisualFlowBuilder() {
               if (!sourceNode) return null
 
               const x1 = (sourceNode.position.x + 160) * scale + canvasPosition.x
-              const y1 = (sourceNode.position.y + 140) * scale + canvasPosition.y
+              const y1 = (sourceNode.position.y + 138) * scale + canvasPosition.y
 
               const x2 = connectionLine.x * scale + canvasPosition.x
               const y2 = connectionLine.y * scale + canvasPosition.y
@@ -579,8 +581,8 @@ export default function VisualFlowBuilder() {
                 <path
                   d={path}
                   stroke="#60a5fa"
-                  strokeWidth={2.5}
-                  strokeDasharray="5,5"
+                  strokeWidth={2.5 / scale}
+                  strokeDasharray={`${5 / scale},${5 / scale}`}
                   fill="none"
                   strokeLinecap="round"
                   markerEnd="url(#arrowhead-preview)"
