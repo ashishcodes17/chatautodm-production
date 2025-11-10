@@ -12,6 +12,87 @@ import { toast, Toaster } from "sonner"
 
 import Image from "next/image"
 
+// Public Reply Templates Pool
+const PUBLIC_REPLY_TEMPLATES = [
+  // Short & Natural (Professional + Clean)
+  "Sent to your DMs.",
+  "Check your inbox.",
+  "Just DMed you.",
+  "Sent you the details in DM.",
+  "Dropped you a message.",
+  "Check your DMs.",
+  "Message sent.",
+  "Sent everything to your inbox.",
+  "Replied to you in DMs.",
+  "Take a look at your DMs.",
+  
+  // Friendly / Conversational
+  "Just messaged you — check it out!",
+  "DMed you all the info.",
+  "Sent you something in your DMs — let's talk there!",
+  "Hey! Just dropped the details in your inbox.",
+  "You got a message from us!",
+  "Just sent you the info privately.",
+  "DMed you the full details — check it out.",
+  "Sent you a quick message, take a look.",
+  "Check your inbox, just sent it!",
+  "Shared the details with you via DM.",
+  
+  // Professional / Brand Tone
+  "We've shared the details via DM.",
+  "Kindly check your DMs for more info.",
+  "Details have been sent to your inbox.",
+  "Please check your direct messages for assistance.",
+  "Sent the info privately to your DMs.",
+  "Our team has reached out via DM.",
+  "Please review the message we sent you.",
+  "Shared everything you need in your inbox.",
+  "Sent you the requested details in DM.",
+  "Kindly check your DMs to continue.",
+  
+  // Casual / Creator Vibe
+  "check ur DMs 👀",
+  "just slid into ur inbox 😏",
+  "sent u the deets 👌",
+  "hit you up in DMs 🔥",
+  "peep ur DMs fr 💬",
+  "dm'd you real quick 😎",
+  "just dropped the info in ur inbox 📩",
+  "check messages, got you 😉",
+  "slid a msg your way 👀",
+  "sent it over, check DMs ✨",
+  
+  // Friendly & Chill (Creator Tone)
+  "just messaged you, let's talk there 🤝",
+  "dm'd you the stuff you asked for 🙌",
+  "look in ur DMs — I got you 😌",
+  "sent everything there, take a peek 👇",
+  "yo check ur inbox 👋",
+  "replied in DMs, let's go 🚀",
+  "all set — check your DMs 🔥",
+  "sent the details, lmk what u think 👀",
+  "dm check time 😁",
+  "dropped a msg — see u there 💬",
+  
+  // Mixed & Smart Replies
+  "Just sent it your way — check your DMs 📬",
+  "Reached out privately, check messages 💬",
+  "Sent all the info you need via DM 🙌",
+  "DM'd you — let's continue there 🤝",
+  "Dropped the full details in your inbox ✉️",
+  "Check your DMs for the next step 🚀",
+  "All set — details waiting in your inbox 👀",
+  "DM sent, take a quick look 👇",
+  "Hit your inbox with the info 😎",
+  "Sent the message — talk soon 💬",
+]
+
+// Function to get 3 random unique replies
+function getRandomPublicReplies(count: number = 3): { text: string; enabled: boolean }[] {
+  const shuffled = [...PUBLIC_REPLY_TEMPLATES].sort(() => 0.5 - Math.random())
+  return shuffled.slice(0, count).map(text => ({ text, enabled: true }))
+}
+
 interface InstagramPost {
   id: string
   thumbnail: string
@@ -1000,7 +1081,7 @@ useEffect(() => {
 
 
 
-      {/* Right Sidebar with Card Layout */}
+      {/* Right Sidebar with Card Layout - DESKTOP VIEW */}
       <div className="hidden md:block w-[450px] border-l border-gray-200 bg-gray-50 px-4 py-6 overflow-y-auto h-full space-y-4">
         {/* Step 1: Select a Post Card */}
         <div
@@ -1517,15 +1598,21 @@ useEffect(() => {
                 <span className="text-sm text-gray-700">Publicly reply to comments</span>
                 <Switch
                   checked={automation.actions.publicReply.enabled}
-                  onChange={(val) =>
+                  onChange={(val) => {
+                    // Generate new random replies when toggling on
+                    const newReplies = val ? getRandomPublicReplies(3) : automation.actions.publicReply.replies
+                    
                     setAutomation({
                       ...automation,
                       actions: {
                         ...automation.actions,
-                        publicReply: { ...automation.actions.publicReply, enabled: val },
+                        publicReply: { 
+                          enabled: val,
+                          replies: newReplies
+                        },
                       },
                     })
-                  }
+                  }}
                   className={`${automation.actions.publicReply.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
                 >
                   <span
@@ -1828,7 +1915,7 @@ useEffect(() => {
           </button>
         </div>
         <div className="overflow-y-auto h-[calc(90vh-60px)] px-4 pb-6">
-{/* Step 1: Select a Post Card */}
+{/* Step 1: Select a Post Card - MOBILE */}
         <div
           className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 1 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
           onClick={() => setActiveStep(1)}
@@ -2333,15 +2420,16 @@ useEffect(() => {
                 <span className="text-sm text-gray-700">Publicly reply to comments</span>
                 <Switch
                   checked={automation.actions.publicReply.enabled}
-                  onChange={(val) =>
+                  onChange={(val) => {
+                    const newReplies = val ? getRandomPublicReplies(3) : automation.actions.publicReply.replies
                     setAutomation({
                       ...automation,
                       actions: {
                         ...automation.actions,
-                        publicReply: { ...automation.actions.publicReply, enabled: val },
+                        publicReply: { enabled: val, replies: newReplies },
                       },
                     })
-                  }
+                  }}
                   className={`${automation.actions.publicReply.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
                 >
                   <span

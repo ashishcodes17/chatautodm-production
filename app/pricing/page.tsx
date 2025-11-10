@@ -350,7 +350,7 @@ function FAQSection() {
     <section className="mx-auto flex w-full max-w-5xl flex-col gap-10">
       <div className="text-center">
         <h2 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">Frequently Asked Questions</h2>
-        <p className="mt-3 text-sm text-slate-600">More questions? Email <a href="mailto:info@chatautodm.xyz" className="font-medium underline underline-offset-4">founder@example.com</a></p>
+        {/* <p className="mt-3 text-sm text-slate-600">More questions? Email <a href="mailto:info@chatautodm.xyz" className="font-medium underline underline-offset-4">founder@example.com</a></p> */}
       </div>
       <Accordion type="single" collapsible className="divide-y rounded-2xl border border-slate-200 bg-white shadow-sm">
         {faqs.map((f, i) => (
