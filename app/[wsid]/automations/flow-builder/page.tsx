@@ -1305,7 +1305,7 @@ useEffect(() => {
               }}
               onFocus={() => setActiveStep(3)}
               onClick={(e) => e.stopPropagation()}
-              className="w-full border-0 outline-none text-sm min-h-[60px] resize-none mb-2"
+              className="w-full border-0 outline-none text-sm min-h-[120px] resize-y mb-2"
               maxLength={1000}
             />
 
@@ -1920,7 +1920,7 @@ useEffect(() => {
         aria-label="Edit Flow"
       >
         <div className="p-4 border-b flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Edit Flow - Mobile</h2>
+          <h2 className="text-lg font-semibold">Edit Flow</h2>
           <button onClick={() => setShowMobileDrawer(false)} className="text-gray-600" aria-label="Close">
             ✕
           </button>
@@ -2138,7 +2138,7 @@ useEffect(() => {
               }}
               onFocus={() => setActiveStep(3)}
               onClick={(e) => e.stopPropagation()}
-              className="w-full border-0 outline-none text-sm min-h-[60px] resize-none mb-2"
+              className="w-full border-0 outline-none text-sm min-h-[120px] resize-y mb-2"
               maxLength={1000}
             />
 
@@ -2309,7 +2309,7 @@ useEffect(() => {
                   })
                 }
                 onClick={(e) => e.stopPropagation()}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[60px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[120px] resize-y focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
               />
 
               <div className="text-xs text-gray-400">{automation.actions.openingDM.message.length} / 640</div>
@@ -2566,7 +2566,7 @@ useEffect(() => {
                     setAutomation({ ...automation, actions: { ...automation.actions, followMessage: e.target.value } })
                   }
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[60px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[120px] resize-y focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 />
 
                 <div className="text-xs text-gray-400">{automation.actions.followMessage.length} / 640</div>
