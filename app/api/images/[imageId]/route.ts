@@ -21,6 +21,10 @@ export async function GET(
 ) {
   try {
     const { imageId } = params
+    
+    // Log user agent for debugging Facebook scraper issues
+    const userAgent = request.headers.get("user-agent") || "unknown"
+    console.log("🖼️ Image request:", { imageId, userAgent })
 
     // Validate ObjectId
     if (!ObjectId.isValid(imageId)) {
@@ -36,11 +40,14 @@ export async function GET(
     })
 
     if (!image) {
+      console.log("❌ Image not found:", imageId)
       return NextResponse.json(
         { error: "Image not found" },
         { status: 404 }
       )
     }
+    
+    console.log("✅ Image found, serving:", { imageId, contentType: image.contentType, size: Buffer.from(image.data, "base64").length })
 
     // Convert base64 back to buffer
     const buffer = Buffer.from(image.data, "base64")
