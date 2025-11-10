@@ -144,7 +144,7 @@ export function Testimonials() {
         <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8">
           {[
             { value: "1,000+", label: "Active Users" },
-            { value: "1.2L+", label: "DMs Sent" },
+            { value: "21.2L+", label: "DMs Sent" },
             { value: "85%", label: "Avg. Open Rate" },
             { value: "4.75/5", label: "Customer Rating" },
           ].map((stat, index) => (

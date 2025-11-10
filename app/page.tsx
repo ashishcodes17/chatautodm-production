@@ -12,6 +12,8 @@ import { FAQ } from "@/components/landing/faq"
 import { Footer } from "@/components/landing/footer"
 import { Testimonials } from "@/components/landing/testimonials"
 import { FunnelSection } from "@/components/landing/funnel-section"
+import { StepsSection } from "@/components/landing/steps-section"
+import { ScrollFeatures } from "@/components/landing/scroll-features"
 import Image from "next/image"
 import { motion, useReducedMotion } from "framer-motion"
 import FloatingNav from "@/components/pagenavbar";
@@ -142,63 +144,61 @@ export default function HomePage() {
               </div> */}
         
               {/* Content */}
-              <div className="relative z-10 container mx-auto px-6 md:px-12 pb-24 pt-6 mt-16">
+              <div className="relative z-10 container mx-auto px-6 md:px-12 pb-8 pt-6 mt-16">
                 <div className="grid lg:grid-cols-2 gap-10 sm:gap-14 lg:gap-20 items-start">
                   {/* Left Content */}
-                  <div className="space-y-9 max-w-2xl">
-                    <h1
-                      id="hero-heading"
-                      className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[1.05] sm:leading-[1] md:leading-[0.95] tracking-tight"
-                    >
-                     Engage Customers Instantly with  
-                      <span className="block bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-200 via-white to-rose-200">
-                        Instagram Auto‑Replies
-                      </span>
-                    </h1>
-                    <p className="text-base md:text-lg text-white/90 leading-relaxed">
-                      {HERO_COPY.description}
-                    </p>
-        
-                    {/* Feature badges row */}
-                    <div className="flex flex-wrap items-center gap-2.5 md:gap-3 text-[13px] md:text-sm">
-                      <span className="inline-flex items-center gap-2 rounded-full bg-white/10 text-white px-3 py-1.5 ring-1 ring-white/20">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="opacity-90"><path d="M12 2v5M12 17v5M4.22 4.22l3.54 3.54M16.24 16.24l3.54 3.54M2 12h5M17 12h5M4.22 19.78l3.54-3.54M16.24 7.76l3.54-3.54" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                        Boost conversions
-                      </span>
-                      <span className="inline-flex items-center gap-2 rounded-full bg-white/10 text-white px-3 py-1.5 ring-1 ring-white/20">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="opacity-90"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        Instant auto‑replies
-                      </span>
-                      <span className="inline-flex items-center gap-2 rounded-full bg-white/10 text-white px-3 py-1.5 ring-1 ring-white/20">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="opacity-90"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                        No‑code setup
-                      </span>
+                  <div className="max-w-2xl">
+                    <div className="space-y-6">
+                      <h1
+                        id="hero-heading"
+                        className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white leading-[1.05] sm:leading-[1] md:leading-[0.95] tracking-tight"
+                      >
+                       Engage Customers Instantly with  
+                        <span className="block bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-200 via-white to-rose-200">
+                          Instagram Auto‑Replies
+                        </span>
+                      </h1>
+                      <p className="text-base md:text-lg text-white/90 leading-relaxed">
+                        {HERO_COPY.description}
+                      </p>
+          
+                      {/* Feature badges row */}
+                      <div className="flex flex-wrap items-center gap-2.5 md:gap-3 text-[13px] md:text-sm">
+                        <span className="inline-flex items-center gap-2 rounded-full bg-white/10 text-white px-3 py-1.5 ring-1 ring-white/20">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="opacity-90"><path d="M12 2v5M12 17v5M4.22 4.22l3.54 3.54M16.24 16.24l3.54 3.54M2 12h5M17 12h5M4.22 19.78l3.54-3.54M16.24 7.76l3.54-3.54" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                          Boost conversions
+                        </span>
+                        <span className="inline-flex items-center gap-2 rounded-full bg-white/10 text-white px-3 py-1.5 ring-1 ring-white/20">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="opacity-90"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          Instant auto‑replies
+                        </span>
+                        <span className="inline-flex items-center gap-2 rounded-full bg-white/10 text-white px-3 py-1.5 ring-1 ring-white/20">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="opacity-90"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          No‑code setup
+                        </span>
+                      </div>
+          
+                      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                       <Button
+                        onClick={handleGoogleLogin}
+                        aria-label={HERO_COPY.cta}
+                        className="inline-flex items-center justify-center bg-[#db2777] hover:bg-black text-white font-bold text-base md:text-lg px-8 py-4 md:py-6 rounded-full shadow-[0_10px_25px_-5px_rgba(0,0,0,0.35)] transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/60 focus:outline-none min-h-[56px] md:min-h-[72px]"
+                        >
+                         {HERO_COPY.cta}
+                        </Button>
+                        {/* <Link
+                          href="/pricing"
+                          className="inline-flex items-center justify-center border-2 border-white/80 text-white hover:bg-white/10 font-semibold text-base md:text-lg px-8 py-4 md:py-6 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/60 focus:outline-none"
+                        >
+                          See pricing
+                        </Link> */}
+                      </div>
                     </div>
         
-                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                     <Button
-                      onClick={handleGoogleLogin}
-                      aria-label={HERO_COPY.cta}
-                      className="inline-flex items-center justify-center bg-[#db2777] hover:bg-black text-white font-bold text-base md:text-lg px-8 py-4 md:py-6 rounded-full shadow-[0_10px_25px_-5px_rgba(0,0,0,0.35)] transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/60 focus:outline-none min-h-[56px] md:min-h-[72px]"
-                      >
-                       {HERO_COPY.cta}
-                      </Button>
-                      {/* <Link
-                        href="/pricing"
-                        className="inline-flex items-center justify-center border-2 border-white/80 text-white hover:bg-white/10 font-semibold text-base md:text-lg px-8 py-4 md:py-6 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/60 focus:outline-none"
-                      >
-                        See pricing
-                      </Link> */}
-                    </div>
-        
-                    {/* Trust avatars row */}
-                    <div className="mt-5 md:mt-6 flex items-center gap-3 text-white/90">
-                      {/* <div className="-space-x-3 flex">
-                        <Image src="/placeholder-user.jpg" alt="Happy customer avatar" width={36} height={36} className="rounded-full ring-2 ring-white/40" />
-                        <Image src="/placeholder.jpg" alt="Happy customer avatar" width={36} height={36} className="rounded-full ring-2 ring-white/40" />
-                        <Image src="/placeholder-logo.png" alt="Happy customer avatar" width={36} height={36} className="rounded-full ring-2 ring-white/40" />
-                      </div> */}
-                      <p className="text-xs md:text-sm">Trusted by our Early 200+ creators and brands automating their Instagram growth</p>
+                    {/* Trust section - outside space-y-6 to remove bottom spacing */}
+                    <div className="mt-6 text-center lg:text-left">
+                      <p className="text-xs md:text-sm text-white/90 mb-2">Trusted by our Early 200+ creators and brands automating their Instagram growth</p>
+                      <Image src="/meta1.png" alt="Meta Tech Provider" width={150} height={20} className="object-contain mx-auto lg:mx-0" />
                     </div>
                   </div>
         
@@ -374,6 +374,8 @@ export default function HomePage() {
 
       {/* Outside sections */}
       {/* <HeroLinktrStyle /> */}
+      <StepsSection />
+      {/* <ScrollFeatures /> */}
       <Testimonials />
       <FunnelSection />
       <ComparisonSection />
