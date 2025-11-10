@@ -485,15 +485,15 @@ export default function VisualFlowBuilder() {
               {/* Gray arrow for main connections */}
               <marker
                 id="arrowhead"
-                markerWidth="12"
-                markerHeight="12"
-                refX="10"
-                refY="6"
-                orient="auto"
-                markerUnits="userSpaceOnUse"
+                markerWidth="10"
+                markerHeight="10"
+                refX="9"
+                refY="5"
+                orient="auto-start-reverse"
+                markerUnits="strokeWidth"
               >
                 <path
-                  d="M 0 0 L 12 6 L 0 12 L 3 6 Z"
+                  d="M 0 0 L 10 5 L 0 10 z"
                   fill="#9ca3af"
                 />
               </marker>
@@ -501,15 +501,15 @@ export default function VisualFlowBuilder() {
               {/* Blue arrow for preview connections */}
               <marker
                 id="arrowhead-preview"
-                markerWidth="12"
-                markerHeight="12"
-                refX="10"
-                refY="6"
-                orient="auto"
-                markerUnits="userSpaceOnUse"
+                markerWidth="10"
+                markerHeight="10"
+                refX="9"
+                refY="5"
+                orient="auto-start-reverse"
+                markerUnits="strokeWidth"
               >
                 <path
-                  d="M 0 0 L 12 6 L 0 12 L 3 6 Z"
+                  d="M 0 0 L 10 5 L 0 10 z"
                   fill="#60a5fa"
                 />
               </marker>
@@ -523,9 +523,9 @@ export default function VisualFlowBuilder() {
 
               // Calculate positions with proper scaling and offset
               const x1 = (sourceNode.position.x + 160) * scale + canvasPosition.x
-              const y1 = (sourceNode.position.y + 130) * scale + canvasPosition.y // Bottom of source node
+              const y1 = (sourceNode.position.y + 140) * scale + canvasPosition.y // Bottom of source node (adjusted)
               const x2 = (targetNode.position.x + 160) * scale + canvasPosition.x
-              const y2 = (targetNode.position.y - 8) * scale + canvasPosition.y // Top of target node
+              const y2 = (targetNode.position.y) * scale + canvasPosition.y // Top of target node (no gap)
 
               // Calculate curve control points for smooth S-curve
               const distance = Math.abs(y2 - y1)
@@ -540,15 +540,17 @@ export default function VisualFlowBuilder() {
                   <path
                     d={path}
                     stroke="#e5e7eb"
-                    strokeWidth={4 / scale}
+                    strokeWidth={4}
                     fill="none"
+                    strokeLinecap="round"
                   />
-                  {/* Main line */}
+                  {/* Main line with arrow */}
                   <path
                     d={path}
                     stroke="#9ca3af"
-                    strokeWidth={2.5 / scale}
+                    strokeWidth={2.5}
                     fill="none"
+                    strokeLinecap="round"
                     markerEnd="url(#arrowhead)"
                   />
                 </g>
@@ -561,7 +563,7 @@ export default function VisualFlowBuilder() {
               if (!sourceNode) return null
 
               const x1 = (sourceNode.position.x + 160) * scale + canvasPosition.x
-              const y1 = (sourceNode.position.y + 130) * scale + canvasPosition.y
+              const y1 = (sourceNode.position.y + 140) * scale + canvasPosition.y
 
               const x2 = connectionLine.x * scale + canvasPosition.x
               const y2 = connectionLine.y * scale + canvasPosition.y
@@ -577,9 +579,10 @@ export default function VisualFlowBuilder() {
                 <path
                   d={path}
                   stroke="#60a5fa"
-                  strokeWidth={2.5 / scale}
-                  strokeDasharray={`${5 / scale},${5 / scale}`}
+                  strokeWidth={2.5}
+                  strokeDasharray="5,5"
                   fill="none"
+                  strokeLinecap="round"
                   markerEnd="url(#arrowhead-preview)"
                 />
               )
