@@ -237,6 +237,14 @@ const toggleActive = async (automation: Automation) => {
               <p className="text-gray-600 mt-1">Manage all your active and inactive automations</p>
             </div>
             <div className="flex items-center gap-2">
+              {/* <Button
+                onClick={() => router.push(`/${wsid}/automations/visual-builder`)}
+                variant="outline"
+                className="border-purple-500 text-purple-600 hover:bg-purple-50"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Visual Builder
+              </Button> */}
               <Button
                 onClick={() => setShowAutomationModal(true)}
                 className="bg-purple-600 hover:bg-purple-700 text-white w-full md:w-auto"
