@@ -170,6 +170,16 @@ export default function VisualFlowBuilder() {
   }
 
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
+    // Handle connection line preview (highest priority)
+    if (connectingFrom && canvasRef.current) {
+      const canvasRect = canvasRef.current.getBoundingClientRect()
+      setConnectionLine({
+        x: (e.clientX - canvasRect.left - canvasPosition.x) / scale,
+        y: (e.clientY - canvasRect.top - canvasPosition.y) / scale,
+      })
+      return
+    }
+
     // Handle canvas panning
     if (isPanning) {
       setCanvasPosition({
@@ -192,22 +202,17 @@ export default function VisualFlowBuilder() {
       )
       return
     }
-
-    // Handle connection line preview
-    if (connectingFrom && canvasRef.current) {
-      const canvasRect = canvasRef.current.getBoundingClientRect()
-      setConnectionLine({
-        x: (e.clientX - canvasRect.left - canvasPosition.x) / scale,
-        y: (e.clientY - canvasRect.top - canvasPosition.y) / scale,
-      })
-    }
   }
 
-  const handleCanvasMouseUp = () => {
+  const handleCanvasMouseUp = (e: React.MouseEvent) => {
     setIsPanning(false)
     setDraggingNodeId(null)
-    setConnectingFrom(null)
-    setConnectionLine(null)
+    
+    // If we were connecting but didn't hit a target, cancel the connection
+    if (connectingFrom) {
+      setConnectingFrom(null)
+      setConnectionLine(null)
+    }
   }
 
   const handleNodeMouseDown = (e: React.MouseEvent, nodeId: string) => {
@@ -233,16 +238,29 @@ export default function VisualFlowBuilder() {
   // Start connection from a node
   const startConnection = (e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation()
+    e.preventDefault()
     setConnectingFrom(nodeId)
+    
+    // Initialize connection line
+    if (canvasRef.current) {
+      const canvasRect = canvasRef.current.getBoundingClientRect()
+      setConnectionLine({
+        x: (e.clientX - canvasRect.left - canvasPosition.x) / scale,
+        y: (e.clientY - canvasRect.top - canvasPosition.y) / scale,
+      })
+    }
   }
 
   // Complete connection to a node
   const completeConnection = (e: React.MouseEvent, targetId: string) => {
     e.stopPropagation()
+    e.preventDefault()
+    
     if (connectingFrom && connectingFrom !== targetId) {
       connectNodes(connectingFrom, targetId)
       toast.success("Nodes connected")
     }
+    
     setConnectingFrom(null)
     setConnectionLine(null)
   }
@@ -549,18 +567,36 @@ export default function VisualFlowBuilder() {
                   }}
                 >
                   {/* Connection Handles */}
+                  {/* Top Handle - Target (where connections can end) */}
                   <div
-                    className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-purple-500 rounded-full border-2 border-white shadow cursor-pointer hover:scale-125 transition-transform z-10"
-                    title="Connect from here"
-                    onMouseDown={(e) => {
-                      e.stopPropagation()
-                      completeConnection(e, node.id)
+                    className={`absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white shadow cursor-pointer hover:scale-125 transition-transform z-10 ${
+                      connectingFrom ? 'bg-green-500 animate-pulse' : 'bg-purple-500'
+                    }`}
+                    title="Drop connection here"
+                    onMouseUp={(e) => {
+                      if (connectingFrom) {
+                        completeConnection(e, node.id)
+                      }
+                    }}
+                    onMouseEnter={(e) => {
+                      if (connectingFrom && connectingFrom !== node.id) {
+                        e.currentTarget.style.transform = 'translate(-50%, 0) scale(1.5)'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translate(-50%, 0) scale(1)'
                     }}
                   />
+                  
+                  {/* Bottom Handle - Source (where connections start) */}
                   <div
-                    className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-purple-500 rounded-full border-2 border-white shadow cursor-pointer hover:scale-125 transition-transform z-10"
-                    title="Connect to next"
-                    onMouseDown={(e) => startConnection(e, node.id)}
+                    className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white shadow cursor-pointer hover:scale-125 transition-transform z-10 ${
+                      connectingFrom === node.id ? 'bg-blue-500 animate-pulse' : 'bg-purple-500'
+                    }`}
+                    title="Drag to connect"
+                    onMouseDown={(e) => {
+                      startConnection(e, node.id)
+                    }}
                   />
 
                   <Card
@@ -652,8 +688,12 @@ export default function VisualFlowBuilder() {
             <p className="text-gray-700">🖱️ <strong>Drag canvas</strong> - Pan around</p>
             <p className="text-gray-700">🔍 <strong>Scroll</strong> - Zoom in/out</p>
             <p className="text-gray-700">🎯 <strong>Drag nodes</strong> - Reposition</p>
-            <p className="text-gray-700">🔗 <strong>Click handles</strong> - Connect nodes</p>
-            <p className="text-gray-600 mt-2 pt-2 border-t">Zoom: {Math.round(scale * 100)}%</p>
+            <p className="text-gray-700">🔗 <strong>Drag bottom handle (●)</strong> to top handle (●)</p>
+            <p className="text-purple-600 text-xs mt-1 ml-4">↳ Purple = ready, Blue = connecting</p>
+            <p className="text-gray-600 mt-2 pt-2 border-t">
+              Zoom: {Math.round(scale * 100)}%
+              {connectingFrom && <span className="ml-2 text-blue-600">● Connecting...</span>}
+            </p>
           </div>
         </div>
 
