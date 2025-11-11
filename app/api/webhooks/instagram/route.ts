@@ -723,7 +723,7 @@ async function handleStoryReplyFlowEnhanced(
       console.log("📤 STEP 2: Sending opening DM with buttons...")
 
       const openingSuccess = await sendDirectMessageWithButtons(
-        account.instagramUserId,
+        account.instagramProfessionalId || account.instagramUserId,
         account.accessToken,
         senderId,
         automation.actions.openingDM.message,
@@ -752,7 +752,7 @@ async function handleStoryReplyFlowEnhanced(
       console.log("📤 STEP 3: Asking user to follow...")
 
       const followSuccess = await sendDirectMessageWithButtons(
-        account.instagramUserId,
+        account.instagramProfessionalId || account.instagramUserId,
         account.accessToken,
         senderId,
         automation.actions.askFollow.message,
@@ -801,7 +801,7 @@ async function handleStoryReplyFlowEnhanced(
       console.log("📤 STEP 4: Sending main DM with buttons...")
 
       const mainDMSuccess = await sendDirectMessageWithButtons(
-        account.instagramUserId,
+        account.instagramProfessionalId || account.instagramUserId,
         account.accessToken,
         senderId,
         automation.actions.sendDM.message,

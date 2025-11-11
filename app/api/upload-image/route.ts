@@ -50,10 +50,9 @@ export async function POST(request: NextRequest) {
     const result = await db.collection("automation_images").insertOne(imageDoc as any)
     const imageId = result.insertedId.toString()
 
-    // Generate URL - use domain from environment or request host
-    const host = request.headers.get("host") || "localhost:3000"
-    const protocol = host.includes("localhost") ? "http" : "https"
-    const imageUrl = `${protocol}://${host}/api/images/${imageId}`
+    // Force use of www domain for external crawlers (Facebook/Instagram)
+    const baseDomain = process.env.NEXT_PUBLIC_BASE_URL || "https://www.chatautodm.com"
+    const imageUrl = `${baseDomain}/api/images/${imageId}`
 
     console.log("📸 Image uploaded to MongoDB:", imageUrl)
 
