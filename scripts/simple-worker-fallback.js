@@ -140,8 +140,16 @@ async function processNextJob(workerId) {
       {
         status: 'pending',
         $or: [
-          { attempts: { $lt: MAX_RETRIES } },
-          { attempts: { $exists: false } }
+          { retryAt: { $exists: false } },
+          { retryAt: { $lte: new Date() } }
+        ],
+        $and: [
+          {
+            $or: [
+              { attempts: { $lt: MAX_RETRIES } },
+              { attempts: { $exists: false } }
+            ]
+          }
         ]
       },
       {
@@ -160,6 +168,13 @@ async function processNextJob(workerId) {
 
     // Check if result exists and has a value
     if (!result || !result.value) {
+      // Only log from worker 1 to avoid spam
+      if (workerId === 1) {
+        const pendingCount = await database.collection('webhook_queue').countDocuments({ status: 'pending' });
+        if (pendingCount > 0) {
+          console.log(`⚠️  Worker 1: Found ${pendingCount} pending jobs but couldn't claim one (might have retryAt in future)`);
+        }
+      }
       return false;
     }
 
@@ -377,7 +392,7 @@ async function startSimpleWorkers() {
   }
 
   console.log(`✅ Started ${WORKERS} workers\n`);
-  console.log('📝 Workers will now poll for jobs every ${POLL_INTERVAL}ms\n');
+  console.log(`📝 Workers will now poll for jobs every ${POLL_INTERVAL}ms\n`);
   console.log('🔍 Watch for "🔄 Worker X: Processing job" messages\n');
 
   await Promise.all(workers);
