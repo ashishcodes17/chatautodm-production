@@ -80,11 +80,12 @@ async function processNextJob(workerId) {
       }
     );
 
-    const job = result.value;
-
-    if (!job) {
+    // Check if result exists and has a value
+    if (!result || !result.value) {
       return false;
     }
+
+    const job = result.value;
 
     console.log(`🔄 Worker ${workerId}: Processing job ${job._id}`);
     activeWorkers++;
