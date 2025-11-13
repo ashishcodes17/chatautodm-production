@@ -34,13 +34,46 @@ async function connectDB() {
 
 // Process webhook by calling the route handler
 async function processWebhookData(data) {
-  // 🚀 If we already found a working URL, use it first
+  // 🚀 Try internal Next.js API first (no HTTP!)
+  try {
+    // Import the route handler directly
+    const routeModule = await import('../app/api/webhooks/instagram/route.js');
+    
+    if (routeModule && routeModule.POST) {
+      console.log('🔧 Using direct route import (no HTTP)');
+      
+      // Create a mock Next.js request
+      const mockRequest = {
+        text: async () => JSON.stringify(data),
+        headers: {
+          get: (name) => {
+            if (name === 'X-Internal-Worker') return 'true';
+            if (name === 'content-type') return 'application/json';
+            return null;
+          }
+        }
+      };
+      
+      const response = await routeModule.POST(mockRequest);
+      
+      if (response.status === 200 || response.ok) {
+        console.log('✅ Processed via direct import');
+        return true;
+      }
+      
+      throw new Error(`Direct import returned status ${response.status}`);
+    }
+  } catch (importError) {
+    console.log(`⚠️ Direct import failed: ${importError.message}, trying HTTP...`);
+  }
+  
+  // Fallback to HTTP if direct import fails
   if (workingUrl) {
     try {
       return await callWebhookEndpoint(workingUrl, data);
     } catch (error) {
       console.error(`⚠️  Cached URL failed (${workingUrl}), trying alternatives...`);
-      workingUrl = null; // Reset cache
+      workingUrl = null;
     }
   }
   
