@@ -56,8 +56,14 @@ async function processWebhookData(data) {
   
   const wasDiscovered = !workingUrl; // Track if this is first discovery
   
+  let allErrors = []; // Track all failures
+  
   for (const baseUrl of urlsToTry) {
     try {
+      if (wasDiscovered) {
+        console.log(`   🔗 Trying: ${baseUrl}/api/webhooks/instagram`);
+      }
+      
       const result = await callWebhookEndpoint(baseUrl, data);
       
       // Cache and announce on first discovery
@@ -73,25 +79,26 @@ async function processWebhookData(data) {
       
       return result;
     } catch (error) {
+      allErrors.push(`${baseUrl}: ${error.message}`);
+      
       // Only log during first discovery
       if (wasDiscovered) {
-        console.error(`   ❌ ${baseUrl}: ${error.message.substring(0, 80)}`);
+        console.error(`   ❌ ${error.message.substring(0, 100)}`);
       }
     }
   }
   
-  // All methods failed
-  throw new Error('All webhook processing methods failed. Check network configuration.');
+  // All methods failed - throw comprehensive error
+  const errorMsg = `All webhook processing methods failed:\n${allErrors.join('\n')}`;
+  throw new Error(errorMsg);
 }
 
 // Helper function to call webhook endpoint
 async function callWebhookEndpoint(baseUrl, data) {
   const url = `${baseUrl}/api/webhooks/instagram`;
   
-  console.log(`🔗 Trying: ${url}`);
-  
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+  const timeout = setTimeout(() => controller.abort(), 5000); // 5 second timeout (reduced from 10)
   
   try {
     const response = await fetch(url, {
@@ -112,17 +119,19 @@ async function callWebhookEndpoint(baseUrl, data) {
       throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
     }
 
-    console.log(`✅ Success via: ${url}`);
     return true;
     
   } catch (error) {
     clearTimeout(timeout);
     
     if (error.name === 'AbortError') {
-      throw new Error(`Timeout after 10s calling ${url}`);
+      throw new Error(`Timeout after 5s calling ${url}`);
     }
     if (error.code === 'ECONNREFUSED') {
       throw new Error(`Connection refused to ${url}`);
+    }
+    if (error.code === 'ENOTFOUND') {
+      throw new Error(`DNS lookup failed for ${baseUrl}`);
     }
     throw error;
   }
