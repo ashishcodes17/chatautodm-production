@@ -16,6 +16,9 @@ const path = require('path');
 // Load environment variables
 require('dotenv').config();
 
+// Fetch is built-in to Node.js 18+
+const fetch = globalThis.fetch || require('node-fetch');
+
 console.log('\n🚀 ========================================');
 console.log('   ChatAutoDM Production Startup');
 console.log('========================================\n');
@@ -43,23 +46,8 @@ function shutdown() {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
-// Start Next.js Server (workers will run INSIDE this process)
-console.log('🌐 Starting Next.js Server with integrated workers...');
-
-// If queue enabled, start workers BEFORE Next.js
-if (USE_QUEUE) {
-  console.log('⚡ Queue System: ENABLED');
-  console.log('🔧 Starting workers IN-PROCESS (no HTTP needed)...\n');
-  
-  // Import and start workers in THIS process
-  const startWorkers = require('./start-workers-inprocess.js');
-  startWorkers().then(() => {
-    console.log('✅ Workers started in-process\n');
-  }).catch(err => {
-    console.error('❌ Failed to start workers:', err);
-    console.error('⚠️  Continuing without workers...\n');
-  });
-}
+// Start Next.js Server first
+console.log('🌐 Starting Next.js Server...');
 
 const serverProcess = spawn('node', [
   path.join(__dirname, '..', 'node_modules', 'next', 'dist', 'bin', 'next'),
@@ -84,12 +72,59 @@ serverProcess.on('exit', (code) => {
   }
 });
 
+console.log('✅ Next.js Server started\n');
+
+// If queue enabled, start workers AFTER server is ready
 if (USE_QUEUE) {
-  console.log('========================================');
-  console.log('🎉 All systems operational!');
-  console.log('   Server + In-Process Workers');
-  console.log('========================================\n');
-  console.log('📊 Monitor queue: curl http://localhost:3000/api/webhooks/queue-stats\n');
+  console.log('⚡ Queue System: ENABLED');
+  console.log('🔧 Waiting for server to be ready before starting workers...\n');
+  
+  // Wait for server to be ready (check localhost:3000)
+  async function waitForServer() {
+    const maxAttempts = 30;
+    let attempts = 0;
+    
+    while (attempts < maxAttempts) {
+      try {
+        const response = await fetch('http://localhost:3000/api/webhooks/queue-stats');
+        if (response.ok) {
+          console.log('✅ Server is ready!\n');
+          return true;
+        }
+      } catch (error) {
+        // Server not ready yet
+      }
+      
+      attempts++;
+      console.log(`   Waiting for server... (${attempts}/${maxAttempts})`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    
+    console.error('❌ Server did not become ready in time');
+    return false;
+  }
+  
+  // Start workers after server is ready
+  waitForServer().then(ready => {
+    if (!ready) {
+      console.error('⚠️  Starting workers anyway (server may not be ready)');
+    }
+    
+    console.log('🔧 Starting in-process workers...\n');
+    
+    const startWorkers = require('./start-workers-inprocess.js');
+    startWorkers().then(() => {
+      console.log('========================================');
+      console.log('🎉 All systems operational!');
+      console.log('   Server + In-Process Workers');
+      console.log('========================================\n');
+      console.log('📊 Monitor queue: curl http://localhost:3000/api/webhooks/queue-stats\n');
+    }).catch(err => {
+      console.error('❌ Failed to start workers:', err);
+      console.error('⚠️  Continuing without workers...\n');
+    });
+  });
+  
 } else {
   console.log('⚠️  Queue System: DISABLED');
   console.log('   Set USE_QUEUE_SYSTEM=true to enable\n');
