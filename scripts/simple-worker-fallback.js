@@ -54,14 +54,29 @@ async function processWebhookData(data) {
     'https://www.chatautodm.com' // Fallback to public URL
   ].filter(Boolean); // Remove null/undefined
   
+  const wasDiscovered = !workingUrl; // Track if this is first discovery
+  
   for (const baseUrl of urlsToTry) {
     try {
       const result = await callWebhookEndpoint(baseUrl, data);
-      workingUrl = baseUrl; // Cache this URL for future use
-      console.log(`✅ Found working URL: ${workingUrl} (will use for future requests)`);
+      
+      // Cache and announce on first discovery
+      if (wasDiscovered) {
+        workingUrl = baseUrl;
+        console.log(`\n🎉 ========== URL AUTO-DISCOVERY COMPLETE ==========`);
+        console.log(`✅ Found working URL: ${workingUrl}`);
+        console.log(`   All future requests will use this URL`);
+        console.log(`====================================================\n`);
+      } else if (!workingUrl) {
+        workingUrl = baseUrl; // Cache for future
+      }
+      
       return result;
     } catch (error) {
-      console.error(`⚠️  Failed ${baseUrl}: ${error.message}`);
+      // Only log during first discovery
+      if (wasDiscovered) {
+        console.error(`   ❌ ${baseUrl}: ${error.message.substring(0, 80)}`);
+      }
     }
   }
   
@@ -240,6 +255,19 @@ async function processNextJob(workerId) {
 // Worker loop
 async function workerLoop(workerId) {
   console.log(`👷 Worker ${workerId} started`);
+  
+  // First worker does URL discovery
+  if (workerId === 1 && !workingUrl) {
+    console.log('\n🔍 [Worker 1] Starting URL auto-discovery...');
+    console.log('   Will try these URLs in order:');
+    console.log(`   1. ${process.env.WEBHOOK_INTERNAL_URL || '(not set)'}`);
+    console.log('   2. http://localhost:3000');
+    console.log('   3. http://127.0.0.1:3000');
+    console.log('   4. http://0.0.0.0:3000');
+    console.log(`   5. ${process.env.NEXT_PUBLIC_BASE_URL || '(not set)'}`);
+    console.log('   6. https://www.chatautodm.com');
+    console.log('');
+  }
 
   while (!isShuttingDown) {
     try {
@@ -324,7 +352,20 @@ async function startSimpleWorkers() {
   console.log(`   - Workers: ${WORKERS}`);
   console.log(`   - Poll Interval: ${POLL_INTERVAL}ms`);
   console.log(`   - Max Retries: ${MAX_RETRIES}`);
+  console.log(`   - MongoDB: ${MONGODB_URI.replace(/:[^:@]+@/, ':***@')}`); // Hide password
   console.log(`=============================================================\n`);
+
+  // Test MongoDB connection first
+  console.log('🔌 Testing MongoDB connection...');
+  try {
+    const testDb = await connectDB();
+    const pingResult = await testDb.admin().ping();
+    console.log('✅ MongoDB connection successful!\n');
+  } catch (error) {
+    console.error('❌ MongoDB connection FAILED:', error.message);
+    console.error('   Workers cannot start without database connection');
+    process.exit(1);
+  }
 
   setupGracefulShutdown();
   logMetrics();
@@ -336,6 +377,8 @@ async function startSimpleWorkers() {
   }
 
   console.log(`✅ Started ${WORKERS} workers\n`);
+  console.log('📝 Workers will now poll for jobs every ${POLL_INTERVAL}ms\n');
+  console.log('🔍 Watch for "🔄 Worker X: Processing job" messages\n');
 
   await Promise.all(workers);
 }
