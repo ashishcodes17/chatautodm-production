@@ -43,8 +43,24 @@ function shutdown() {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
-// Start Next.js Server
-console.log('🌐 Starting Next.js Server...');
+// Start Next.js Server (workers will run INSIDE this process)
+console.log('🌐 Starting Next.js Server with integrated workers...');
+
+// If queue enabled, start workers BEFORE Next.js
+if (USE_QUEUE) {
+  console.log('⚡ Queue System: ENABLED');
+  console.log('🔧 Starting workers IN-PROCESS (no HTTP needed)...\n');
+  
+  // Import and start workers in THIS process
+  const startWorkers = require('./start-workers-inprocess.js');
+  startWorkers().then(() => {
+    console.log('✅ Workers started in-process\n');
+  }).catch(err => {
+    console.error('❌ Failed to start workers:', err);
+    console.error('⚠️  Continuing without workers...\n');
+  });
+}
+
 const serverProcess = spawn('node', [
   path.join(__dirname, '..', 'node_modules', 'next', 'dist', 'bin', 'next'),
   'start'
@@ -68,45 +84,12 @@ serverProcess.on('exit', (code) => {
   }
 });
 
-console.log('✅ Next.js Server started\n');
-
-// Start Workers (if queue enabled)
 if (USE_QUEUE) {
-  console.log('⚡ Queue System: ENABLED');
-  console.log('🔧 Starting Webhook Queue Workers...\n');
-  
-  // Small delay to let server initialize
-  setTimeout(() => {
-    const workerProcess = spawn('node', [
-      path.join(__dirname, 'start-workers.js')
-    ], {
-      stdio: 'inherit',
-      env: { ...process.env }
-    });
-
-    workerProcess.name = 'Queue Workers';
-    processes.push(workerProcess);
-
-    workerProcess.on('error', (err) => {
-      console.error('❌ Failed to start workers:', err);
-      console.error('⚠️  Server continues without queue workers');
-    });
-
-    workerProcess.on('exit', (code) => {
-      if (code !== 0 && code !== null) {
-        console.error(`⚠️  Workers exited with code ${code}`);
-        console.error('   Server continues running...');
-      }
-    });
-
-    console.log('✅ Queue Workers started\n');
-    console.log('========================================');
-    console.log('🎉 All systems operational!');
-    console.log('========================================\n');
-    console.log('📊 Monitor queue: curl http://localhost:3000/api/webhooks/queue-stats\n');
-    
-  }, 2000);
-  
+  console.log('========================================');
+  console.log('🎉 All systems operational!');
+  console.log('   Server + In-Process Workers');
+  console.log('========================================\n');
+  console.log('📊 Monitor queue: curl http://localhost:3000/api/webhooks/queue-stats\n');
 } else {
   console.log('⚠️  Queue System: DISABLED');
   console.log('   Set USE_QUEUE_SYSTEM=true to enable\n');
