@@ -106,8 +106,11 @@ export async function POST(request: NextRequest) {
 
     const db = await getDatabase()
 
+    // Check if this is an internal worker call (skip queueing, process directly)
+    const isWorkerCall = request.headers.get("X-Internal-Worker") === "true"
+
     // 🚀 QUEUE SYSTEM - Fast path (responds in ~10ms)
-    if (USE_QUEUE) {
+    if (USE_QUEUE && !isWorkerCall) {
       console.log("⚡ Queue system ENABLED - fast response mode")
       
       try {

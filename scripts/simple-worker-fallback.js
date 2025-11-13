@@ -33,21 +33,41 @@ async function connectDB() {
 
 // Process webhook by calling the route handler
 async function processWebhookData(data) {
-  // Make a fetch call to the webhook route to process it
-  const response = await fetch('http://localhost:3000/api/webhooks/instagram', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'User-Agent': 'WebhookQueueWorker/1.0',
-    },
-    body: JSON.stringify(data),
-  });
+  // Determine the base URL (production or local)
+  // In production, use internal URL or fallback to localhost
+  const baseUrl = process.env.WEBHOOK_INTERNAL_URL || 
+                  process.env.NEXT_PUBLIC_BASE_URL || 
+                  'http://localhost:3000';
+  
+  const url = `${baseUrl}/api/webhooks/instagram`;
+  
+  console.log(`🔗 Calling webhook processor: ${url}`);
+  
+  try {
+    // Make a fetch call to the webhook route to process it
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'WebhookQueueWorker/1.0',
+        'X-Internal-Worker': 'true', // Mark as internal call to skip re-queueing
+      },
+      body: JSON.stringify(data),
+    });
 
-  if (!response.ok) {
-    throw new Error(`Webhook processing failed: ${response.status}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
+    }
+
+    return true;
+  } catch (fetchError) {
+    // Better error logging
+    if (fetchError.code === 'ECONNREFUSED') {
+      throw new Error(`Cannot connect to ${url} - is the server running?`);
+    }
+    throw fetchError;
   }
-
-  return true;
 }
 
 // Main worker function
