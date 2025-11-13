@@ -21,6 +21,7 @@ let processedCount = 0;
 let failedCount = 0;
 let startTime = Date.now();
 let db = null;
+let workingUrl = null; // Cache the working URL once found
 
 // Connect to MongoDB
 async function connectDB() {
@@ -33,40 +34,82 @@ async function connectDB() {
 
 // Process webhook by calling the route handler
 async function processWebhookData(data) {
-  // Determine the base URL (production or local)
-  // In production, use internal URL or fallback to localhost
-  const baseUrl = process.env.WEBHOOK_INTERNAL_URL || 
-                  process.env.NEXT_PUBLIC_BASE_URL || 
-                  'http://localhost:3000';
+  // 🚀 If we already found a working URL, use it first
+  if (workingUrl) {
+    try {
+      return await callWebhookEndpoint(workingUrl, data);
+    } catch (error) {
+      console.error(`⚠️  Cached URL failed (${workingUrl}), trying alternatives...`);
+      workingUrl = null; // Reset cache
+    }
+  }
   
+  // Try multiple methods in order of preference
+  const urlsToTry = [
+    process.env.WEBHOOK_INTERNAL_URL,
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://0.0.0.0:3000',
+    process.env.NEXT_PUBLIC_BASE_URL,
+    'https://www.chatautodm.com' // Fallback to public URL
+  ].filter(Boolean); // Remove null/undefined
+  
+  for (const baseUrl of urlsToTry) {
+    try {
+      const result = await callWebhookEndpoint(baseUrl, data);
+      workingUrl = baseUrl; // Cache this URL for future use
+      console.log(`✅ Found working URL: ${workingUrl} (will use for future requests)`);
+      return result;
+    } catch (error) {
+      console.error(`⚠️  Failed ${baseUrl}: ${error.message}`);
+    }
+  }
+  
+  // All methods failed
+  throw new Error('All webhook processing methods failed. Check network configuration.');
+}
+
+// Helper function to call webhook endpoint
+async function callWebhookEndpoint(baseUrl, data) {
   const url = `${baseUrl}/api/webhooks/instagram`;
   
-  console.log(`🔗 Calling webhook processor: ${url}`);
+  console.log(`🔗 Trying: ${url}`);
+  
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
   
   try {
-    // Make a fetch call to the webhook route to process it
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'User-Agent': 'WebhookQueueWorker/1.0',
-        'X-Internal-Worker': 'true', // Mark as internal call to skip re-queueing
+        'X-Internal-Worker': 'true',
       },
       body: JSON.stringify(data),
+      signal: controller.signal
     });
+
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
     }
 
+    console.log(`✅ Success via: ${url}`);
     return true;
-  } catch (fetchError) {
-    // Better error logging
-    if (fetchError.code === 'ECONNREFUSED') {
-      throw new Error(`Cannot connect to ${url} - is the server running?`);
+    
+  } catch (error) {
+    clearTimeout(timeout);
+    
+    if (error.name === 'AbortError') {
+      throw new Error(`Timeout after 10s calling ${url}`);
     }
-    throw fetchError;
+    if (error.code === 'ECONNREFUSED') {
+      throw new Error(`Connection refused to ${url}`);
+    }
+    throw error;
   }
 }
 
