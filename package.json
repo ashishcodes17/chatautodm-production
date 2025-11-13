@@ -7,7 +7,9 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "node scripts/production-start.js",
+    "start:server-only": "next start",
+    "start:workers-only": "node scripts/start-workers.js"
   },
   "dependencies": {
     "@aws-sdk/credential-providers": "latest",
@@ -50,6 +52,7 @@
     "clsx": "^2.1.1",
     "cmdk": "latest",
     "date-fns": "4.1.0",
+    "dotenv": "^17.2.3",
     "embla-carousel-react": "latest",
     "framer-motion": "latest",
     "gcp-metadata": "latest",

@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
+import crypto from "crypto"
 
 // Instagram Webhook endpoint (Meta Graph API)
 // High-level map:
@@ -12,6 +13,13 @@ import { getDatabase } from "@/lib/mongodb"
 //   • Comment changes -> handleBusinessLoginComment -> comment-to-DM automations (type: "comment_reply_flow")
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN || "verify_token_123"
+
+// 🚀 QUEUE SYSTEM CONFIGURATION (Feature Flag)
+const USE_QUEUE = process.env.USE_QUEUE_SYSTEM === "true"
+const ENABLE_DEDUPLICATION = process.env.QUEUE_ENABLE_DEDUPLICATION !== "false"
+const DEDUPLICATION_WINDOW = parseInt(process.env.QUEUE_DEDUPLICATION_WINDOW || "10000")
+const ENABLE_RATE_LIMIT = process.env.QUEUE_ENABLE_RATE_LIMIT !== "false"
+const MAX_WEBHOOKS_PER_MINUTE = parseInt(process.env.QUEUE_MAX_WEBHOOKS_PER_MINUTE || "10000")
 
 export async function GET(request: NextRequest) {
   try {
@@ -84,7 +92,7 @@ export async function POST(request: NextRequest) {
   try {
     const rawBody = await request.text()
     console.log("📥 === WEBHOOK RECEIVED ===")
-    console.log("📥 Raw webhook body:", rawBody)
+    console.log("📥 Raw webhook body:", rawBody.substring(0, 500)) // Reduced logging
 
     let data
     try {
@@ -94,9 +102,78 @@ export async function POST(request: NextRequest) {
       return new Response("OK", { status: 200 })
     }
 
-    console.log("📨 Parsed webhook data:", JSON.stringify(data, null, 2))
+    console.log("📨 Parsed webhook data:", JSON.stringify(data, null, 2).substring(0, 300)) // Reduced logging
 
     const db = await getDatabase()
+
+    // 🚀 QUEUE SYSTEM - Fast path (responds in ~10ms)
+    if (USE_QUEUE) {
+      console.log("⚡ Queue system ENABLED - fast response mode")
+      
+      try {
+        // Rate limiting check (prevent webhook floods)
+        if (ENABLE_RATE_LIMIT) {
+          const recentCount = await db.collection("webhook_queue").countDocuments({
+            createdAt: { $gte: new Date(Date.now() - 60000) },
+            status: { $in: ["pending", "processing"] }
+          })
+          
+          if (recentCount > MAX_WEBHOOKS_PER_MINUTE) {
+            console.warn(`⚠️  RATE LIMIT: ${recentCount} webhooks in queue (max: ${MAX_WEBHOOKS_PER_MINUTE})`)
+            // Still return 200 to avoid Instagram retries
+            return new Response("OK", { status: 200 })
+          }
+        }
+
+        // Deduplication check (prevent processing same webhook twice)
+        let webhookHash = null
+        if (ENABLE_DEDUPLICATION) {
+          webhookHash = crypto.createHash('md5').update(rawBody).digest('hex')
+          
+          const recentDuplicate = await db.collection("webhook_queue").findOne({
+            webhookHash,
+            createdAt: { $gte: new Date(Date.now() - DEDUPLICATION_WINDOW) }
+          })
+          
+          if (recentDuplicate) {
+            console.warn(`⚠️  DUPLICATE webhook detected (hash: ${webhookHash}), skipping`)
+            return new Response("OK", { status: 200 })
+          }
+        }
+
+        // Calculate priority (VIP users get processed first)
+        let priority = 5 // Default priority
+        if (data.entry && data.entry[0]) {
+          // You can add logic here to prioritize certain accounts
+          // For now, all equal priority
+          priority = 5
+        }
+
+        // Add to queue (FAST operation - ~5-10ms)
+        await db.collection("webhook_queue").insertOne({
+          data,
+          webhookHash,
+          status: "pending",
+          priority,
+          attempts: 0,
+          createdAt: new Date(),
+          source: "instagram",
+          rawBodyPreview: rawBody.substring(0, 500)
+        })
+
+        console.log("✅ Webhook queued successfully (fast response)")
+        
+        // Return immediately - worker will process it
+        return new Response("OK", { status: 200 })
+        
+      } catch (queueError) {
+        console.error("❌ Queue system error, falling back to direct processing:", queueError)
+        // Fall through to direct processing if queue fails
+      }
+    }
+
+    // 🔄 DIRECT PROCESSING (Old behavior - fallback)
+    console.log("🔄 Direct processing mode (queue disabled or failed)")
 
     // Log webhook to database
     const webhookLog = {
@@ -723,7 +800,7 @@ async function handleStoryReplyFlowEnhanced(
       console.log("📤 STEP 2: Sending opening DM with buttons...")
 
       const openingSuccess = await sendDirectMessageWithButtons(
-        account.instagramProfessionalId || account.instagramUserId,
+        account.instagramUserId,
         account.accessToken,
         senderId,
         automation.actions.openingDM.message,
@@ -752,7 +829,7 @@ async function handleStoryReplyFlowEnhanced(
       console.log("📤 STEP 3: Asking user to follow...")
 
       const followSuccess = await sendDirectMessageWithButtons(
-        account.instagramProfessionalId || account.instagramUserId,
+        account.instagramUserId,
         account.accessToken,
         senderId,
         automation.actions.askFollow.message,
@@ -801,7 +878,7 @@ async function handleStoryReplyFlowEnhanced(
       console.log("📤 STEP 4: Sending main DM with buttons...")
 
       const mainDMSuccess = await sendDirectMessageWithButtons(
-        account.instagramProfessionalId || account.instagramUserId,
+        account.instagramUserId,
         account.accessToken,
         senderId,
         automation.actions.sendDM.message,
