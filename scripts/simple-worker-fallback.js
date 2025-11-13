@@ -132,7 +132,13 @@ async function processNextJob(workerId) {
       return true;
 
     } catch (error) {
-      console.error(`❌ Worker ${workerId}: Error processing job ${job._id}:`, error.message);
+      console.error(`❌ Worker ${workerId}: Error processing job ${job._id}`);
+      console.error(`   Error Type: ${error.constructor.name}`);
+      console.error(`   Error Message: ${error.message}`);
+      console.error(`   Error Code: ${error.code || 'N/A'}`);
+      if (error.cause) {
+        console.error(`   Error Cause: ${error.cause}`);
+      }
 
       const currentAttempts = job.attempts || 1;
       
