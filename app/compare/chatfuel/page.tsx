@@ -698,20 +698,20 @@ const LinkdmComparePage = () => {
             </div>
             <div className="grid md:grid-cols-2 gap-8">
               {[
-                {
+               {
                   text: "Switching to ChatAutoDM was the best decision for our business. 80% cost reduction and zero downtime , Absolutely Awesome!",
-                  author: "Sarah Johnson",
-                  role: "Marketing Director",
-                  company: "TechStart Inc.",
-                  avatar: "SJ",
+                  author: "Sandhya Techy",
+                  role: "Tech Creator",
+                  // company: "TechStart Inc.",
+                  avatar: "ST",
                   stats: "↑ 300% engagement"
                 },
                 {
                   text: "The reliability is incredible. Our campaigns run flawlessly 24/7 without any manual intervention needed.",
-                  author: "Michael Chen",
-                  role: "Growth Manager", 
-                  company: "E-commerce Pro",
-                  avatar: "MC",
+                  author: "Designer Rajesh",
+                  role: "Design Lead", 
+                  // company: "E-commerce Pro",
+                  avatar: "DR",
                   stats: "↑ 250% conversions"
                 }
               ].map((testimonial, index) => (
@@ -728,7 +728,7 @@ const LinkdmComparePage = () => {
                           </blockquote>
                           <div className="text-sm">
                             <div className="font-semibold text-slate-900">{testimonial.author}</div>
-                            <div className="text-slate-500">{testimonial.role} — {testimonial.company}</div>
+                            <div className="text-slate-500">{testimonial.role} </div>
                           </div>
                         </div>
                       </div>

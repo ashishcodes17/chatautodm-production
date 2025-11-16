@@ -59,10 +59,10 @@ const timeline = [
 ];
 
 const stats = [
-  { label: "Early Builders", value: "320+" },
+  { label: "Early Builders", value: "1000+" },
   { label: "Automations Run", value: "48K+" },
   { label: "Avg Success Rate", value: "99.3%" },
-  { label: "Countries", value: "22" },
+  { label: "Countries", value: "60+" },
 ];
 
 export default function AboutPage() {
