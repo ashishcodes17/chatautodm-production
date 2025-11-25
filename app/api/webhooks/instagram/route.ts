@@ -1985,7 +1985,19 @@ async function handleBusinessLoginComment(commentData: any, accountId: string, d
       plan: account.plan,
     })
 
-    // Store the comment
+    // 🚨 CRITICAL: Check if comment already processed (prevent duplicate replies)
+    const existingComment = await db.collection("comments").findOne({
+      commentId,
+      instagramUserId: account.instagramUserId,
+      processed: true
+    })
+
+    if (existingComment) {
+      console.log("⚠️ Comment already processed, skipping to prevent duplicate replies")
+      return
+    }
+
+    // Store the comment (use upsert to prevent duplicates)
     const commentDoc = {
       commentId,
       instagramUserId: account.instagramUserId,
@@ -1998,11 +2010,22 @@ async function handleBusinessLoginComment(commentData: any, accountId: string, d
       createdAt: new Date(),
     }
 
-    await db.collection("comments").insertOne(commentDoc)
+    await db.collection("comments").updateOne(
+      { commentId, instagramUserId: account.instagramUserId },
+      { $setOnInsert: commentDoc },
+      { upsert: true }
+    )
     console.log("💾 Comment stored successfully")
 
     // Process comment automations
     await processCommentAutomations(account, commentData, db)
+    
+    // 🚨 CRITICAL: Mark as processed AFTER successful automation processing
+    await db.collection("comments").updateOne(
+      { commentId, instagramUserId: account.instagramUserId },
+      { $set: { processed: true, processedAt: new Date() } }
+    )
+    console.log("✅ Comment marked as processed")
   } catch (error) {
     console.error("❌ Error handling business login comment:", error)
   }

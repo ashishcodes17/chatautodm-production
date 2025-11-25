@@ -26,7 +26,7 @@ let webhookRouteHandler: any = null
 // Since 95% of time is spent waiting for Instagram API/MongoDB (not CPU),
 // we can run MANY more workers without overloading the server
 const WORKERS = parseInt(process.env.QUEUE_WORKERS || "50") // High for I/O-bound work (workers spend 95% time waiting)
-const POLL_INTERVAL = parseInt(process.env.QUEUE_POLL_INTERVAL || "50") // Balanced polling
+const POLL_INTERVAL = parseInt(process.env.QUEUE_POLL_INTERVAL || "10") // Ultra-fast polling for maximum throughput
 const MAX_RETRIES = parseInt(process.env.QUEUE_MAX_RETRIES || "3")
 const RETRY_DELAY = parseInt(process.env.QUEUE_RETRY_DELAY || "5000")
 const BATCH_SIZE = parseInt(process.env.QUEUE_BATCH_SIZE || "5") // Process 5 jobs per worker cycle (safe batch)
