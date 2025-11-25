@@ -22,14 +22,22 @@ async function main() {
   lastCompleted = first[0]?.count || 0;
 
   setInterval(async () => {
+    // Get all status counts in one query
     const stats = await collection.aggregate([
-      { $match: { status: "completed" } },
-      { $count: "count" }
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 }
+        }
+      }
     ]).toArray();
 
-    const currentCompleted = stats[0]?.count || 0;
-    const diff = currentCompleted - lastCompleted;
+    const pending = stats.find(s => s._id === "pending")?.count || 0;
+    const processing = stats.find(s => s._id === "processing")?.count || 0;
+    const completed = stats.find(s => s._id === "completed")?.count || 0;
+    const failed = stats.find(s => s._id === "failed")?.count || 0;
 
+    const diff = completed - lastCompleted;
     const perSecond = diff / 5;   // 5 sec interval
     const perMinute = perSecond * 60;
 
@@ -37,14 +45,20 @@ async function main() {
 ===============================
 ⚡ Queue Speed Monitor (5s)
 ===============================
-Completed (total): ${currentCompleted}
-Processed in last 5 seconds: ${diff}
-➡ Per Second: ${perSecond.toFixed(2)}
-➡ Per Minute: ${perMinute.toFixed(0)}
+📊 Queue Status:
+   Pending:     ${pending}
+   Processing:  ${processing}
+   Completed:   ${completed.toLocaleString()}
+   Failed:      ${failed}
+
+⚡ Throughput:
+   Processed in last 5s: ${diff}
+   ➡ Per Second: ${perSecond.toFixed(2)}
+   ➡ Per Minute: ${perMinute.toFixed(0)}
 ===============================
 `);
 
-    lastCompleted = currentCompleted;
+    lastCompleted = completed;
   }, 5000);
 }
 
