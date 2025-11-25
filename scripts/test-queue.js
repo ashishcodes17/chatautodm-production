@@ -11,7 +11,7 @@
 const https = require('https');
 const http = require('http');
 
-const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000';
+const SERVER_URL = process.env.SERVER_URL || 'https://www.chatautodm.com';
 
 async function getQueueStats() {
   return new Promise((resolve, reject) => {

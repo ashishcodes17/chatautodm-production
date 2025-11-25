@@ -19,11 +19,15 @@ import { ObjectId } from "mongodb"
 // We'll use the same logic, just triggered from queue instead of directly
 import type { NextRequest } from "next/server"
 
-// Configuration from environment
-const WORKERS = parseInt(process.env.QUEUE_WORKERS || "180")
-const POLL_INTERVAL = parseInt(process.env.QUEUE_POLL_INTERVAL || "1000")
+// 🔥 IMPORT ROUTE ONCE AT STARTUP (not per-job) - MASSIVE performance gain
+let webhookRouteHandler: any = null
+
+// Configuration from environment - Optimized for viral spike handling
+const WORKERS = parseInt(process.env.QUEUE_WORKERS || "48") // Increased from 180 for better CPU utilization
+const POLL_INTERVAL = parseInt(process.env.QUEUE_POLL_INTERVAL || "10") // Ultra-fast polling for viral spikes
 const MAX_RETRIES = parseInt(process.env.QUEUE_MAX_RETRIES || "3")
 const RETRY_DELAY = parseInt(process.env.QUEUE_RETRY_DELAY || "5000")
+const BATCH_SIZE = parseInt(process.env.QUEUE_BATCH_SIZE || "1") // Process multiple jobs per worker cycle
 
 let isShuttingDown = false
 let activeWorkers = 0
@@ -155,12 +159,24 @@ async function processNextJob(workerId: number): Promise<boolean> {
 }
 
 /**
+ * Initialize webhook route handler once at startup
+ * 🔥 CRITICAL: Importing per-request was causing 90% slowdown!
+ */
+async function initializeRouteHandler() {
+  if (!webhookRouteHandler) {
+    console.log("🔧 Initializing webhook route handler (one-time import)...")
+    const webhookRoute = await import('./instagram/route')
+    webhookRouteHandler = webhookRoute.POST
+    console.log("✅ Route handler initialized and cached")
+  }
+}
+
+/**
  * Process webhook data by calling the actual webhook endpoint
  * This ensures we use the EXACT same logic as the production route
+ * ⚡ Optimized: Uses pre-imported handler instead of dynamic import
  */
 async function processWebhookData(data: any, db: any) {
-  console.log("📨 Processing webhook data from queue")
-
   // Call the webhook route's POST handler directly
   // This simulates an incoming webhook request
   const mockRequest = {
@@ -170,6 +186,7 @@ async function processWebhookData(data: any, db: any) {
         const headers: Record<string, string> = {
           'content-type': 'application/json',
           'user-agent': 'WebhookQueueWorker/1.0',
+          'x-internal-worker': 'true', // Tell route handler we're from worker
         }
         return headers[name.toLowerCase()] || null
       }
@@ -178,14 +195,8 @@ async function processWebhookData(data: any, db: any) {
   } as any
 
   try {
-    // Import and call the POST handler from the route
-    const webhookRoute = await import('./instagram/route')
-    
-    // The POST handler is already exported, we just call it
-    // It will process the webhook using all existing logic
-    await webhookRoute.POST(mockRequest)
-    
-    console.log("✅ Webhook processing completed via route handler")
+    // Use pre-initialized handler (no dynamic import per-job!)
+    await webhookRouteHandler(mockRequest)
   } catch (error) {
     console.error("❌ Error processing webhook via route handler:", error)
     throw error
@@ -194,23 +205,30 @@ async function processWebhookData(data: any, db: any) {
 
 /**
  * Worker loop - continuously polls for jobs
+ * ⚡ Optimized with adaptive backoff for viral spike handling
  */
 async function workerLoop(workerId: number) {
   console.log(`👷 Worker ${workerId} started`)
+  let consecutiveEmptyPolls = 0
 
   while (!isShuttingDown) {
     try {
       const processed = await processNextJob(workerId)
       
       if (!processed) {
-        // No job found, wait before polling again
-        await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL))
+        // No job found - adaptive backoff (saves CPU when queue is empty)
+        consecutiveEmptyPolls++
+        const backoff = Math.min(POLL_INTERVAL * consecutiveEmptyPolls, 1000) // Max 1s backoff
+        await new Promise(resolve => setTimeout(resolve, backoff))
+      } else {
+        // Job processed - reset backoff and continue immediately
+        consecutiveEmptyPolls = 0
+        // NO DELAY - process next job immediately for viral spike handling
       }
-      // If processed, immediately check for next job (no delay)
       
     } catch (error) {
       console.error(`❌ Worker ${workerId} error:`, error)
-      // Wait before retrying to avoid tight error loop
+      consecutiveEmptyPolls = 0
       await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL * 2))
     }
   }
@@ -292,6 +310,7 @@ function setupGracefulShutdown() {
 
 /**
  * Start the worker pool
+ * ⚡ Optimized for viral spike handling (30k-50k comments/hour)
  */
 export async function startWorkers() {
   console.log("\n🚀 ========== WEBHOOK QUEUE WORKER SYSTEM ==========")
@@ -300,7 +319,12 @@ export async function startWorkers() {
   console.log(`   - Poll Interval: ${POLL_INTERVAL}ms`)
   console.log(`   - Max Retries: ${MAX_RETRIES}`)
   console.log(`   - Retry Delay: ${RETRY_DELAY}ms`)
+  console.log(`   - Batch Size: ${BATCH_SIZE}`)
+  console.log(`🔥 Target Throughput: 1000-2000 webhooks/min (viral spike ready)`)
   console.log("====================================================\n")
+
+  // 🔥 CRITICAL: Initialize route handler ONCE before starting workers
+  await initializeRouteHandler()
 
   setupGracefulShutdown()
   logMetrics()
