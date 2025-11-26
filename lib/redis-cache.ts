@@ -57,14 +57,16 @@ export async function initRedis() {
       port: port,
       username: username !== "" ? username : undefined,
       password: password !== "" ? password : undefined,
-      maxRetriesPerRequest: 3,
+      // let commands queue while reconnecting rather than fail fast
+      maxRetriesPerRequest: null,
       enableReadyCheck: true,
+      // a conservative retry strategy
       retryStrategy(times: number) {
-        if (times > 5) {
-          console.error("❌ Redis connection failed after 5 retries - falling back to MongoDB")
+        if (times > 20) {
+          console.error("❌ Redis connection failed after many retries - falling back to MongoDB")
           return null
         }
-        const delay = Math.min(times * 500, 3000)
+        const delay = Math.min(times * 500, 5000)
         console.log(`🔄 Redis retry ${times} in ${delay}ms...`)
         return delay
       },
@@ -72,12 +74,43 @@ export async function initRedis() {
       commandTimeout: 10000,
       lazyConnect: false,
       reconnectOnError: () => true,
+      enableAutoPipelining: true,
+      autoResubscribe: true,
     }
 
+    // create client and attach handlers immediately to avoid unhandled errors
     redis = new Redis(redisOptions)
+
+    // attach immediate listeners to prevent unhandled 'error' events
+    redis.on("error", (err: any) => {
+      try {
+        console.error("❌ Redis error:", err?.message || err)
+      } catch (e) {
+        console.error("❌ Redis error (failed to stringify):", e)
+      }
+      isConnected = false
+    })
+
+    redis.on("connect", () => {
+      isConnected = true
+      console.log("✅ Redis reconnected")
+    })
+
+    redis.on("close", () => {
+      isConnected = false
+      console.warn("⚠️  Redis connection closed")
+    })
 
     // Separate connection for pub/sub
     pubsub = redis.duplicate()
+
+    // attach pubsub error/connect handlers immediately
+    pubsub.on("error", (err: any) => {
+      console.error("❌ Redis pubsub error:", err?.message || err)
+    })
+    pubsub.on("connect", () => {
+      console.log("🔔 Redis pubsub connected")
+    })
 
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -91,39 +124,27 @@ export async function initRedis() {
         resolve()
       })
 
-      redis!.on("error", (err) => {
+      // if an error occurs while establishing connection, surface it
+      const onError = (err: any) => {
         clearTimeout(timeout)
-        console.error("❌ Redis connection error:", err.message)
+        console.error("❌ Redis connection error:", err?.message || err)
         reject(err)
-      })
-    })
-
-    // Listen for cache invalidation events
-    pubsub.subscribe("cache:invalidate", (err) => {
-      if (err) console.error("❌ Pub/Sub subscribe error:", err.message)
-    })
-
-    pubsub.on("message", (channel, message) => {
-      if (channel === "cache:invalidate") {
-        console.log(`🔄 Cache invalidation: ${message}`)
       }
+
+      redis!.once("error", onError)
     })
 
-    // Handle connection errors gracefully
-    redis.on("error", (err) => {
-      console.error("❌ Redis error:", err.message)
-      isConnected = false
-    })
-
-    redis.on("connect", () => {
-      isConnected = true
-      console.log("✅ Redis reconnected")
-    })
-
-    redis.on("close", () => {
-      isConnected = false
-      console.warn("⚠️  Redis connection closed")
-    })
+    // Subscribe to invalidation channel (pubsub will auto-connect)
+    try {
+      await pubsub.subscribe("cache:invalidate")
+      pubsub.on("message", (channel, message) => {
+        if (channel === "cache:invalidate") {
+          console.log(`🔄 Cache invalidation: ${message}`)
+        }
+      })
+    } catch (err: any) {
+      console.error("❌ Pub/Sub subscribe error:", err?.message || err)
+    }
   } catch (error: any) {
     console.error("❌ Redis initialization failed:", error.message)
     console.log("⚠️  Falling back to MongoDB only")

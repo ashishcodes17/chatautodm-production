@@ -141,9 +141,9 @@ export async function enqueueWebhook(
   }
 
   try {
-    // Determine priority based on webhook type
+    // Determine webhook type and priority. Prefer the explicit `priority` argument
     const webhookType = determineWebhookType(data)
-    const jobPriority = getPriorityForType(webhookType)
+    const jobPriority = typeof priority === "number" ? priority : getPriorityForType(webhookType)
 
     await webhookQueue.add(
       "process",
@@ -213,6 +213,8 @@ export function createWorker(processWebhookFn: (data: any) => Promise<void>, con
     {
       connection,
       concurrency,
+      // Increase lock duration to allow long-running webhook processing
+      lockDuration: 120000,
       limiter: {
         max: 1000, // Max 1000 jobs per second
         duration: 1000,

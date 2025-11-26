@@ -34,6 +34,24 @@ async function main() {
   console.log(`📊 BullMQ: ${process.env.BULLMQ_ENABLED === 'true' ? 'ENABLED' : 'DISABLED'}`);
   console.log('================================================\n');
 
+  // Global error handlers to avoid unhandled exceptions crashing the process
+  process.on('unhandledRejection', (reason: any, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason)
+  })
+
+  process.on('uncaughtException', (err: any) => {
+    console.error('❌ Uncaught Exception:', err)
+    // attempt graceful shutdown
+    try {
+      (async () => {
+        await closeQueue().catch(() => {})
+        process.exit(1)
+      })()
+    } catch (e) {
+      process.exit(1)
+    }
+  })
+
   // Set MongoDB URI
   process.env.MONGODB_URI = MONGODB_URI;
 

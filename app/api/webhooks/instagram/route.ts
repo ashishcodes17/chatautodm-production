@@ -23,6 +23,11 @@ const DEDUPLICATION_WINDOW = parseInt(process.env.QUEUE_DEDUPLICATION_WINDOW || 
 const ENABLE_RATE_LIMIT = process.env.QUEUE_ENABLE_RATE_LIMIT !== "false"
 const MAX_WEBHOOKS_PER_MINUTE = parseInt(process.env.QUEUE_MAX_WEBHOOKS_PER_MINUTE || "10000")
 
+// Initialize Redis and BullMQ at module load so they warm up outside request path
+// These are non-blocking; failures fall back to MongoDB behavior
+initRedis().catch(err => console.error("⚠️ Redis init failed at module load (using MongoDB fallback):", err?.message || err))
+initQueue().catch(err => console.error("⚠️ BullMQ init failed at module load (using MongoDB queue fallback):", err?.message || err))
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
