@@ -1,65 +1,119 @@
+// file: lib/redis-cache.ts
 /**
- * Redis Cache Layer - PRODUCTION SAFE
+ * Redis Cache Layer - PRODUCTION (factory clients)
  *
- * Features:
- * - Automatic fallback to MongoDB if Redis fails
- * - Cache warming on startup
- * - TTL-based invalidation
- * - Pub/Sub for cross-worker cache invalidation
- * - Connection pooling and singleton pattern to prevent EPIPE errors
- * - Proper reconnection with exponential backoff
+ * - Factory creates dedicated clients (cache, pubsub, admin)
+ * - SCAN-based invalidation (no KEYS)
+ * - safeGet/safeSet with JSON (non-throwing)
+ * - Graceful shutdown
+ * - Singleton init with initPromise to avoid races
  *
- * Environment Variables:
- * - REDIS_ENABLED=true (enable Redis caching)
- * - REDIS_URL=redis://default:password@host:port
+ * Exports:
+ * - initRedis()
+ * - getRedisInstance()
+ * - getPubSubInstance()
+ * - getAutomation(...)
+ * - invalidateAutomation(...)
+ * - getUserState(...)
+ * - setUserState(...)
+ * - getContact(...)
+ * - warmCache(...)
+ * - getCacheStats(...)
+ * - isRedisEnabled()
  */
 
-import Redis from "ioredis"
+import Redis, { RedisOptions } from "ioredis"
 import type { Db } from "mongodb"
 
 const REDIS_ENABLED = process.env.REDIS_ENABLED === "true"
 const REDIS_URL = process.env.REDIS_URL
 
-// TTL Configuration (seconds)
+// TTLs (seconds)
 const TTL = {
-  AUTOMATION: 3600, // 1 hour (rarely changes)
-  USER_STATE: 600, // 10 minutes (active conversations)
-  CONTACT: 300, // 5 minutes (can change frequently)
-  WORKSPACE: 3600, // 1 hour (rarely changes)
+  AUTOMATION: 3600,
+  USER_STATE: 600,
+  CONTACT: 300,
+  WORKSPACE: 3600,
 }
 
-let redis: Redis | null = null
-let pubsub: Redis | null = null
+let cacheClient: Redis | null = null
+let pubsubClient: Redis | null = null
+let adminClient: Redis | null = null
 let isConnected = false
-let initPromise: Promise<void> | null = null // Prevent multiple concurrent init calls
+let initPromise: Promise<void> | null = null
 
 export function getRedisInstance(): Redis | null {
-  return redis
+  return cacheClient
+}
+export function getPubSubInstance(): Redis | null {
+  return pubsubClient
 }
 
-function getPubSubInstance(): Redis | null {
-  return pubsub
+function normalizeRedisUrl(): string | null {
+  if (!REDIS_URL) return null
+  return REDIS_URL
 }
 
-// Initialize Redis connection (with singleton pattern to prevent EPIPE)
-export async function initRedis() {
+// createClientFactory - returns function(type) -> Redis client
+function createClientFactory() {
+  const url = normalizeRedisUrl()
+  if (!url) throw new Error("REDIS_URL is not set")
+
+  const common: RedisOptions = {
+    maxRetriesPerRequest: null,
+    connectTimeout: 20000,
+    lazyConnect: false,
+    retryStrategy(times: number) {
+      if (times > 10) return null
+      return Math.min(times * 1000, 10000)
+    },
+    reconnectOnError(err: Error) {
+      const msg = err?.message || ""
+      if (msg.includes("READONLY You can't write against a read only replica.")) return true
+      if (msg.includes("EPIPE") || msg.includes("ECONNRESET") || msg.includes("ETIMEDOUT")) return true
+      return false
+    },
+  }
+
+  return (role: "cache" | "pubsub" | "admin") => {
+    const client = new Redis(url, common)
+
+    client.on("error", (err) => {
+      console.error(`[redis:${role}] error:`, err?.message || err)
+      // do NOT set isConnected=false here — only on 'close' we mark disconnected
+    })
+
+    client.on("connect", () => {
+      // lightweight connect log
+      console.log(`[redis:${role}] connect`)
+    })
+
+    client.on("ready", () => {
+      console.log(`[redis:${role}] ready`)
+    })
+
+    client.on("close", () => {
+      console.warn(`[redis:${role}] connection closed`)
+    })
+
+    return client
+  }
+}
+
+// initRedis - singleton
+export async function initRedis(): Promise<void> {
   if (initPromise) {
     await initPromise
     return
   }
 
-  if (redis && isConnected) {
-    return
-  }
-
   if (!REDIS_ENABLED) {
-    console.log("⚠️  Redis disabled (set REDIS_ENABLED=true to enable)")
+    console.log("⚠️ Redis disabled (REDIS_ENABLED!=true)")
     return
   }
 
   if (!REDIS_URL) {
-    console.error("❌ REDIS_URL environment variable is not set")
-    console.log("⚠️  Falling back to MongoDB only")
+    console.error("❌ REDIS_URL missing - skipping Redis init")
     return
   }
 
@@ -68,313 +122,300 @@ export async function initRedis() {
   initPromise = null
 }
 
-async function initRedisInternal() {
+async function initRedisInternal(): Promise<void> {
   try {
-    console.log("🔄 Connecting to Redis...")
+    console.log("🔄 Initializing Redis clients...")
 
-    const url = new URL(REDIS_URL as string)
-    const hostname = url.hostname
-    const port = Number.parseInt(url.port || "6379")
-    const password = url.password || ""
-    const username = url.username || "default"
+    const createClient = createClientFactory()
 
-    const redisOptions: any = {
-      host: hostname,
-      port: port,
-      username: username !== "" ? username : undefined,
-      password: password !== "" ? password : undefined,
-      maxRetriesPerRequest: 3,
-      enableReadyCheck: true,
-      retryStrategy(times: number) {
-        if (times > 10) {
-          console.error("❌ Redis connection failed after 10 retries - falling back to MongoDB")
-          return null
+    // create three dedicated clients
+    cacheClient = createClient("cache")
+    pubsubClient = createClient("pubsub")
+    adminClient = createClient("admin")
+
+    // Prefer to wait until cacheClient is ready (others follow)
+    await waitForReady(cacheClient, 20000)
+
+    // subscribe pubsub (lazy subscribe)
+    if (pubsubClient) {
+      // don't block startup on subscribe errors
+      pubsubClient.on("message", (channel, message) => {
+        try {
+          if (channel === "cache:invalidate") {
+            console.log("🔄 Cache invalidation message:", message)
+          }
+        } catch (e) {
+          console.warn("⚠️ pubsub message handler error:", e)
         }
-        const delay = Math.min(times * 1000, 10000) // Max 10s delay
-        console.log(`🔄 Redis retry ${times} in ${delay}ms...`)
-        return delay
-      },
-      connectTimeout: 20000, // Increased from 15s
-      commandTimeout: 15000, // Increased from 10s
-      lazyConnect: false,
-      reconnectOnError: (err: Error) => {
-        const targetError = "READONLY You can't write against a read only replica."
-        if (err.message.includes(targetError)) {
-          return true
-        }
-        // Reconnect on EPIPE and network errors
-        if (err.message.includes("EPIPE") || err.message.includes("ECONNRESET") || err.message.includes("ETIMEDOUT")) {
-          console.error(`[v0] Redis error detected, will reconnect: ${err.message}`)
-          return true
-        }
-        return false
-      },
-    }
-
-    redis = new Redis(redisOptions)
-
-    // Separate connection for pub/sub
-    pubsub = redis.duplicate()
-
-    redis.on("error", (err) => {
-      console.error(`[v0] Redis connection error: ${err.message}`)
-      isConnected = false
-      if (err.message.includes("EPIPE")) {
-        console.error("[v0] EPIPE detected - connection will auto-reconnect")
-      }
-    })
-
-    redis.on("connect", () => {
-      isConnected = true
-      console.log("✅ Redis connected")
-    })
-
-    redis.on("reconnecting", () => {
-      console.log("🔄 Redis reconnecting...")
-    })
-
-    redis.on("close", () => {
-      isConnected = false
-      console.warn("⚠️  Redis connection closed")
-    })
-
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error("Redis connection timeout (20s)"))
-      }, 20000)
-
-      redis!.on("ready", () => {
-        clearTimeout(timeout)
-        console.log("✅ Redis connected and ready")
-        isConnected = true
-        resolve()
       })
-
-      const errorHandler = (err: any) => {
-        clearTimeout(timeout)
-        redis!.removeListener("ready", readyHandler)
-        reject(err)
-      }
-
-      const readyHandler = () => {
-        redis!.removeListener("error", errorHandler)
-      }
-
-      redis!.once("error", errorHandler)
-    })
-
-    // Listen for cache invalidation events
-    if (pubsub) {
-      pubsub.subscribe("cache:invalidate", (err) => {
-        if (err) console.error("❌ Pub/Sub subscribe error:", err.message)
-      })
-
-      pubsub.on("message", (channel, message) => {
-        if (channel === "cache:invalidate") {
-          console.log(`🔄 Cache invalidation: ${message}`)
-        }
+      // subscribe asynchronously, do not await too long
+      pubsubClient.subscribe("cache:invalidate").catch((err) => {
+        console.warn("⚠️ pubsub subscribe failed:", err?.message || err)
       })
     }
-  } catch (error: any) {
-    console.error("❌ Redis initialization failed:", error.message)
-    console.log("⚠️  Falling back to MongoDB only")
-    redis = null
-    pubsub = null
+
+    isConnected = true
+    console.log("✅ Redis initialized and ready")
+  } catch (err: any) {
+    console.error("❌ Redis initialization failed:", err?.message || err)
+    // cleanup partial clients
+    try {
+      await shutdownRedisClients()
+    } catch (e) {
+      /* ignore */
+    }
+    cacheClient = null
+    pubsubClient = null
+    adminClient = null
     isConnected = false
   }
 }
 
-// Safe wrapper for Redis operations
-async function safeRedisGet<T>(key: string): Promise<T | null> {
-  const redisClient = getRedisInstance()
-  if (!redisClient || !isConnected) return null
+// wait for ready with timeout
+function waitForReady(client: Redis, timeoutMs = 20000) {
+  return new Promise<void>((resolve, reject) => {
+    let done = false
+    const onReady = () => {
+      if (done) return
+      done = true
+      cleanup()
+      resolve()
+    }
+    const onError = (err: any) => {
+      if (done) return
+      done = true
+      cleanup()
+      reject(err)
+    }
+    const cleanup = () => {
+      client.removeListener("ready", onReady)
+      client.removeListener("error", onError)
+    }
 
+    client.once("ready", onReady)
+    client.once("error", onError)
+
+    const t = setTimeout(() => {
+      if (done) return
+      done = true
+      cleanup()
+      reject(new Error("Redis ready timeout"))
+    }, timeoutMs)
+    // clear the timer on resolution/rejection
+    const origResolve = resolve
+    const origReject = reject
+    resolve = (v?: any) => {
+      clearTimeout(t)
+      origResolve(v)
+    }
+    reject = (e?: any) => {
+      clearTimeout(t)
+      origReject(e)
+    }
+  })
+}
+
+// shutdown helper
+async function shutdownRedisClients() {
   try {
-    const data = await redisClient.get(key)
-    if (!data) return null
-    return JSON.parse(data) as T
-  } catch (error: any) {
-    console.error(`⚠️  Redis GET error for ${key}:`, error.message)
+    if (pubsubClient) {
+      try {
+        await pubsubClient.unsubscribe("cache:invalidate").catch(() => {})
+      } catch {}
+      try {
+        await pubsubClient.quit()
+      } catch {
+        pubsubClient.disconnect()
+      }
+      pubsubClient = null
+    }
+
+    if (cacheClient) {
+      try {
+        await cacheClient.quit()
+      } catch {
+        cacheClient.disconnect()
+      }
+      cacheClient = null
+    }
+
+    if (adminClient) {
+      try {
+        await adminClient.quit()
+      } catch {
+        adminClient.disconnect()
+      }
+      adminClient = null
+    }
+  } finally {
+    isConnected = false
+  }
+}
+
+// graceful shutdown export
+export async function closeRedis(): Promise<void> {
+  await shutdownRedisClients()
+  console.log("✅ Redis clients closed")
+}
+
+// ---------- Safe JSON helpers ----------
+async function safeRedisGet<T>(key: string): Promise<T | null> {
+  const client = getRedisInstance()
+  if (!client || !isConnected) return null
+  try {
+    const raw = await client.get(key)
+    if (!raw) return null
+    try {
+      return JSON.parse(raw) as T
+    } catch {
+      // If non-JSON content, return raw as any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (raw as any) as T
+    }
+  } catch (err: any) {
+    console.warn(`⚠️ redis GET ${key} failed:`, err?.message || err)
     return null
   }
 }
 
-async function safeRedisSet(key: string, value: any, ttl: number): Promise<void> {
-  const redisClient = getRedisInstance()
-  if (!redisClient || !isConnected) return
-
+async function safeRedisSet(key: string, value: any, ttlSec: number): Promise<void> {
+  const client = getRedisInstance()
+  if (!client || !isConnected) return
   try {
-    await redisClient.setex(key, ttl, JSON.stringify(value))
-  } catch (error: any) {
-    console.error(`⚠️  Redis SET error for ${key}:`, error.message)
+    const payload = JSON.stringify(value)
+    // ioredis set with EX
+    await client.set(key, payload, "EX", ttlSec)
+  } catch (err: any) {
+    console.warn(`⚠️ redis SET ${key} failed:`, err?.message || err)
   }
 }
 
 async function safeRedisDel(key: string): Promise<void> {
-  const redisClient = getRedisInstance()
-  if (!redisClient || !isConnected) return
-
+  const client = getRedisInstance()
+  if (!client || !isConnected) return
   try {
-    await redisClient.del(key)
-  } catch (error: any) {
-    console.error(`⚠️  Redis DEL error for ${key}:`, error.message)
+    await client.del(key)
+  } catch (err: any) {
+    console.warn(`⚠️ redis DEL ${key} failed:`, err?.message || err)
   }
 }
 
-// ============================================
-// AUTOMATION CACHING
-// ============================================
+// SCAN-based key listing (non-blocking)
+async function scanKeys(pattern: string): Promise<string[]> {
+  const client = getRedisInstance()
+  if (!client || !isConnected) return []
+  const found: string[] = []
+  let cursor = "0"
+  do {
+    // scan returns [cursor, keys[]]
+    // @ts-ignore - ioredis has scan returning [string, string[]]
+    const res = await client.scan(cursor, "MATCH", pattern, "COUNT", "1000")
+    cursor = res[0]
+    const keys = res[1] as string[]
+    if (keys && keys.length) found.push(...keys)
+  } while (cursor !== "0")
+  return found
+}
 
+// ---------- Public API (matching your previous usage) ----------
+
+// getAutomation: cache-first loader
 export async function getAutomation(workspaceId: string, type: string, postId: string | null, db: Db): Promise<any[]> {
-  const cacheKey = `automation:${workspaceId}:${type}:${postId || "all"}`
-
-  // Try cache first
+  const cacheKey = `automation:${workspaceId}:${type}:${postId ?? "all"}`
   const cached = await safeRedisGet<any[]>(cacheKey)
-  if (cached) {
-    return cached
-  }
+  if (cached) return cached
 
-  // Cache miss - load from MongoDB
-  const query: any = {
-    workspaceId,
-    isActive: true,
-  }
-
-  // Handle different automation types
+  // Build query
+  const q: any = { workspaceId, isActive: true }
   if (type === "story_reply_flow") {
-    query.type = "story_reply_flow"
-    if (postId) {
-      query.selectedStory = postId
-    }
+    q.type = "story_reply_flow"
+    if (postId) q.selectedStory = postId
   } else if (type === "comment_reply_flow") {
-    query.type = { $in: ["comment_to_dm_flow", "comment_reply_flow"] }
-    if (postId) {
-      query.selectedPost = postId
-    }
+    q.type = { $in: ["comment_to_dm_flow", "comment_reply_flow"] }
+    if (postId) q.selectedPost = postId
   } else if (type === "dm_automation") {
-    query.type = { $in: ["dm_automation", "generic_dm_automation"] }
+    q.type = { $in: ["dm_automation", "generic_dm_automation"] }
   } else {
-    query.type = type
+    q.type = type
   }
 
-  const automations = await db.collection("automations").find(query).toArray()
-
-  // Cache the result (even empty array, to prevent repeated queries)
+  const automations = await db.collection("automations").find(q).toArray()
+  // cache result (even empty)
   await safeRedisSet(cacheKey, automations, TTL.AUTOMATION)
-
   return automations
 }
 
 export async function invalidateAutomation(workspaceId: string, type?: string, postId?: string): Promise<void> {
-  const pattern = `automation:${workspaceId}:${type || "*"}:${postId || "*"}`
-
-  const redisClient = getRedisInstance()
-  if (!redisClient || !isConnected) return
+  const pattern = `automation:${workspaceId}:${type ?? "*"}:${postId ?? "*"}`
+  const client = getRedisInstance()
+  if (!client || !isConnected) return
 
   try {
-    // Delete matching keys
-    const keys = await redisClient.keys(pattern)
+    const keys = await scanKeys(pattern)
     if (keys.length > 0) {
-      await redisClient.del(...keys)
+      // chunk deletes to avoid very large single DEL
+      const CHUNK = 500
+      for (let i = 0; i < keys.length; i += CHUNK) {
+        const chunk = keys.slice(i, i + CHUNK)
+        await client.del(...chunk)
+      }
     }
-
-    // Notify other workers
-    const pubsubClient = getPubSubInstance()
+    // notify other workers
     if (pubsubClient) {
-      await pubsubClient.publish("cache:invalidate", pattern)
+      await pubsubClient.publish("cache:invalidate", pattern).catch((e) => {
+        console.warn("⚠️ publish cache:invalidate failed:", e?.message || e)
+      })
     }
-  } catch (error: any) {
-    console.error("⚠️  Cache invalidation error:", error.message)
+  } catch (err: any) {
+    console.warn("⚠️ invalidateAutomation failed:", err?.message || err)
   }
 }
 
-// ============================================
-// USER STATE CACHING
-// ============================================
-
+// user state caching
 export async function getUserState(senderId: string, accountId: string, db: Db): Promise<any> {
   const cacheKey = `user_state:${accountId}:${senderId}`
+  const cached = await safeRedisGet<any>(cacheKey)
+  if (cached) return cached
 
-  // Try cache first
-  const cached = await safeRedisGet(cacheKey)
-  if (cached) {
-    return cached
-  }
-
-  // Cache miss - load from MongoDB
-  const state = await db.collection("user_states").findOne({
-    senderId,
-    accountId,
-  })
-
-  if (state) {
-    await safeRedisSet(cacheKey, state, TTL.USER_STATE)
-  }
-
+  const state = await db.collection("user_states").findOne({ senderId, accountId })
+  if (state) await safeRedisSet(cacheKey, state, TTL.USER_STATE)
   return state
 }
 
 export async function setUserState(senderId: string, accountId: string, state: any, db: Db): Promise<void> {
   const cacheKey = `user_state:${accountId}:${senderId}`
-
-  // Write to Redis immediately (fast)
   await safeRedisSet(cacheKey, state, TTL.USER_STATE)
-
-  // Write to MongoDB (source of truth) - don't await, do in background
-  db.collection("user_states")
-    .updateOne({ senderId, accountId }, { $set: state }, { upsert: true })
-    .catch((err) => {
-      console.error("⚠️  MongoDB user_state write error:", err.message)
-    })
+  // persist to Mongo in background
+  db.collection("user_states").updateOne({ senderId, accountId }, { $set: state }, { upsert: true }).catch((e) => {
+    console.warn("⚠️ user_states write failed:", e?.message || e)
+  })
 }
 
-// ============================================
-// CONTACT CACHING
-// ============================================
-
+// contact caching
 export async function getContact(senderId: string, accountId: string, db: Db): Promise<any> {
   const cacheKey = `contact:${accountId}:${senderId}`
+  const cached = await safeRedisGet<any>(cacheKey)
+  if (cached) return cached
 
-  const cached = await safeRedisGet(cacheKey)
-  if (cached) {
-    return cached
-  }
-
-  const contact = await db.collection("contacts").findOne({
-    senderId,
-    instagramUserId: accountId,
-  })
-
-  if (contact) {
-    await safeRedisSet(cacheKey, contact, TTL.CONTACT)
-  }
-
+  const contact = await db.collection("contacts").findOne({ senderId, instagramUserId: accountId })
+  if (contact) await safeRedisSet(cacheKey, contact, TTL.CONTACT)
   return contact
 }
 
-// ============================================
-// WORKSPACE/ACCOUNT CACHING
-// ============================================
-
+// workspace/account caching
 export async function getWorkspaceByInstagramId(instagramId: string, db: Db): Promise<any> {
   const cacheKey = `workspace:${instagramId}`
+  const cached = await safeRedisGet<any>(cacheKey)
+  if (cached) return cached
 
-  const cached = await safeRedisGet(cacheKey)
-  if (cached) {
-    return cached
-  }
-
-  // Try account lookup
   const account = await db.collection("instagram_accounts").findOne({
     $or: [{ instagramUserId: instagramId }, { instagramProfessionalId: instagramId }],
   })
-
   if (account) {
     await safeRedisSet(cacheKey, account, TTL.WORKSPACE)
     return account
   }
 
-  // Try workspace lookup
   const workspace = await db.collection("workspaces").findOne({
     $or: [
       { instagramUserId: instagramId },
@@ -383,11 +424,11 @@ export async function getWorkspaceByInstagramId(instagramId: string, db: Db): Pr
       { "instagramAccount.instagramProfessionalId": instagramId },
     ],
   })
-
   if (workspace) {
     const normalized = {
       instagramUserId: workspace.instagramUserId || workspace.instagramAccount?.instagramUserId,
-      instagramProfessionalId: workspace.instagramProfessionalId || workspace.instagramAccount?.instagramProfessionalId,
+      instagramProfessionalId:
+        workspace.instagramProfessionalId || workspace.instagramAccount?.instagramProfessionalId,
       accessToken: workspace.accessToken || workspace.instagramAccount?.accessToken,
       workspaceId: workspace._id,
       username: workspace.name?.replace("@", "") || workspace.username,
@@ -399,73 +440,67 @@ export async function getWorkspaceByInstagramId(instagramId: string, db: Db): Pr
   return null
 }
 
-// ============================================
-// CACHE WARMING (ON STARTUP)
-// ============================================
-
+// warm cache (safe, indexed queries recommended)
 export async function warmCache(db: Db): Promise<void> {
-  if (!redis || !isConnected) {
-    console.log("⚠️  Skipping cache warming (Redis disabled)")
+  if (!cacheClient || !isConnected) {
+    console.log("⚠️ skipping cache warm (redis disabled)")
     return
   }
-
-  console.log("🔥 Warming cache...")
+  console.log("🔥 warming cache... (this may be IO-heavy)")
 
   try {
-    // Preload all active automations
-    const automations = await db.collection("automations").find({ status: "active" }).toArray()
-
-    for (const auto of automations) {
-      const cacheKey = `automation:${auto.workspaceId}:${auto.type}:${auto.config?.postId || "none"}`
-      await safeRedisSet(cacheKey, auto, TTL.AUTOMATION)
+    // load active automations in batches (avoid large memory spikes)
+    const cursor = db.collection("automations").find({ isActive: true }).batchSize(500)
+    let warmed = 0
+    while (await cursor.hasNext()) {
+      const auto = await cursor.next()
+      if (!auto) continue
+      const key = `automation:${auto.workspaceId}:${auto.type}:${auto.selectedPost ?? "all"}`
+      await safeRedisSet(key, auto, TTL.AUTOMATION)
+      warmed++
     }
+    console.log(`✅ warmed ${warmed} automations`)
 
-    console.log(`✅ Warmed ${automations.length} automations`)
-
-    // Preload workspaces
-    const accounts = await db.collection("instagram_accounts").find({}).toArray()
-    for (const acc of accounts) {
-      if (acc.instagramUserId) {
-        await safeRedisSet(`workspace:${acc.instagramUserId}`, acc, TTL.WORKSPACE)
-      }
-      if (acc.instagramProfessionalId) {
+    // warm workspaces/accounts (indexed query)
+    const accCursor = db.collection("instagram_accounts").find({}).batchSize(500)
+    let warmedAcc = 0
+    while (await accCursor.hasNext()) {
+      const acc = await accCursor.next()
+      if (!acc) continue
+      if (acc.instagramUserId) await safeRedisSet(`workspace:${acc.instagramUserId}`, acc, TTL.WORKSPACE)
+      if (acc.instagramProfessionalId)
         await safeRedisSet(`workspace:${acc.instagramProfessionalId}`, acc, TTL.WORKSPACE)
-      }
+      warmedAcc++
     }
-
-    console.log(`✅ Warmed ${accounts.length} workspaces`)
-    console.log("✅ Cache warming complete\n")
-  } catch (error: any) {
-    console.error("❌ Cache warming error:", error.message)
+    console.log(`✅ warmed ${warmedAcc} workspaces`)
+  } catch (err: any) {
+    console.warn("⚠️ warmCache error:", err?.message || err)
   }
 }
 
-// ============================================
-// MONITORING
-// ============================================
-
+// monitoring
 export async function getCacheStats(): Promise<any> {
-  const redisClient = getRedisInstance()
-  if (!redisClient || !isConnected) {
-    return { enabled: false }
-  }
-
+  if (!adminClient || !isConnected) return { enabled: false }
   try {
-    const info = await redisClient.info("stats")
-    const memory = await redisClient.info("memory")
-
-    return {
-      enabled: true,
-      connected: isConnected,
-      keyspace: await redisClient.dbsize(),
-      stats: info,
-      memory: memory,
-    }
-  } catch (error: any) {
-    return { enabled: true, connected: false, error: error.message }
+    const info = await adminClient.info()
+    const dbsize = await adminClient.dbsize()
+    return { enabled: true, connected: isConnected, info, keyCount: dbsize }
+  } catch (err: any) {
+    return { enabled: true, connected: false, error: err?.message || err }
   }
 }
 
 export function isRedisEnabled(): boolean {
   return REDIS_ENABLED && isConnected
+}
+
+// ensure graceful shutdown when process ends (but do not force exit)
+if (typeof process !== "undefined") {
+  const onShutdown = async () => {
+    try {
+      await closeRedis()
+    } catch {}
+  }
+  process.once("SIGINT", onShutdown)
+  process.once("SIGTERM", onShutdown)
 }

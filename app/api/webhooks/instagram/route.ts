@@ -315,7 +315,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Calculate priority based on webhook type
-        let priority = PRIORITY.DM // Default priority (highest)
+        let priority: number = PRIORITY.DM // Default priority (highest)
 
         // Determine webhook type for priority
         if (data.entry?.[0]?.messaging) {
