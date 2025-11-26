@@ -1,61 +1,80 @@
 /**
  * BullMQ Queue System - PRODUCTION SAFE
- * 
+ *
  * Features:
  * - Priority queues (story > comment > dm)
  * - Automatic retry with exponential backoff
  * - Dead letter queue for permanent failures
  * - Rate limiting per workspace
  * - Falls back to direct processing if BullMQ fails
- * 
+ *
  * Environment Variables:
  * - BULLMQ_ENABLED=true (enable queue system)
- * - REDIS_URL=redis://localhost:6379
+ * - REDIS_URL=redis://default:password@host:port
  */
 
-import { Queue, Worker, QueueEvents } from 'bullmq';
-import type { Db } from 'mongodb';
+import { Queue, Worker, QueueEvents } from "bullmq"
 
-const BULLMQ_ENABLED = process.env.BULLMQ_ENABLED === 'true';
-const REDIS_URL = process.env.REDIS_URL || 'redis://:1196843649@62.72.42.195:6379';
+const BULLMQ_ENABLED = process.env.BULLMQ_ENABLED === "true"
+const REDIS_URL = process.env.REDIS_URL
 
 // Queue priorities (lower number = higher priority)
 export const PRIORITY = {
-  DM: 1,               // Highest priority - direct messages are most important
-  STORY_REPLY: 2,      // High priority - story engagement
-  COMMENT: 3,          // Medium priority - comment replies
-  RETRY: 20,           // Low priority (retries)
-};
+  DM: 1, // Highest priority - direct messages are most important
+  STORY_REPLY: 2, // High priority - story engagement
+  COMMENT: 3, // Medium priority - comment replies
+  RETRY: 20, // Low priority (retries)
+}
 
-let webhookQueue: Queue | null = null;
-let deadLetterQueue: Queue | null = null;
-let queueEvents: QueueEvents | null = null;
-let isQueueReady = false;
+let webhookQueue: Queue | null = null
+let deadLetterQueue: Queue | null = null
+let queueEvents: QueueEvents | null = null
+let isQueueReady = false
 
 // Initialize BullMQ
 export async function initQueue() {
   if (!BULLMQ_ENABLED) {
-    console.log('⚠️  BullMQ disabled (set BULLMQ_ENABLED=true to enable)');
-    console.log('📌 Using direct processing mode');
-    return;
+    console.log("⚠️  BullMQ disabled (set BULLMQ_ENABLED=true to enable)")
+    console.log("📌 Using direct processing mode")
+    return
+  }
+
+  if (!REDIS_URL) {
+    console.error("❌ REDIS_URL environment variable is not set")
+    console.log("⚠️  BullMQ disabled - falling back to direct processing")
+    return
   }
 
   try {
-    console.log('🔄 Initializing BullMQ...');
+    console.log("🔄 Initializing BullMQ...")
 
-    const connection = {
-      host: new URL(REDIS_URL).hostname,
-      port: parseInt(new URL(REDIS_URL).port || '6379'),
+    const url = new URL(REDIS_URL)
+    const hostname = url.hostname
+    const port = Number.parseInt(url.port || "6379")
+    const password = url.password || ""
+    const username = url.username || "default"
+
+    const connection: any = {
+      host: hostname,
+      port: port,
+      username: username !== "" ? username : undefined,
+      password: password !== "" ? password : undefined,
       maxRetriesPerRequest: null,
-    };
+      connectTimeout: 15000,
+      commandTimeout: 10000,
+      lazyConnect: false,
+      reconnectOnError: () => true,
+    }
+
+    console.log(`🔗 BullMQ connecting to ${hostname}:${port} (user: ${username || "none"})`)
 
     // Main webhook queue
-    webhookQueue = new Queue('webhooks', {
+    webhookQueue = new Queue("webhooks", {
       connection,
       defaultJobOptions: {
         attempts: 3,
         backoff: {
-          type: 'exponential',
+          type: "exponential",
           delay: 2000, // Start at 2s, then 4s, 8s
         },
         removeOnComplete: {
@@ -64,41 +83,40 @@ export async function initQueue() {
         },
         removeOnFail: false, // Move to dead letter instead
       },
-    });
+    })
 
     // Dead letter queue for permanent failures
-    deadLetterQueue = new Queue('webhooks-dead', {
+    deadLetterQueue = new Queue("webhooks-dead", {
       connection,
       defaultJobOptions: {
         removeOnComplete: {
           age: 86400 * 7, // Keep for 7 days
         },
       },
-    });
+    })
 
     // Queue events for monitoring
-    queueEvents = new QueueEvents('webhooks', { connection });
+    queueEvents = new QueueEvents("webhooks", { connection })
 
-    queueEvents.on('completed', ({ jobId }) => {
+    queueEvents.on("completed", ({ jobId }) => {
       // Minimal logging
-    });
+    })
 
-    queueEvents.on('failed', ({ jobId, failedReason }) => {
-      console.error(`❌ Job ${jobId} failed: ${failedReason}`);
-    });
+    queueEvents.on("failed", ({ jobId, failedReason }) => {
+      console.error(`❌ Job ${jobId} failed: ${failedReason}`)
+    })
 
-    await webhookQueue.waitUntilReady();
-    await deadLetterQueue.waitUntilReady();
-    
-    isQueueReady = true;
-    console.log('✅ BullMQ ready');
+    await webhookQueue.waitUntilReady()
+    await deadLetterQueue.waitUntilReady()
 
+    isQueueReady = true
+    console.log("✅ BullMQ ready")
   } catch (error: any) {
-    console.error('❌ BullMQ initialization failed:', error.message);
-    console.log('⚠️  Falling back to direct processing');
-    webhookQueue = null;
-    deadLetterQueue = null;
-    isQueueReady = false;
+    console.error("❌ BullMQ initialization failed:", error.message)
+    console.log("⚠️  Falling back to direct processing")
+    webhookQueue = null
+    deadLetterQueue = null
+    isQueueReady = false
   }
 }
 
@@ -106,84 +124,90 @@ export async function initQueue() {
 export async function enqueueWebhook(
   data: any,
   priority: number = PRIORITY.DM,
-  processWebhookFn?: (data: any) => Promise<void>
+  processWebhookFn?: (data: any) => Promise<void>,
 ): Promise<boolean> {
   // If BullMQ not available, process directly
   if (!webhookQueue || !isQueueReady) {
     if (processWebhookFn) {
       try {
-        await processWebhookFn(data);
-        return true;
+        await processWebhookFn(data)
+        return true
       } catch (error: any) {
-        console.error('❌ Direct processing failed:', error.message);
-        return false;
+        console.error("❌ Direct processing failed:", error.message)
+        return false
       }
     }
-    return false;
+    return false
   }
 
   try {
     // Determine priority based on webhook type
-    const webhookType = determineWebhookType(data);
-    const jobPriority = getPriorityForType(webhookType);
+    const webhookType = determineWebhookType(data)
+    const jobPriority = getPriorityForType(webhookType)
 
     await webhookQueue.add(
-      'process',
+      "process",
       { data, type: webhookType },
       {
         priority: jobPriority,
         jobId: generateJobId(data), // Deduplication
-      }
-    );
+      },
+    )
 
-    return true;
+    return true
   } catch (error: any) {
-    console.error('⚠️  Queue add failed:', error.message);
-    
+    console.error("⚠️  Queue add failed:", error.message)
+
     // Fallback to direct processing
     if (processWebhookFn) {
       try {
-        await processWebhookFn(data);
-        return true;
+        await processWebhookFn(data)
+        return true
       } catch (err: any) {
-        console.error('❌ Fallback processing failed:', err.message);
-        return false;
+        console.error("❌ Fallback processing failed:", err.message)
+        return false
       }
     }
-    
-    return false;
+
+    return false
   }
 }
 
 // Create worker to process queue
-export function createWorker(processWebhookFn: (data: any) => Promise<void>, concurrency: number = 100) {
+export function createWorker(processWebhookFn: (data: any) => Promise<void>, concurrency = 100) {
   if (!BULLMQ_ENABLED || !webhookQueue) {
-    console.log('⚠️  Worker not created (BullMQ disabled)');
-    return null;
+    console.log("⚠️  Worker not created (BullMQ disabled)")
+    return null
   }
 
+  if (!REDIS_URL) {
+    console.error("❌ REDIS_URL environment variable is not set")
+    return null
+  }
+
+  const redisUrlObj = new URL(REDIS_URL)
   const connection = {
-    host: new URL(REDIS_URL).hostname,
-    port: parseInt(new URL(REDIS_URL).port || '6379'),
+    host: redisUrlObj.hostname,
+    port: Number.parseInt(redisUrlObj.port || "6379"),
     maxRetriesPerRequest: null,
-  };
+  }
 
   const worker = new Worker(
-    'webhooks',
+    "webhooks",
     async (job) => {
       try {
-        await processWebhookFn(job.data.data);
+        await processWebhookFn(job.data.data)
       } catch (error: any) {
         // If this is the last attempt, move to dead letter
         if (job.attemptsMade >= 3) {
-          await deadLetterQueue?.add('failed', {
+          await deadLetterQueue?.add("failed", {
             originalData: job.data,
             error: error.message,
             attempts: job.attemptsMade,
             failedAt: new Date(),
-          });
+          })
         }
-        throw error; // Re-throw for BullMQ retry logic
+        throw error // Re-throw for BullMQ retry logic
       }
     },
     {
@@ -193,77 +217,77 @@ export function createWorker(processWebhookFn: (data: any) => Promise<void>, con
         max: 1000, // Max 1000 jobs per second
         duration: 1000,
       },
-    }
-  );
+    },
+  )
 
-  worker.on('completed', (job) => {
+  worker.on("completed", (job) => {
     // Minimal logging
-  });
+  })
 
-  worker.on('failed', (job, err) => {
+  worker.on("failed", (job, err) => {
     if (job) {
-      console.error(`❌ Job ${job.id} failed (attempt ${job.attemptsMade}/3): ${err.message}`);
+      console.error(`❌ Job ${job.id} failed (attempt ${job.attemptsMade}/3): ${err.message}`)
     }
-  });
+  })
 
-  worker.on('error', (err) => {
-    console.error('❌ Worker error:', err.message);
-  });
+  worker.on("error", (err) => {
+    console.error("❌ Worker error:", err.message)
+  })
 
-  console.log(`✅ Worker started (concurrency: ${concurrency})`);
-  return worker;
+  console.log(`✅ Worker started (concurrency: ${concurrency})`)
+  return worker
 }
 
 // Helper functions
 function determineWebhookType(data: any): string {
   if (data.entry?.[0]?.messaging) {
-    const message = data.entry[0].messaging[0]?.message;
+    const message = data.entry[0].messaging[0]?.message
     if (message?.reply_to?.story) {
-      return 'story_reply';
+      return "story_reply"
     }
-    return 'dm';
+    return "dm"
   }
-  
+
   if (data.entry?.[0]?.changes) {
-    const change = data.entry[0].changes[0];
-    if (change?.field === 'comments') {
-      return 'comment';
+    const change = data.entry[0].changes[0]
+    if (change?.field === "comments") {
+      return "comment"
     }
   }
-  
-  return 'unknown';
+
+  return "unknown"
 }
 
 function getPriorityForType(type: string): number {
   switch (type) {
-    case 'story_reply':
-      return PRIORITY.STORY_REPLY;
-    case 'comment':
-      return PRIORITY.COMMENT;
-    case 'dm':
-      return PRIORITY.DM;
+    case "story_reply":
+      return PRIORITY.STORY_REPLY
+    case "comment":
+      return PRIORITY.COMMENT
+    case "dm":
+      return PRIORITY.DM
     default:
-      return PRIORITY.DM;
+      return PRIORITY.DM
   }
 }
 
 function generateJobId(data: any): string {
   // Generate unique job ID for deduplication
-  const entry = data.entry?.[0];
-  if (!entry) return `job-${Date.now()}-${Math.random()}`;
-  
-  const id = entry.id;
-  const time = entry.time;
-  const messaging = entry.messaging?.[0];
-  const messageId = messaging?.message?.mid;
-  
-  return `${id}-${time}-${messageId || Math.random()}`.substring(0, 100);
+  const entry = data.entry?.[0]
+  if (!entry) return `job-${Date.now()}-${Math.random()}`
+
+  const id = entry.id
+  const time = entry.time
+  const messaging = entry.messaging?.[0]
+  const messageId = messaging?.message?.mid
+
+  return `${id}-${time}-${messageId || Math.random()}`.substring(0, 100)
 }
 
 // Monitoring
 export async function getQueueStats() {
   if (!webhookQueue || !isQueueReady) {
-    return { enabled: false };
+    return { enabled: false }
   }
 
   try {
@@ -273,9 +297,9 @@ export async function getQueueStats() {
       webhookQueue.getCompletedCount(),
       webhookQueue.getFailedCount(),
       webhookQueue.getDelayedCount(),
-    ]);
+    ])
 
-    const deadCount = deadLetterQueue ? await deadLetterQueue.getWaitingCount() : 0;
+    const deadCount = deadLetterQueue ? await deadLetterQueue.getWaitingCount() : 0
 
     return {
       enabled: true,
@@ -286,26 +310,26 @@ export async function getQueueStats() {
       failed,
       delayed,
       deadLetter: deadCount,
-    };
+    }
   } catch (error: any) {
-    return { enabled: true, ready: false, error: error.message };
+    return { enabled: true, ready: false, error: error.message }
   }
 }
 
 export function isQueueEnabled(): boolean {
-  return BULLMQ_ENABLED && isQueueReady;
+  return BULLMQ_ENABLED && isQueueReady
 }
 
 // Graceful shutdown
 export async function closeQueue() {
   if (webhookQueue) {
-    await webhookQueue.close();
+    await webhookQueue.close()
   }
   if (deadLetterQueue) {
-    await deadLetterQueue.close();
+    await deadLetterQueue.close()
   }
   if (queueEvents) {
-    await queueEvents.close();
+    await queueEvents.close()
   }
-  console.log('✅ Queue closed gracefully');
+  console.log("✅ Queue closed gracefully")
 }
