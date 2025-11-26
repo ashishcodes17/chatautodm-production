@@ -6,6 +6,8 @@
  * - Cache warming on startup
  * - TTL-based invalidation
  * - Pub/Sub for cross-worker cache invalidation
+ * - Connection pooling and singleton pattern to prevent EPIPE errors
+ * - Proper reconnection with exponential backoff
  *
  * Environment Variables:
  * - REDIS_ENABLED=true (enable Redis caching)
@@ -29,9 +31,27 @@ const TTL = {
 let redis: Redis | null = null
 let pubsub: Redis | null = null
 let isConnected = false
+let initPromise: Promise<void> | null = null // Prevent multiple concurrent init calls
 
-// Initialize Redis connection
+export function getRedisInstance(): Redis | null {
+  return redis
+}
+
+function getPubSubInstance(): Redis | null {
+  return pubsub
+}
+
+// Initialize Redis connection (with singleton pattern to prevent EPIPE)
 export async function initRedis() {
+  if (initPromise) {
+    await initPromise
+    return
+  }
+
+  if (redis && isConnected) {
+    return
+  }
+
   if (!REDIS_ENABLED) {
     console.log("⚠️  Redis disabled (set REDIS_ENABLED=true to enable)")
     return
@@ -43,10 +63,16 @@ export async function initRedis() {
     return
   }
 
+  initPromise = initRedisInternal()
+  await initPromise
+  initPromise = null
+}
+
+async function initRedisInternal() {
   try {
     console.log("🔄 Connecting to Redis...")
 
-    const url = new URL(REDIS_URL)
+    const url = new URL(REDIS_URL as string)
     const hostname = url.hostname
     const port = Number.parseInt(url.port || "6379")
     const password = url.password || ""
@@ -57,43 +83,54 @@ export async function initRedis() {
       port: port,
       username: username !== "" ? username : undefined,
       password: password !== "" ? password : undefined,
-      // let commands queue while reconnecting rather than fail fast
-      maxRetriesPerRequest: null,
+      maxRetriesPerRequest: 3,
       enableReadyCheck: true,
-      // a conservative retry strategy
       retryStrategy(times: number) {
-        if (times > 20) {
-          console.error("❌ Redis connection failed after many retries - falling back to MongoDB")
+        if (times > 10) {
+          console.error("❌ Redis connection failed after 10 retries - falling back to MongoDB")
           return null
         }
-        const delay = Math.min(times * 500, 5000)
+        const delay = Math.min(times * 1000, 10000) // Max 10s delay
         console.log(`🔄 Redis retry ${times} in ${delay}ms...`)
         return delay
       },
-      connectTimeout: 15000,
-      commandTimeout: 10000,
+      connectTimeout: 20000, // Increased from 15s
+      commandTimeout: 15000, // Increased from 10s
       lazyConnect: false,
-      reconnectOnError: () => true,
-      enableAutoPipelining: true,
-      autoResubscribe: true,
+      reconnectOnError: (err: Error) => {
+        const targetError = "READONLY You can't write against a read only replica."
+        if (err.message.includes(targetError)) {
+          return true
+        }
+        // Reconnect on EPIPE and network errors
+        if (err.message.includes("EPIPE") || err.message.includes("ECONNRESET") || err.message.includes("ETIMEDOUT")) {
+          console.error(`[v0] Redis error detected, will reconnect: ${err.message}`)
+          return true
+        }
+        return false
+      },
     }
 
-    // create client and attach handlers immediately to avoid unhandled errors
     redis = new Redis(redisOptions)
 
-    // attach immediate listeners to prevent unhandled 'error' events
-    redis.on("error", (err: any) => {
-      try {
-        console.error("❌ Redis error:", err?.message || err)
-      } catch (e) {
-        console.error("❌ Redis error (failed to stringify):", e)
-      }
+    // Separate connection for pub/sub
+    pubsub = redis.duplicate()
+
+    redis.on("error", (err) => {
+      console.error(`[v0] Redis connection error: ${err.message}`)
       isConnected = false
+      if (err.message.includes("EPIPE")) {
+        console.error("[v0] EPIPE detected - connection will auto-reconnect")
+      }
     })
 
     redis.on("connect", () => {
       isConnected = true
-      console.log("✅ Redis reconnected")
+      console.log("✅ Redis connected")
+    })
+
+    redis.on("reconnecting", () => {
+      console.log("🔄 Redis reconnecting...")
     })
 
     redis.on("close", () => {
@@ -101,21 +138,10 @@ export async function initRedis() {
       console.warn("⚠️  Redis connection closed")
     })
 
-    // Separate connection for pub/sub
-    pubsub = redis.duplicate()
-
-    // attach pubsub error/connect handlers immediately
-    pubsub.on("error", (err: any) => {
-      console.error("❌ Redis pubsub error:", err?.message || err)
-    })
-    pubsub.on("connect", () => {
-      console.log("🔔 Redis pubsub connected")
-    })
-
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error("Redis connection timeout (15s)"))
-      }, 15000)
+        reject(new Error("Redis connection timeout (20s)"))
+      }, 20000)
 
       redis!.on("ready", () => {
         clearTimeout(timeout)
@@ -124,26 +150,30 @@ export async function initRedis() {
         resolve()
       })
 
-      // if an error occurs while establishing connection, surface it
-      const onError = (err: any) => {
+      const errorHandler = (err: any) => {
         clearTimeout(timeout)
-        console.error("❌ Redis connection error:", err?.message || err)
+        redis!.removeListener("ready", readyHandler)
         reject(err)
       }
 
-      redis!.once("error", onError)
+      const readyHandler = () => {
+        redis!.removeListener("error", errorHandler)
+      }
+
+      redis!.once("error", errorHandler)
     })
 
-    // Subscribe to invalidation channel (pubsub will auto-connect)
-    try {
-      await pubsub.subscribe("cache:invalidate")
+    // Listen for cache invalidation events
+    if (pubsub) {
+      pubsub.subscribe("cache:invalidate", (err) => {
+        if (err) console.error("❌ Pub/Sub subscribe error:", err.message)
+      })
+
       pubsub.on("message", (channel, message) => {
         if (channel === "cache:invalidate") {
           console.log(`🔄 Cache invalidation: ${message}`)
         }
       })
-    } catch (err: any) {
-      console.error("❌ Pub/Sub subscribe error:", err?.message || err)
     }
   } catch (error: any) {
     console.error("❌ Redis initialization failed:", error.message)
@@ -156,10 +186,11 @@ export async function initRedis() {
 
 // Safe wrapper for Redis operations
 async function safeRedisGet<T>(key: string): Promise<T | null> {
-  if (!redis || !isConnected) return null
+  const redisClient = getRedisInstance()
+  if (!redisClient || !isConnected) return null
 
   try {
-    const data = await redis.get(key)
+    const data = await redisClient.get(key)
     if (!data) return null
     return JSON.parse(data) as T
   } catch (error: any) {
@@ -169,20 +200,22 @@ async function safeRedisGet<T>(key: string): Promise<T | null> {
 }
 
 async function safeRedisSet(key: string, value: any, ttl: number): Promise<void> {
-  if (!redis || !isConnected) return
+  const redisClient = getRedisInstance()
+  if (!redisClient || !isConnected) return
 
   try {
-    await redis.setex(key, ttl, JSON.stringify(value))
+    await redisClient.setex(key, ttl, JSON.stringify(value))
   } catch (error: any) {
     console.error(`⚠️  Redis SET error for ${key}:`, error.message)
   }
 }
 
 async function safeRedisDel(key: string): Promise<void> {
-  if (!redis || !isConnected) return
+  const redisClient = getRedisInstance()
+  if (!redisClient || !isConnected) return
 
   try {
-    await redis.del(key)
+    await redisClient.del(key)
   } catch (error: any) {
     console.error(`⚠️  Redis DEL error for ${key}:`, error.message)
   }
@@ -235,18 +268,20 @@ export async function getAutomation(workspaceId: string, type: string, postId: s
 export async function invalidateAutomation(workspaceId: string, type?: string, postId?: string): Promise<void> {
   const pattern = `automation:${workspaceId}:${type || "*"}:${postId || "*"}`
 
-  if (!redis || !isConnected) return
+  const redisClient = getRedisInstance()
+  if (!redisClient || !isConnected) return
 
   try {
     // Delete matching keys
-    const keys = await redis.keys(pattern)
+    const keys = await redisClient.keys(pattern)
     if (keys.length > 0) {
-      await redis.del(...keys)
+      await redisClient.del(...keys)
     }
 
     // Notify other workers
-    if (pubsub) {
-      await pubsub.publish("cache:invalidate", pattern)
+    const pubsubClient = getPubSubInstance()
+    if (pubsubClient) {
+      await pubsubClient.publish("cache:invalidate", pattern)
     }
   } catch (error: any) {
     console.error("⚠️  Cache invalidation error:", error.message)
@@ -410,18 +445,19 @@ export async function warmCache(db: Db): Promise<void> {
 // ============================================
 
 export async function getCacheStats(): Promise<any> {
-  if (!redis || !isConnected) {
+  const redisClient = getRedisInstance()
+  if (!redisClient || !isConnected) {
     return { enabled: false }
   }
 
   try {
-    const info = await redis.info("stats")
-    const memory = await redis.info("memory")
+    const info = await redisClient.info("stats")
+    const memory = await redisClient.info("memory")
 
     return {
       enabled: true,
       connected: isConnected,
-      keyspace: await redis.dbsize(),
+      keyspace: await redisClient.dbsize(),
       stats: info,
       memory: memory,
     }

@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
 import crypto from "crypto"
-import { initRedis, getWorkspaceByInstagramId, getAutomation, getUserState as getCachedUserState, setUserState as setCachedUserState, getContact as getCachedContact } from "@/lib/redis-cache"
+import { initRedis, getWorkspaceByInstagramId, getAutomation } from "@/lib/redis-cache"
 import { initQueue, enqueueWebhook, isQueueEnabled, PRIORITY } from "@/lib/webhook-queue"
 
 // Instagram Webhook endpoint (Meta Graph API)
@@ -19,14 +19,9 @@ const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN || "verify_token_123"
 // 🚀 QUEUE SYSTEM CONFIGURATION (Feature Flag)
 const USE_QUEUE = process.env.USE_QUEUE_SYSTEM === "true"
 const ENABLE_DEDUPLICATION = process.env.QUEUE_ENABLE_DEDUPLICATION !== "false"
-const DEDUPLICATION_WINDOW = parseInt(process.env.QUEUE_DEDUPLICATION_WINDOW || "10000")
+const DEDUPLICATION_WINDOW = Number.parseInt(process.env.QUEUE_DEDUPLICATION_WINDOW || "10000")
 const ENABLE_RATE_LIMIT = process.env.QUEUE_ENABLE_RATE_LIMIT !== "false"
-const MAX_WEBHOOKS_PER_MINUTE = parseInt(process.env.QUEUE_MAX_WEBHOOKS_PER_MINUTE || "10000")
-
-// Initialize Redis and BullMQ at module load so they warm up outside request path
-// These are non-blocking; failures fall back to MongoDB behavior
-initRedis().catch(err => console.error("⚠️ Redis init failed at module load (using MongoDB fallback):", err?.message || err))
-initQueue().catch(err => console.error("⚠️ BullMQ init failed at module load (using MongoDB queue fallback):", err?.message || err))
+const MAX_WEBHOOKS_PER_MINUTE = Number.parseInt(process.env.QUEUE_MAX_WEBHOOKS_PER_MINUTE || "10000")
 
 export async function GET(request: NextRequest) {
   try {
@@ -128,8 +123,8 @@ export async function processWebhookData(data: any) {
 
         console.log(`✅ Found account: ${account.username} (${account.instagramUserId})`)
 
-  // Handle messaging events
-  // These are DMs or replies that come via the Messaging API
+        // Handle messaging events
+        // These are DMs or replies that come via the Messaging API
         if (entry.messaging) {
           console.log("💬 Found messaging events:", entry.messaging.length)
           for (const messagingEvent of entry.messaging) {
@@ -139,18 +134,20 @@ export async function processWebhookData(data: any) {
               entry_id: entry.id,
               account_instagramUserId: account.instagramUserId,
               account_professionalId: account.instagramProfessionalId,
-              message_text: messagingEvent.message?.text?.substring(0, 50)
+              message_text: messagingEvent.message?.text?.substring(0, 50),
             })
-            
+
             // 🚨 Check for echo messages or messages from business account
             if (messagingEvent.message?.is_echo) {
               console.log("⚠️ Skipping echo message (is_echo=true)")
               continue
             }
-            
-            if (messagingEvent.sender?.id === entry.id ||
-                messagingEvent.sender?.id === account.instagramUserId ||
-                messagingEvent.sender?.id === account.instagramProfessionalId) {
+
+            if (
+              messagingEvent.sender?.id === entry.id ||
+              messagingEvent.sender?.id === account.instagramUserId ||
+              messagingEvent.sender?.id === account.instagramProfessionalId
+            ) {
               console.log("⚠️ Skipping message from business account (sender matches business)")
               continue
             }
@@ -222,7 +219,10 @@ export async function processWebhookData(data: any) {
               }
 
               // Skip if self-scoped id matches (some payloads include this)
-              if (fromSelfScoped && (fromSelfScoped === account.self_ig_scoped_id || fromSelfScoped === account.instagramProfessionalId)) {
+              if (
+                fromSelfScoped &&
+                (fromSelfScoped === account.self_ig_scoped_id || fromSelfScoped === account.instagramProfessionalId)
+              ) {
                 console.log("⚠️ Skipping comment change authored by business self-scoped id:", fromSelfScoped)
                 continue
               }
@@ -261,11 +261,20 @@ export async function POST(request: NextRequest) {
 
     const db = await getDatabase()
 
-    // 🚀 Initialize Redis cache (non-blocking, with fallback)
-    initRedis().catch(err => console.error("⚠️ Redis init failed (using MongoDB fallback):", err.message))
+    let redisInitialized = false
+    let queueInitialized = false
 
-    // 🚀 Initialize BullMQ queue (non-blocking, with fallback)
-    initQueue().catch(err => console.error("⚠️ BullMQ init failed (using MongoDB queue fallback):", err.message))
+    if (!redisInitialized) {
+      await initRedis().catch((err) => console.error("⚠️ Redis init failed (using MongoDB fallback):", err.message))
+      redisInitialized = true
+    }
+
+    if (!queueInitialized) {
+      await initQueue().catch((err) =>
+        console.error("⚠️ BullMQ init failed (using MongoDB queue fallback):", err.message),
+      )
+      queueInitialized = true
+    }
 
     // Check if this is an internal worker call (skip queueing, process directly)
     const isWorkerCall = request.headers.get("X-Internal-Worker") === "true"
@@ -273,15 +282,15 @@ export async function POST(request: NextRequest) {
     // 🚀 QUEUE SYSTEM - Fast path (responds in ~10ms)
     if (USE_QUEUE && !isWorkerCall) {
       console.log("⚡ Queue system ENABLED - fast response mode")
-      
+
       try {
         // Rate limiting check (prevent webhook floods)
         if (ENABLE_RATE_LIMIT) {
           const recentCount = await db.collection("webhook_queue").countDocuments({
             createdAt: { $gte: new Date(Date.now() - 60000) },
-            status: { $in: ["pending", "processing"] }
+            status: { $in: ["pending", "processing"] },
           })
-          
+
           if (recentCount > MAX_WEBHOOKS_PER_MINUTE) {
             console.warn(`⚠️  RATE LIMIT: ${recentCount} webhooks in queue (max: ${MAX_WEBHOOKS_PER_MINUTE})`)
             // Still return 200 to avoid Instagram retries
@@ -292,13 +301,13 @@ export async function POST(request: NextRequest) {
         // Deduplication check (prevent processing same webhook twice)
         let webhookHash = null
         if (ENABLE_DEDUPLICATION) {
-          webhookHash = crypto.createHash('md5').update(rawBody).digest('hex')
-          
+          webhookHash = crypto.createHash("md5").update(rawBody).digest("hex")
+
           const recentDuplicate = await db.collection("webhook_queue").findOne({
             webhookHash,
-            createdAt: { $gte: new Date(Date.now() - DEDUPLICATION_WINDOW) }
+            createdAt: { $gte: new Date(Date.now() - DEDUPLICATION_WINDOW) },
           })
-          
+
           if (recentDuplicate) {
             console.warn(`⚠️  DUPLICATE webhook detected (hash: ${webhookHash}), skipping`)
             return new Response("OK", { status: 200 })
@@ -307,7 +316,7 @@ export async function POST(request: NextRequest) {
 
         // Calculate priority based on webhook type
         let priority = PRIORITY.DM // Default priority (highest)
-        
+
         // Determine webhook type for priority
         if (data.entry?.[0]?.messaging) {
           const message = data.entry[0].messaging[0]?.message
@@ -316,7 +325,7 @@ export async function POST(request: NextRequest) {
           } else {
             priority = PRIORITY.DM // Highest priority
           }
-        } else if (data.entry?.[0]?.changes?.[0]?.field === 'comments') {
+        } else if (data.entry?.[0]?.changes?.[0]?.field === "comments") {
           priority = PRIORITY.COMMENT // Medium priority
         }
 
@@ -324,12 +333,12 @@ export async function POST(request: NextRequest) {
         if (isQueueEnabled()) {
           console.log("⚡ Using BullMQ (Redis queue)")
           const queued = await enqueueWebhook(data, priority)
-          
+
           if (queued) {
             console.log("✅ Webhook queued to BullMQ (fast response)")
             return new Response("OK", { status: 200 })
           }
-          
+
           console.warn("⚠️  BullMQ queue failed, falling back to MongoDB")
         }
 
@@ -343,14 +352,13 @@ export async function POST(request: NextRequest) {
           attempts: 0,
           createdAt: new Date(),
           source: "instagram",
-          rawBodyPreview: rawBody.substring(0, 500)
+          rawBodyPreview: rawBody.substring(0, 500),
         })
 
         console.log("✅ Webhook queued to MongoDB (fast response)")
-        
+
         // Return immediately - worker will process it
         return new Response("OK", { status: 200 })
-        
       } catch (queueError) {
         console.error("❌ Queue system error, falling back to direct processing:", queueError)
         // Fall through to direct processing if queue fails
@@ -449,7 +457,7 @@ async function processMessagingEvent(messagingEvent: any, accountId: string, db:
       console.log("❌ Missing sender ID")
       return
     }
-    
+
     if (!recipientId) {
       console.log("❌ Missing recipient ID")
       return
@@ -460,9 +468,9 @@ async function processMessagingEvent(messagingEvent: any, accountId: string, db:
       const recentLog = await db.collection("webhook_logs").findOne({
         "data.entry.messaging.message.mid": messageId,
         processed: true,
-        timestamp: { $gte: new Date(Date.now() - 60000) } // Last 60 seconds
+        timestamp: { $gte: new Date(Date.now() - 60000) }, // Last 60 seconds
       })
-      
+
       if (recentLog) {
         console.log("⚠️ Duplicate message detected (already processed), skipping:", messageId)
         return
@@ -480,12 +488,14 @@ async function processMessagingEvent(messagingEvent: any, accountId: string, db:
     // This ensures we only trigger automations when someone messages TO the bot account
     // Skips webhooks received from the user's side (when both are registered on platform)
     const isRecipientOwner = recipientId === account.instagramUserId || recipientId === account.instagramProfessionalId
-    
+
     if (!isRecipientOwner) {
-      console.log(`⚠️ Recipient ${recipientId} is not automation owner (${account.instagramUserId}/${account.instagramProfessionalId}), skipping (likely sender-side webhook)`)
+      console.log(
+        `⚠️ Recipient ${recipientId} is not automation owner (${account.instagramUserId}/${account.instagramProfessionalId}), skipping (likely sender-side webhook)`,
+      )
       return
     }
-    
+
     console.log(`✅ Recipient ${recipientId} matches automation owner, processing message`)
 
     // Skip if sender is the business account itself (should already be filtered by is_echo, but double-check)
@@ -501,14 +511,14 @@ async function processMessagingEvent(messagingEvent: any, accountId: string, db:
       "Please enter a valid email address",
       "Thank you! Your email has been saved successfully",
       "Hey there! I'm so happy you're here",
-      "Oh no! It seems you're not following me"
+      "Oh no! It seems you're not following me",
     ]
-    
-    if (messageText && botMessagePatterns.some(pattern => messageText.includes(pattern))) {
+
+    if (messageText && botMessagePatterns.some((pattern) => messageText.includes(pattern))) {
       console.log("⚠️ Message text matches bot pattern, likely an echo without is_echo flag. Skipping.")
       return
     }
-    
+
     // 🚨 Check if we recently sent this exact message text to this user (within last 10 seconds)
     // This catches cases where Instagram echoes our message back as if the user sent it
     if (messageText) {
@@ -516,9 +526,9 @@ async function processMessagingEvent(messagingEvent: any, accountId: string, db:
         "data.entry.messaging.message.text": messageText,
         "data.entry.messaging.message.is_echo": true,
         "data.entry.messaging.recipient.id": senderId,
-        timestamp: { $gte: new Date(Date.now() - 10000) } // Last 10 seconds
+        timestamp: { $gte: new Date(Date.now() - 10000) }, // Last 10 seconds
       })
-      
+
       if (recentBotMessage) {
         console.log("⚠️ This exact message was recently sent by bot (found echo in logs), skipping duplicate")
         return
@@ -528,20 +538,20 @@ async function processMessagingEvent(messagingEvent: any, accountId: string, db:
     // Check if user is in a waiting state (e.g., awaiting_email) and handle it before automations
     try {
       const userState = await db.collection("user_states").findOne({ senderId, accountId: account.instagramUserId })
-      
+
       // Extra safety: Make sure the user state sender is NOT the business account
       if (userState && userState.senderId === account.instagramUserId) {
         console.log("⚠️ Invalid user state: senderId is business account, deleting corrupt state")
         await db.collection("user_states").deleteOne({ senderId, accountId: account.instagramUserId })
         return
       }
-      
+
       if (userState && userState.senderId === account.instagramProfessionalId) {
         console.log("⚠️ Invalid user state: senderId is professional account, deleting corrupt state")
         await db.collection("user_states").deleteOne({ senderId, accountId: account.instagramUserId })
         return
       }
-      
+
       if (userState && userState.state === "awaiting_email") {
         console.log("📧 Detected awaiting_email state for user, processing email response")
         const messageText = messagingEvent.message?.text?.trim() || ""
@@ -570,7 +580,12 @@ async function processMessagingEvent(messagingEvent: any, accountId: string, db:
           console.log("✅ Valid email stored via awaiting_email handler:", messageText)
 
           // Send confirmation
-          await sendDirectMessage(account.instagramUserId, account.accessToken, senderId, "Thank you! Your email has been saved successfully. 📧")
+          await sendDirectMessage(
+            account.instagramUserId,
+            account.accessToken,
+            senderId,
+            "Thank you! Your email has been saved successfully. 📧",
+          )
 
           // Clear user state
           await db.collection("user_states").deleteOne({ senderId, accountId: account.instagramUserId })
@@ -611,17 +626,19 @@ async function processMessagingEvent(messagingEvent: any, accountId: string, db:
     // Store contact for general message interaction
     // await storeOrUpdateContact(account.instagramUserId, senderId, null, "message", null, db, account.workspaceId)
 
-  // Delegates to DM automations:
-  //   • type: "dm_automation" (plain buttons/text)
-  //   • type: "generic_dm_automation" (carousel-like Generic Template)
-  await processDMAutomationsEnhanced(account, messagingEvent, db)
+    // Delegates to DM automations:
+    //   • type: "dm_automation" (plain buttons/text)
+    //   • type: "generic_dm_automation" (carousel-like Generic Template)
+    await processDMAutomationsEnhanced(account, messagingEvent, db)
 
     // Mark this message as processed
     if (messageId) {
-      await db.collection("webhook_logs").updateOne(
-        { "data.entry.messaging.message.mid": messageId },
-        { $set: { processed: true, processedAt: new Date() } }
-      )
+      await db
+        .collection("webhook_logs")
+        .updateOne(
+          { "data.entry.messaging.message.mid": messageId },
+          { $set: { processed: true, processedAt: new Date() } },
+        )
     }
 
     console.log("✅ Messaging event processed successfully")
@@ -743,14 +760,14 @@ async function processStoryAutomationsEnhanced(account: any, messagingEvent: any
     }
 
     // Search for automations across ALL workspaces and Instagram IDs
-  const workspaceIds = workspaces.map((w: any) => w._id)
+    const workspaceIds = workspaces.map((w: any) => w._id)
     const instagramIds = [
       account.instagramUserId,
       account.instagramProfessionalId,
-  ...workspaces.map((w: any) => w.instagramUserId),
-  ...workspaces.map((w: any) => w.instagramProfessionalId),
-  ...workspaces.map((w: any) => w.instagramAccount?.instagramUserId),
-  ...workspaces.map((w: any) => w.instagramAccount?.instagramProfessionalId),
+      ...workspaces.map((w: any) => w.instagramUserId),
+      ...workspaces.map((w: any) => w.instagramProfessionalId),
+      ...workspaces.map((w: any) => w.instagramAccount?.instagramUserId),
+      ...workspaces.map((w: any) => w.instagramAccount?.instagramProfessionalId),
     ].filter(Boolean)
 
     // 🚀 REDIS CACHED - Try cache first for each workspace
@@ -759,7 +776,7 @@ async function processStoryAutomationsEnhanced(account: any, messagingEvent: any
     const cacheMisses = []
 
     for (const workspaceId of workspaceIds) {
-      const cached = await getAutomation(workspaceId.toString(), 'story_reply_flow', storyId, db)
+      const cached = await getAutomation(workspaceId.toString(), "story_reply_flow", storyId, db)
       if (cached && cached.length > 0) {
         cacheHits.push(workspaceId)
         storyAutomations = [...storyAutomations, ...cached]
@@ -784,7 +801,7 @@ async function processStoryAutomationsEnhanced(account: any, messagingEvent: any
           type: "story_reply_flow",
         })
         .toArray()
-      
+
       storyAutomations = [...storyAutomations, ...mongoAutomations]
     }
 
@@ -846,7 +863,7 @@ async function processStoryAutomationsEnhanced(account: any, messagingEvent: any
 
       if (shouldTrigger) {
         console.log(`🚀 Triggering story reply automation: ${automation.name}`)
-  await handleStoryReplyFlowEnhanced(automation, account, senderId, messageText, storyId, messageId, db)
+        await handleStoryReplyFlowEnhanced(automation, account, senderId, messageText, storyId, messageId, db)
         return // Exit after first match to prevent multiple automations
       }
 
@@ -941,7 +958,8 @@ async function handleStoryReplyFlowEnhanced(
     if (automation.actions?.askEmail?.enabled && automation.actions.askEmail.message) {
       console.log("📧 STEP 4: Asking user for email (plain DM, no buttons)...")
 
-      const askMessage = automation.actions.askEmail.message || "Please share your email address so I can send you the link."
+      const askMessage =
+        automation.actions.askEmail.message || "Please share your email address so I can send you the link."
 
       // Send a plain DM asking for the user's email (no buttons)
       const emailSent = await sendDirectMessage(account.instagramUserId, account.accessToken, senderId, askMessage)
@@ -989,13 +1007,14 @@ async function handleStoryReplyFlowEnhanced(
         )
 
         await updateAccountUsage(account, "main_dm", automation.name, messageText)
+        await clearUserState(senderId, account.instagramUserId, db)
 
         // Send follow-up message if enabled
         console.log("🔍 Checking follow-up:", {
           exists: !!automation.actions?.followUp,
           enabled: automation.actions?.followUp?.enabled,
           message: automation.actions?.followUp?.message,
-          delay: automation.actions?.followUp?.delay
+          delay: automation.actions?.followUp?.delay,
         })
         if (automation.actions?.followUp?.enabled && automation.actions.followUp.message) {
           console.log("📤 Scheduling follow-up message in", automation.actions.followUp.delay || 300000, "ms")
@@ -1071,10 +1090,10 @@ async function handlePostback(messagingEvent: any, accountId: string, db: any) {
 
     if (iceBreakersAutomation) {
       console.log("🧊 [Ice Breaker] Found automation, checking payload match...")
-      
+
       // Check if payload matches any ice breaker question
       const matchingQuestion = iceBreakersAutomation.iceBreakers?.call_to_actions?.find(
-        (q: any) => q.payload === payload
+        (q: any) => q.payload === payload,
       )
 
       if (matchingQuestion) {
@@ -1083,14 +1102,11 @@ async function handlePostback(messagingEvent: any, accountId: string, db: any) {
         console.log("🧊 [Ice Breaker] Custom response:", matchingQuestion.response)
 
         // Send the custom response message set by the user
-        const responseMessage = matchingQuestion.response || `Thanks for reaching out! You asked: "${matchingQuestion.question}"\n\nLet me help you with that! 😊`
+        const responseMessage =
+          matchingQuestion.response ||
+          `Thanks for reaching out! You asked: "${matchingQuestion.question}"\n\nLet me help you with that! 😊`
 
-        const sent = await sendDirectMessage(
-          account.instagramUserId,
-          account.accessToken,
-          senderId,
-          responseMessage
-        )
+        const sent = await sendDirectMessage(account.instagramUserId, account.accessToken, senderId, responseMessage)
 
         if (sent) {
           // Store contact
@@ -1101,7 +1117,7 @@ async function handlePostback(messagingEvent: any, accountId: string, db: any) {
             "ice_breaker_click",
             `Ice Breaker: ${matchingQuestion.question}`,
             db,
-            account.workspaceId
+            account.workspaceId,
           )
 
           // Update usage
@@ -1269,13 +1285,13 @@ async function sendMainDM(automation: any, account: any, senderId: string, db: a
         exists: !!automation.actions?.followUp,
         enabled: automation.actions?.followUp?.enabled,
         message: automation.actions?.followUp?.message,
-        delay: automation.actions?.followUp?.delay
+        delay: automation.actions?.followUp?.delay,
       })
       if (automation.actions?.followUp?.enabled && automation.actions.followUp.message) {
         console.log("📤 Scheduling follow-up message in", automation.actions.followUp.delay || 300000, "ms")
         const followUpDelay = automation.actions.followUp.delay || 300000
         const followUpMessage = automation.actions.followUp.message
-        
+
         setTimeout(async () => {
           try {
             console.log(`⏰ EXECUTING follow-up message now for ${automation.name}`)
@@ -1297,7 +1313,7 @@ async function sendMainDM(automation: any, account: any, senderId: string, db: a
             console.error("❌ Error sending follow-up message:", followUpError)
           }
         }, followUpDelay)
-        
+
         console.log(`✅ Follow-up scheduled to execute in ${followUpDelay}ms`)
       } else {
         console.log("⚠️ Follow-up NOT scheduled - either disabled or no message set")
@@ -1314,10 +1330,12 @@ async function storeUserState(senderId: string, accountId: string, automationId:
   // 🚨 CRITICAL: Never store user state where senderId is the business account
   // This prevents infinite loops where bot messages are processed as user responses
   if (senderId === accountId) {
-    console.error("❌ CRITICAL: Attempted to store user state with senderId === accountId (business account). This would cause infinite loops. Blocking.")
+    console.error(
+      "❌ CRITICAL: Attempted to store user state with senderId === accountId (business account). This would cause infinite loops. Blocking.",
+    )
     return
   }
-  
+
   await db.collection("user_states").replaceOne(
     { senderId, accountId },
     {
@@ -1334,10 +1352,12 @@ async function storeUserState(senderId: string, accountId: string, automationId:
 async function updateUserState(senderId: string, accountId: string, automationId: any, state: string, db: any) {
   // 🚨 CRITICAL: Never update user state where senderId is the business account
   if (senderId === accountId) {
-    console.error("❌ CRITICAL: Attempted to update user state with senderId === accountId (business account). Blocking.")
+    console.error(
+      "❌ CRITICAL: Attempted to update user state with senderId === accountId (business account). Blocking.",
+    )
     return
   }
-  
+
   await db.collection("user_states").updateOne(
     { senderId, accountId },
     {
@@ -1427,12 +1447,12 @@ async function sendDirectMessageWithButtons(
       const element: any = {
         title: messageText,
       }
-      
+
       // Add buttons only if present
       if (formattedButtons.length > 0) {
         element.buttons = formattedButtons
       }
-      
+
       // 🆕 Add image_url if provided
       if (imageUrl) {
         element.image_url = imageUrl
@@ -1456,7 +1476,7 @@ async function sendDirectMessageWithButtons(
 
       console.log("📤 Generic Template payload:", JSON.stringify(buttonPayload, null, 2))
 
-  const buttonResponse = await fetch(`https://graph.instagram.com/v24.0/${instagramId}/messages`, {
+      const buttonResponse = await fetch(`https://graph.instagram.com/v24.0/${instagramId}/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1502,7 +1522,7 @@ async function sendDirectMessageWithButtons(
       },
     }
 
-  const textResponse = await fetch(`https://graph.instagram.com/v24.0/${instagramId}/messages`, {
+    const textResponse = await fetch(`https://graph.instagram.com/v24.0/${instagramId}/messages`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1558,11 +1578,11 @@ async function sendGenericTemplate(
       const cleanedButtons = (el.buttons || []).slice(0, 3).map((b: any, i: number) => {
         // Accept 'link' or 'url' for web_url; 'payload' for postback
         const title = b.text || b.title || `Button ${i + 1}`
-        if (b.type === 'web_url' || b.link || b.url) {
+        if (b.type === "web_url" || b.link || b.url) {
           const href = b.link || b.url
-          return { type: 'web_url', url: ensureHttps(href), title }
+          return { type: "web_url", url: ensureHttps(href), title }
         }
-        return { type: 'postback', title, payload: b.payload || `BUTTON_${i + 1}` }
+        return { type: "postback", title, payload: b.payload || `BUTTON_${i + 1}` }
       })
       // Build element with only allowed/non-empty fields
       const element: any = {
@@ -1571,7 +1591,7 @@ async function sendGenericTemplate(
       if (el.subtitle) element.subtitle = el.subtitle
       if (el.image_url) element.image_url = ensureHttps(el.image_url)
       if (el.default_action?.url) {
-        element.default_action = { type: el.default_action.type || 'web_url', url: ensureHttps(el.default_action.url) }
+        element.default_action = { type: el.default_action.type || "web_url", url: ensureHttps(el.default_action.url) }
       }
       if (cleanedButtons.length > 0) {
         element.buttons = cleanedButtons
@@ -1594,24 +1614,30 @@ async function sendGenericTemplate(
 
     console.log("📤 Generic payload:", JSON.stringify(payload, null, 2))
 
-  const res = await fetch(`https://graph.instagram.com/v24.0/${instagramId}/messages?access_token=${encodeURIComponent(accessToken)}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const res = await fetch(
+      `https://graph.instagram.com/v24.0/${instagramId}/messages?access_token=${encodeURIComponent(accessToken)}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       },
-      body: JSON.stringify(payload),
-    })
+    )
 
     const data = await res.json()
     console.log("📥 Generic response:", JSON.stringify(data, null, 2))
     if (res.ok) return true
     console.warn("⚠️ Instagram host failed, retrying Facebook host for generic template...")
     try {
-      const fbRes = await fetch(`https://graph.facebook.com/v24.0/${instagramId}/messages?access_token=${encodeURIComponent(accessToken)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
+      const fbRes = await fetch(
+        `https://graph.facebook.com/v24.0/${instagramId}/messages?access_token=${encodeURIComponent(accessToken)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      )
       const fbData = await fbRes.json()
       console.log("📥 Generic response (facebook host):", JSON.stringify(fbData, null, 2))
       return fbRes.ok
@@ -1646,7 +1672,7 @@ async function sendDirectMessage(
       },
     }
 
-  const textResponse = await fetch(`https://graph.instagram.com/v24.0/${instagramId}/messages`, {
+    const textResponse = await fetch(`https://graph.instagram.com/v24.0/${instagramId}/messages`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1760,6 +1786,7 @@ async function storeOrUpdateContact(
             totalInteractions: 1,
           },
           $push: {
+            // cast to any due to generic Document typing
             interactionHistory: {
               type: interactionType,
               automationName,
@@ -1966,7 +1993,7 @@ async function sendReaction(
       },
     }
 
-  const response = await fetch(`https://graph.instagram.com/v24.0/${instagramId}/messages`, {
+    const response = await fetch(`https://graph.instagram.com/v24.0/${instagramId}/messages`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -2056,7 +2083,7 @@ async function handleBusinessLoginComment(commentData: any, accountId: string, d
     const existingComment = await db.collection("comments").findOne({
       commentId,
       instagramUserId: account.instagramUserId,
-      processed: true
+      processed: true,
     })
 
     if (existingComment) {
@@ -2077,21 +2104,25 @@ async function handleBusinessLoginComment(commentData: any, accountId: string, d
       createdAt: new Date(),
     }
 
-    await db.collection("comments").updateOne(
-      { commentId, instagramUserId: account.instagramUserId },
-      { $setOnInsert: commentDoc },
-      { upsert: true }
-    )
+    await db
+      .collection("comments")
+      .updateOne(
+        { commentId, instagramUserId: account.instagramUserId },
+        { $setOnInsert: commentDoc },
+        { upsert: true },
+      )
     console.log("💾 Comment stored successfully")
 
     // Process comment automations
     await processCommentAutomations(account, commentData, db)
-    
+
     // 🚨 CRITICAL: Mark as processed AFTER successful automation processing
-    await db.collection("comments").updateOne(
-      { commentId, instagramUserId: account.instagramUserId },
-      { $set: { processed: true, processedAt: new Date() } }
-    )
+    await db
+      .collection("comments")
+      .updateOne(
+        { commentId, instagramUserId: account.instagramUserId },
+        { $set: { processed: true, processedAt: new Date() } },
+      )
     console.log("✅ Comment marked as processed")
   } catch (error) {
     console.error("❌ Error handling business login comment:", error)
@@ -2133,12 +2164,12 @@ async function processCommentAutomations(account: any, commentData: any, db: any
     console.log(`✅ Found ${workspaces.length} workspaces for Instagram account`)
 
     // Search for comment automations across ALL workspaces and Instagram IDs
-  const workspaceIds = workspaces.map((w: any) => w._id)
+    const workspaceIds = workspaces.map((w: any) => w._id)
     const instagramIds = [
       account.instagramUserId,
       account.instagramProfessionalId,
-  ...workspaces.map((w: any) => w.instagramUserId),
-  ...workspaces.map((w: any) => w.instagramProfessionalId),
+      ...workspaces.map((w: any) => w.instagramUserId),
+      ...workspaces.map((w: any) => w.instagramProfessionalId),
     ].filter(Boolean)
 
     // 🚀 REDIS CACHED - Try cache first for each workspace
@@ -2147,7 +2178,7 @@ async function processCommentAutomations(account: any, commentData: any, db: any
     const commentCacheMisses = []
 
     for (const workspaceId of workspaceIds) {
-      const cached = await getAutomation(workspaceId.toString(), 'comment_reply_flow', postId, db)
+      const cached = await getAutomation(workspaceId.toString(), "comment_reply_flow", postId, db)
       if (cached && cached.length > 0) {
         commentCacheHits.push(workspaceId)
         commentAutomations = [...commentAutomations, ...cached]
@@ -2156,7 +2187,9 @@ async function processCommentAutomations(account: any, commentData: any, db: any
       }
     }
 
-    console.log(`⚡ [REDIS] Comment automations - Cache hits: ${commentCacheHits.length}, Misses: ${commentCacheMisses.length}`)
+    console.log(
+      `⚡ [REDIS] Comment automations - Cache hits: ${commentCacheHits.length}, Misses: ${commentCacheMisses.length}`,
+    )
 
     // If cache misses, query MongoDB for those workspaces only
     if (commentCacheMisses.length > 0) {
@@ -2168,7 +2201,7 @@ async function processCommentAutomations(account: any, commentData: any, db: any
           type: { $in: ["comment_to_dm_flow", "comment_reply_flow"] },
         } as any)
         .toArray()
-      
+
       commentAutomations = [...commentAutomations, ...mongoAutomations]
     }
 
@@ -2183,10 +2216,10 @@ async function processCommentAutomations(account: any, commentData: any, db: any
     // 🆕 NEXT POST LOGIC: 3-Step Check
     // Step 1: Check if any automation matches this specific post ID
     let matchedAutomation = null
-    
+
     for (const automation of commentAutomations) {
       console.log(`🔍 Step 1: Checking automation: ${automation.name}`)
-      
+
       // Check if automation matches this specific post
       if (automation.selectedPost === postId) {
         console.log(`✅ Step 1: Found automation for specific post: ${postId}`)
@@ -2198,40 +2231,38 @@ async function processCommentAutomations(account: any, commentData: any, db: any
     // Step 2: If no specific post match, check if this is an old post (in snapshot)
     if (!matchedAutomation && postId) {
       console.log("🔍 Step 2: Checking if post exists in media snapshots (old post)...")
-      
+
       // Find the most recent snapshot for any workspace this account belongs to
-      const snapshot = await db
-        .collection("userMedia")
-        .findOne({
-          workspaceId: { $in: workspaceIds },
-          media_ids: postId, // Check if this postId is in the snapshot
-        } as any)
+      const snapshot = await db.collection("userMedia").findOne({
+        workspaceId: { $in: workspaceIds },
+        media_ids: postId, // Check if this postId is in the snapshot
+      } as any)
 
       if (snapshot) {
         console.log(`⚠️ Step 2: Post ${postId} found in snapshot - this is an OLD post, ignoring next_post logic`)
         // Fall through to regular automation matching (non-next-post)
       } else {
         console.log(`🆕 Step 2: Post ${postId} NOT in any snapshot - this might be a NEW post!`)
-        
+
         // Step 3: Look for "Next Post" automation and link it
-        const nextPostAutomation = commentAutomations.find((auto: any) => 
-          auto.isNextPost === true && !auto.selectedPost // Only unlinked next-post automations
+        const nextPostAutomation = commentAutomations.find(
+          (auto: any) => auto.isNextPost === true && !auto.selectedPost, // Only unlinked next-post automations
         )
-        
+
         if (nextPostAutomation) {
           console.log(`🚀 Step 3: Found NEXT POST automation: ${nextPostAutomation.name}`)
           console.log(`🔗 Step 3: Linking post ${postId} to automation ${nextPostAutomation._id}`)
-          
+
           // Update the automation to link this new post (atomic operation)
           const updateResult = await db.collection("automations").updateOne(
-            { 
+            {
               _id: nextPostAutomation._id,
               isNextPost: true, // Double-check it's still in next-post mode
               $or: [
                 { selectedPost: { $exists: false } }, // Field doesn't exist
                 { selectedPost: null }, // Field is null
-                { selectedPost: "" } // Field is empty string
-              ]
+                { selectedPost: "" }, // Field is empty string
+              ],
             } as any,
             {
               $set: {
@@ -2240,19 +2271,19 @@ async function processCommentAutomations(account: any, commentData: any, db: any
                 linkedAt: new Date(),
                 updatedAt: new Date(),
               },
-            }
+            },
           )
-          
+
           if (updateResult.modifiedCount > 0) {
             console.log(`✅ Step 3: Automation updated and linked to new post!`)
             console.log(`✅ Step 3: Update result:`, updateResult)
             matchedAutomation = { ...nextPostAutomation, selectedPost: postId }
           } else {
             console.log(`⚠️ Step 3: Update failed - modifiedCount: ${updateResult.modifiedCount}`)
-            console.log(`⚠️ Step 3: Automation state:`, { 
-              _id: nextPostAutomation._id, 
+            console.log(`⚠️ Step 3: Automation state:`, {
+              _id: nextPostAutomation._id,
               isNextPost: nextPostAutomation.isNextPost,
-              selectedPost: nextPostAutomation.selectedPost 
+              selectedPost: nextPostAutomation.selectedPost,
             })
           }
         } else {
@@ -2294,7 +2325,16 @@ async function processCommentAutomations(account: any, commentData: any, db: any
 
       if (shouldTrigger) {
         console.log(`🚀 Triggering comment automation: ${automation.name}`)
-        await handleCommentToDMFlow(automation, account, commenterId, commenterUsername, commentText, commentId, postId, db)
+        await handleCommentToDMFlow(
+          automation,
+          account,
+          commenterId,
+          commenterUsername,
+          commentText,
+          commentId,
+          postId,
+          db,
+        )
         return // Exit after first match
       }
 
@@ -2412,14 +2452,10 @@ async function handleCommentToDMFlow(
       console.log("📧 Proceeding to ask email step (plain message, no buttons)")
 
       // Send a plain DM asking for the user's email and set state to awaiting_email
-      const askMessage = automation.actions.askEmail.message || "Please share your email address so I can send you the link."
+      const askMessage =
+        automation.actions.askEmail.message || "Please share your email address so I can send you the link."
 
-      const emailSent = await sendDirectMessage(
-        account.instagramUserId,
-        account.accessToken,
-        commenterId,
-        askMessage,
-      )
+      const emailSent = await sendDirectMessage(account.instagramUserId, account.accessToken, commenterId, askMessage)
 
       if (emailSent) {
         // Set user state so subsequent incoming message will be treated as the email response
@@ -2476,10 +2512,14 @@ async function handleCommentToDMFlow(
           exists: !!automation.actions?.followUp,
           enabled: automation.actions?.followUp?.enabled,
           message: automation.actions?.followUp?.message,
-          delay: automation.actions?.followUp?.delay
+          delay: automation.actions?.followUp?.delay,
         })
         if (automation.actions?.followUp?.enabled && automation.actions.followUp.message) {
-          console.log("📤 Scheduling follow-up message for comment reply in", automation.actions.followUp.delay || 300000, "ms")
+          console.log(
+            "📤 Scheduling follow-up message for comment reply in",
+            automation.actions.followUp.delay || 300000,
+            "ms",
+          )
           setTimeout(async () => {
             try {
               const followUpSuccess = await sendDirectMessageWithButtons(
@@ -2525,19 +2565,20 @@ async function sendPrivateReplyWithButtons(
 
     let messagePayload: any
 
-    if (buttons.length > 0 || imageUrl) { // 🆕 Use Generic Template if buttons OR image
+    if (buttons.length > 0 || imageUrl) {
+      // 🆕 Use Generic Template if buttons OR image
       const limitedButtons = buttons.slice(0, 3)
 
       // 🎨 Convert to Generic Template format (supports images)
       const element: any = {
         title: message,
       }
-      
+
       // Add buttons only if present
       if (limitedButtons.length > 0) {
         element.buttons = limitedButtons
       }
-      
+
       // 🆕 Add image_url if provided
       if (imageUrl) {
         element.image_url = imageUrl
@@ -2570,7 +2611,7 @@ async function sendPrivateReplyWithButtons(
       }
     }
 
-  const response = await fetch(`https://graph.instagram.com/v24.0/${instagramUserId}/messages`, {
+    const response = await fetch(`https://graph.instagram.com/v24.0/${instagramUserId}/messages`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -2615,7 +2656,7 @@ async function sendCommentReply(instagramUserId: string, accessToken: string, co
   try {
     console.log("💬 Sending public comment reply to:", commentId)
 
-  const response = await fetch(`https://graph.instagram.com/v24.0/${commentId}/replies`, {
+    const response = await fetch(`https://graph.instagram.com/v24.0/${commentId}/replies`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -2660,7 +2701,7 @@ async function replyToComment(
 
     console.log("💬 Reply payload:", JSON.stringify(payload, null, 2))
 
-  const response = await fetch(`https://graph.instagram.com/v24.0/${commentId}/replies`, {
+    const response = await fetch(`https://graph.instagram.com/v24.0/${commentId}/replies`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -2696,7 +2737,7 @@ async function verifyUserFollowsAccount(
     console.log("🔍 Verifying if user follows business account...")
 
     const response = await fetch(
-  `https://graph.instagram.com/v24.0/${userScopedId}?fields=is_user_follow_business&access_token=${accessToken}`,
+      `https://graph.instagram.com/v24.0/${userScopedId}?fields=is_user_follow_business&access_token=${accessToken}`,
       {
         method: "GET",
         headers: {
@@ -2727,7 +2768,7 @@ async function getUserProfile(instagramUserId: string, accessToken: string, send
     console.log("👤 Sender ID:", senderId)
 
     const response = await fetch(
-  `https://graph.instagram.com/v24.0/${senderId}?fields=username,name&access_token=${accessToken}`,
+      `https://graph.instagram.com/v24.0/${senderId}?fields=username,name&access_token=${accessToken}`,
     )
 
     const userData = await response.json()
@@ -2929,7 +2970,7 @@ async function processDMAutomationsEnhanced(account: any, messagingEvent: any, d
     const dmCacheMisses = []
 
     for (const workspaceId of workspaceIds) {
-      const cached = await getAutomation(workspaceId.toString(), 'dm_automation', null, db)
+      const cached = await getAutomation(workspaceId.toString(), "dm_automation", null, db)
       if (cached && cached.length > 0) {
         dmCacheHits.push(workspaceId)
         dmAutomations = [...dmAutomations, ...cached]
@@ -2954,7 +2995,7 @@ async function processDMAutomationsEnhanced(account: any, messagingEvent: any, d
           type: { $in: ["dm_automation", "generic_dm_automation"] },
         })
         .toArray()
-      
+
       dmAutomations = [...dmAutomations, ...mongoAutomations]
     }
 
@@ -3117,7 +3158,8 @@ async function handleDMAutomationFlowEnhanced(
         })) || []
 
       // Send a plain DM asking for the user's email (no buttons)
-      const askMessage = automation.actions.askEmail.message || "Please share your email address so I can send you the link."
+      const askMessage =
+        automation.actions.askEmail.message || "Please share your email address so I can send you the link."
       const emailSent = await sendDirectMessage(account.instagramUserId, account.accessToken, senderId, askMessage)
 
       console.log("📧 Ask email result:", emailSent)
@@ -3142,7 +3184,7 @@ async function handleDMAutomationFlowEnhanced(
 
     // STEP 4: Send main DM (generic template if elements exist, otherwise buttons/text)
     if (
-      (Array.isArray(automation.actions?.sendDM?.elements) && automation.actions.sendDM.elements.length > 0 ||
+      ((Array.isArray(automation.actions?.sendDM?.elements) && automation.actions.sendDM.elements.length > 0) ||
         !!automation.actions?.sendDM?.message) &&
       !automation.actions?.openingDM?.enabled &&
       !automation.actions?.askFollow?.enabled
@@ -3196,7 +3238,7 @@ async function handleDMAutomationFlowEnhanced(
           exists: !!automation.actions?.followUp,
           enabled: automation.actions?.followUp?.enabled,
           message: automation.actions?.followUp?.message,
-          delay: automation.actions?.followUp?.delay
+          delay: automation.actions?.followUp?.delay,
         })
         if (automation.actions?.followUp?.enabled && automation.actions.followUp.message) {
           console.log("📤 Scheduling follow-up message in", automation.actions.followUp.delay || 300000, "ms")

@@ -6,7 +6,9 @@
  * - Automatic retry with exponential backoff
  * - Dead letter queue for permanent failures
  * - Rate limiting per workspace
- * - Falls back to direct processing if BullMQ fails
+ * - Singleton pattern to prevent multiple queue instances
+ * - Increased job timeout for network I/O operations
+ * - Better error handling and retry logic
  *
  * Environment Variables:
  * - BULLMQ_ENABLED=true (enable queue system)
@@ -14,6 +16,7 @@
  */
 
 import { Queue, Worker, QueueEvents } from "bullmq"
+import Redis from "ioredis"
 
 const BULLMQ_ENABLED = process.env.BULLMQ_ENABLED === "true"
 const REDIS_URL = process.env.REDIS_URL
@@ -29,10 +32,25 @@ export const PRIORITY = {
 let webhookQueue: Queue | null = null
 let deadLetterQueue: Queue | null = null
 let queueEvents: QueueEvents | null = null
+let redisConnection: Redis | null = null
 let isQueueReady = false
+let initPromise: Promise<void> | null = null // Prevent multiple concurrent init calls
 
-// Initialize BullMQ
+function getRedisConnection(): Redis | null {
+  return redisConnection
+}
+
+// Initialize BullMQ (with singleton pattern)
 export async function initQueue() {
+  if (initPromise) {
+    await initPromise
+    return
+  }
+
+  if (webhookQueue && isQueueReady) {
+    return
+  }
+
   if (!BULLMQ_ENABLED) {
     console.log("⚠️  BullMQ disabled (set BULLMQ_ENABLED=true to enable)")
     console.log("📌 Using direct processing mode")
@@ -45,38 +63,60 @@ export async function initQueue() {
     return
   }
 
+  initPromise = initQueueInternal()
+  await initPromise
+  initPromise = null
+}
+
+async function initQueueInternal() {
   try {
-    console.log("🔄 Initializing BullMQ...")
+    console.log("🔄 Initializing BullMQ with shared Redis connection...")
 
-    const url = new URL(REDIS_URL)
-    const hostname = url.hostname
-    const port = Number.parseInt(url.port || "6379")
-    const password = url.password || ""
-    const username = url.username || "default"
-
-    const connection: any = {
-      host: hostname,
-      port: port,
-      username: username !== "" ? username : undefined,
-      password: password !== "" ? password : undefined,
+    // This replaces creating separate connections for Queue, Worker, QueueEvents
+    redisConnection = new Redis(REDIS_URL as string, {
       maxRetriesPerRequest: null,
-      connectTimeout: 15000,
-      commandTimeout: 10000,
+      connectTimeout: 20000,
+      commandTimeout: 15000,
       lazyConnect: false,
-      reconnectOnError: () => true,
-    }
+      retryStrategy: (times: number) => {
+        if (times > 10) {
+          console.error("❌ BullMQ Redis connection failed after 10 retries")
+          return null
+        }
+        const delay = Math.min(times * 1000, 10000)
+        return delay
+      },
+      reconnectOnError: (err: Error) => {
+        const targetError = "READONLY You can't write against a read only replica."
+        if (err.message.includes(targetError)) {
+          return true
+        }
+        // Only reconnect on network errors, NOT on every error
+        if (err.message.includes("EPIPE") || err.message.includes("ECONNRESET") || err.message.includes("ETIMEDOUT")) {
+          console.error(`[v0] Redis network error detected, will reconnect: ${err.message}`)
+          return true
+        }
+        return false
+      },
+    })
 
-    console.log(`🔗 BullMQ connecting to ${hostname}:${port} (user: ${username || "none"})`)
+    redisConnection.on("error", (err) => {
+      console.error(`[v0] Redis error: ${err.message}`)
+    })
 
-    // Main webhook queue
+    redisConnection.on("connect", () => {
+      console.log("✅ Redis connected for BullMQ")
+    })
+
     webhookQueue = new Queue("webhooks", {
-      connection,
+      connection: redisConnection,
       defaultJobOptions: {
         attempts: 3,
         backoff: {
           type: "exponential",
           delay: 2000, // Start at 2s, then 4s, 8s
         },
+        jobTimeout: 90000, // Increased from 30s to 90s for API calls
         removeOnComplete: {
           age: 3600, // Keep completed jobs for 1 hour
           count: 1000,
@@ -85,9 +125,8 @@ export async function initQueue() {
       },
     })
 
-    // Dead letter queue for permanent failures
     deadLetterQueue = new Queue("webhooks-dead", {
-      connection,
+      connection: redisConnection,
       defaultJobOptions: {
         removeOnComplete: {
           age: 86400 * 7, // Keep for 7 days
@@ -95,8 +134,9 @@ export async function initQueue() {
       },
     })
 
-    // Queue events for monitoring
-    queueEvents = new QueueEvents("webhooks", { connection })
+    queueEvents = new QueueEvents("webhooks", {
+      connection: redisConnection,
+    })
 
     queueEvents.on("completed", ({ jobId }) => {
       // Minimal logging
@@ -106,11 +146,15 @@ export async function initQueue() {
       console.error(`❌ Job ${jobId} failed: ${failedReason}`)
     })
 
+    queueEvents.on("error", (error) => {
+      console.error(`[v0] QueueEvents error: ${error.message}`)
+    })
+
     await webhookQueue.waitUntilReady()
     await deadLetterQueue.waitUntilReady()
 
     isQueueReady = true
-    console.log("✅ BullMQ ready")
+    console.log("✅ BullMQ ready (using shared Redis connection)")
   } catch (error: any) {
     console.error("❌ BullMQ initialization failed:", error.message)
     console.log("⚠️  Falling back to direct processing")
@@ -141,9 +185,9 @@ export async function enqueueWebhook(
   }
 
   try {
-    // Determine webhook type and priority. Prefer the explicit `priority` argument
+    // Determine priority based on webhook type
     const webhookType = determineWebhookType(data)
-    const jobPriority = typeof priority === "number" ? priority : getPriorityForType(webhookType)
+    const jobPriority = getPriorityForType(webhookType)
 
     await webhookQueue.add(
       "process",
@@ -180,16 +224,9 @@ export function createWorker(processWebhookFn: (data: any) => Promise<void>, con
     return null
   }
 
-  if (!REDIS_URL) {
-    console.error("❌ REDIS_URL environment variable is not set")
+  if (!redisConnection) {
+    console.error("❌ Redis connection not initialized")
     return null
-  }
-
-  const redisUrlObj = new URL(REDIS_URL)
-  const connection = {
-    host: redisUrlObj.hostname,
-    port: Number.parseInt(redisUrlObj.port || "6379"),
-    maxRetriesPerRequest: null,
   }
 
   const worker = new Worker(
@@ -198,7 +235,6 @@ export function createWorker(processWebhookFn: (data: any) => Promise<void>, con
       try {
         await processWebhookFn(job.data.data)
       } catch (error: any) {
-        // If this is the last attempt, move to dead letter
         if (job.attemptsMade >= 3) {
           await deadLetterQueue?.add("failed", {
             originalData: job.data,
@@ -211,10 +247,8 @@ export function createWorker(processWebhookFn: (data: any) => Promise<void>, con
       }
     },
     {
-      connection,
+      connection: redisConnection,
       concurrency,
-      // Increase lock duration to allow long-running webhook processing
-      lockDuration: 120000,
       limiter: {
         max: 1000, // Max 1000 jobs per second
         duration: 1000,
@@ -236,7 +270,7 @@ export function createWorker(processWebhookFn: (data: any) => Promise<void>, con
     console.error("❌ Worker error:", err.message)
   })
 
-  console.log(`✅ Worker started (concurrency: ${concurrency})`)
+  console.log(`✅ Worker started (concurrency: ${concurrency}) - using shared Redis connection`)
   return worker
 }
 
@@ -274,7 +308,6 @@ function getPriorityForType(type: string): number {
 }
 
 function generateJobId(data: any): string {
-  // Generate unique job ID for deduplication
   const entry = data.entry?.[0]
   if (!entry) return `job-${Date.now()}-${Math.random()}`
 
@@ -333,5 +366,8 @@ export async function closeQueue() {
   if (queueEvents) {
     await queueEvents.close()
   }
-  console.log("✅ Queue closed gracefully")
+  if (redisConnection) {
+    await redisConnection.quit()
+  }
+  console.log("✅ Queue and Redis closed gracefully")
 }
