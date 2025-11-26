@@ -20,21 +20,21 @@ When you run `npm start`, the system **automatically**:
 
 In **Coolify Dashboard** → Your App → Environment Variables, add:
 
-```bash
+\`\`\`bash
 USE_QUEUE_SYSTEM=true
 QUEUE_WORKERS=180
 MONGODB_URI=mongodb://ashish:1196843649%401@62.72.42.195:27017/instaautodm?authSource=instaautodm&retryWrites=true&w=majority
-```
+\`\`\`
 
 Copy from `.env.example` for all variables.
 
 ### Step 2: Push Code
 
-```bash
+\`\`\`bash
 git add .
 git commit -m "feat: auto-starting webhook queue system"
 git push origin main
-```
+\`\`\`
 
 ### Step 3: Deploy in Coolify
 
@@ -52,12 +52,12 @@ Coolify will automatically:
 
 ### Check if Queue is Running
 
-```bash
+\`\`\`bash
 curl https://yourdomain.com/api/webhooks/queue-stats
-```
+\`\`\`
 
 Should return:
-```json
+\`\`\`json
 {
   "success": true,
   "queue": {
@@ -69,13 +69,13 @@ Should return:
     "status": "healthy"
   }
 }
-```
+\`\`\`
 
 ### Check Coolify Logs
 
 In Coolify Dashboard → Logs, you should see:
 
-```
+\`\`\`
 🚀 ========================================
    ChatAutoDM Production Startup
 ========================================
@@ -91,7 +91,7 @@ In Coolify Dashboard → Logs, you should see:
 ========================================
 🎉 All systems operational!
 ========================================
-```
+\`\`\`
 
 ---
 
@@ -129,34 +129,34 @@ Everything has smart defaults. Only change if needed:
 ### Problem: Queue not starting
 
 **Solution:** Check Coolify logs for errors. Most common:
-```bash
+\`\`\`bash
 # Missing dependency:
 npm install mongodb
 
 # Or rebuild:
 npm run build
-```
+\`\`\`
 
 ### Problem: High memory usage
 
 **Solution:** Reduce workers in Coolify environment:
-```bash
+\`\`\`bash
 QUEUE_WORKERS=90  # Half the workers
-```
+\`\`\`
 
 ### Problem: Queue building up
 
 **Solution:** Increase workers in Coolify environment:
-```bash
+\`\`\`bash
 QUEUE_WORKERS=360  # Double the workers
-```
+\`\`\`
 
 ### Emergency Disable
 
 Set in Coolify environment:
-```bash
+\`\`\`bash
 USE_QUEUE_SYSTEM=false
-```
+\`\`\`
 
 Redeploy. System falls back to direct processing immediately.
 
@@ -182,14 +182,14 @@ Everything else is **100% automatic**:
 ## 📞 Support
 
 Monitor anytime:
-```bash
+\`\`\`bash
 curl https://yourdomain.com/api/webhooks/queue-stats | jq
-```
+\`\`\`
 
 View detailed stats in browser:
-```
+\`\`\`
 https://yourdomain.com/api/webhooks/queue-stats
-```
+\`\`\`
 
 ---
 

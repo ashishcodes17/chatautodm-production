@@ -24,7 +24,7 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
     }
 
     const db = await getDatabase()
-    
+
     // Get ice breakers from database (includes response field)
     const automation = await db.collection("automations").findOne({
       workspaceId,
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
   try {
     const { workspaceId } = params
     console.log("🧊 WORKSPACE_ID:", workspaceId)
-    
+
     const body = await request.json()
     console.log("🧊 RECEIVED_PAYLOAD:", JSON.stringify(body, null, 2))
 
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-      }
+      },
     )
 
     const responseData = await response.json()
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
           errorDetails: responseData.error,
           instagramError: responseData,
         },
-        { status: response.status }
+        { status: response.status },
       )
     }
 
@@ -156,8 +156,16 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
           createdAt: new Date(),
         },
       } as any,
-      { upsert: true }
+      { upsert: true },
     )
+
+    try {
+      const { invalidateAutomation } = await import("@/lib/redis-cache")
+      await invalidateAutomation(workspaceId, "ice_breakers")
+      console.log("🔄 Cache invalidated for ice breakers")
+    } catch (cacheError: any) {
+      console.warn("⚠️ Cache invalidation failed (non-fatal):", cacheError.message)
+    }
 
     return NextResponse.json({
       success: true,
@@ -166,11 +174,14 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
   } catch (error: any) {
     console.error("🧊💥 EXCEPTION:", error?.message || error)
     console.error("🧊💥 STACK:", error?.stack)
-    return NextResponse.json({ 
-      success: false, 
-      error: error?.message || "Failed to create ice breakers",
-      exception: String(error)
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: error?.message || "Failed to create ice breakers",
+        exception: String(error),
+      },
+      { status: 500 },
+    )
   }
 }
 
@@ -222,7 +233,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { works
         body: JSON.stringify({
           fields: ["ice_breakers"],
         }),
-      }
+      },
     )
 
     const responseData = await response.json()
@@ -234,7 +245,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { works
           success: false,
           error: responseData.error?.message || "Failed to delete ice breakers",
         },
-        { status: response.status }
+        { status: response.status },
       )
     }
 
@@ -245,6 +256,14 @@ export async function DELETE(request: NextRequest, { params }: { params: { works
       workspaceId,
       type: "ice_breakers",
     } as any)
+
+    try {
+      const { invalidateAutomation } = await import("@/lib/redis-cache")
+      await invalidateAutomation(workspaceId, "ice_breakers")
+      console.log("🔄 Cache invalidated for deleted ice breakers")
+    } catch (cacheError: any) {
+      console.warn("⚠️ Cache invalidation failed (non-fatal):", cacheError.message)
+    }
 
     return NextResponse.json({
       success: true,

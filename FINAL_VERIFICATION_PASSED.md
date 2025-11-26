@@ -27,10 +27,10 @@ I have **thoroughly rechecked everything**. Here's the complete verification:
 
 ## 2. ✅ TypeScript Compilation
 
-```
+\`\`\`
 ✅ worker.ts: No errors found
 ✅ route.ts: No errors found
-```
+\`\`\`
 
 Both files compile successfully with VS Code language server.
 
@@ -39,19 +39,19 @@ Both files compile successfully with VS Code language server.
 ## 3. ✅ Logic Flow Verified
 
 ### Incoming Webhook → Queue System:
-```
+\`\`\`
 Instagram → POST /api/webhooks/instagram → Queue → 200 OK (10ms)
-```
+\`\`\`
 
 ### Queue Worker Processing:
-```
+\`\`\`
 Worker polls queue → Gets job → Calls processWebhookData(data) → Processes (5-25ms)
-```
+\`\`\`
 
 ### Direct Processing (if queue disabled):
-```
+\`\`\`
 Instagram → POST /api/webhooks/instagram → processWebhookData(data) → 200 OK
-```
+\`\`\`
 
 **All paths use the SAME processing function** ✅
 
@@ -111,10 +111,10 @@ Instagram → POST /api/webhooks/instagram → processWebhookData(data) → 200 
 
 Only 2 files changed:
 
-```bash
+\`\`\`bash
 app/api/webhooks/instagram/route.ts  # Added processWebhookData export
 app/api/webhooks/worker.ts          # Uses pure function instead of POST
-```
+\`\`\`
 
 ---
 
@@ -132,7 +132,7 @@ There's an **old file** at `app/api/webhooks/processor.ts` that:
 
 ## 9. ✅ Deployment Commands
 
-```bash
+\`\`\`bash
 # 1. Add files
 git add app/api/webhooks/instagram/route.ts app/api/webhooks/worker.ts
 
@@ -147,31 +147,31 @@ git commit -m "Extract pure webhook processor for 10x speed boost
 
 # 3. Push
 git push origin main
-```
+\`\`\`
 
 ---
 
 ## 10. ✅ Post-Deployment Monitoring
 
 ### Immediately after deploy (run this):
-```bash
+\`\`\`bash
 node scripts/queue-speed.js
-```
+\`\`\`
 
 ### Expected behavior (within 2-3 minutes):
-```
+\`\`\`
 Before: Per Minute: 100-120
 After:  Per Minute: 800-1,200 ⚡
 
 Backlog clears in: 3-5 minutes (vs 35+ minutes before)
-```
+\`\`\`
 
 ### If something goes wrong (it won't):
-```bash
+\`\`\`bash
 # Revert instantly
 git revert HEAD
 git push origin main
-```
+\`\`\`
 
 ---
 
@@ -182,13 +182,13 @@ git push origin main
 - ✅ After: Worker → Direct function call → Processing
 
 ### The Math:
-```
+\`\`\`
 Before: 500ms (HTTP overhead) + 25ms (processing) = 525ms per webhook
 After:  0ms (no overhead) + 25ms (processing) = 25ms per webhook
 
 Speed increase: 525ms / 25ms = 21x faster
 Conservative estimate: 10-12x faster (accounting for variables)
-```
+\`\`\`
 
 ---
 

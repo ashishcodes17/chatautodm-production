@@ -8,9 +8,9 @@
 ### In Coolify Dashboard:
 
 **CHANGE this environment variable:**
-```bash
+\`\`\`bash
 USE_QUEUE_SYSTEM=false
-```
+\`\`\`
 
 ### Then:
 1. **Save** the environment variable
@@ -26,9 +26,9 @@ USE_QUEUE_SYSTEM=false
 ## Verify It Worked
 
 After redeploying, run:
-```bash
+\`\`\`bash
 curl https://www.chatautodm.com/api/webhooks/queue-stats
-```
+\`\`\`
 
 You should see workers have stopped (or the endpoint might return an error since queue is disabled - that's OK).
 
@@ -41,7 +41,7 @@ You should see workers have stopped (or the endpoint might return an error since
 
 Once queue is disabled and automations are working, we can clean up:
 
-```bash
+\`\`\`bash
 # SSH to server
 ssh your-server
 
@@ -58,7 +58,7 @@ db.webhook_queue.updateMany(
   { status: "processing" },
   { $set: { status: "failed", failedAt: new Date(), error: "Worker connection issue - manual cleanup" } }
 )
-```
+\`\`\`
 
 ## Next Steps (After Disabling)
 

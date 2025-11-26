@@ -6,9 +6,9 @@ The issue: 180 workers overwhelming the server!
 
 Set these environment variables in Coolify:
 
-```bash
+\`\`\`bash
 QUEUE_WORKERS=30
-```
+\`\`\`
 
 This reduces from 180 workers to 30 workers.
 

@@ -47,10 +47,7 @@ function transformButtons(buttons: any[], context?: { username?: string }): any[
 }
 
 // 🟢 GET — Fetch single automation
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await getCurrentUserFixed()
     console.log("Current user full object:", user)
@@ -87,10 +84,7 @@ export async function GET(
 }
 
 // 🔴 DELETE — Remove automation
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await getCurrentUserFixed()
     console.log("Current user full object:", user)
@@ -123,6 +117,14 @@ export async function DELETE(
       return NextResponse.json({ error: "Failed to delete automation" }, { status: 500 })
     }
 
+    try {
+      const { invalidateAutomation } = await import("@/lib/redis-cache")
+      await invalidateAutomation(automation.workspaceId.toString(), automation.type)
+      console.log("🔄 Cache invalidated for deleted automation:", id)
+    } catch (cacheError: any) {
+      console.warn("⚠️ Cache invalidation failed (non-fatal):", cacheError.message)
+    }
+
     console.log("✅ Automation deleted successfully:", id)
     return NextResponse.json({ success: true, message: "Automation deleted successfully" })
   } catch (error) {
@@ -132,10 +134,7 @@ export async function DELETE(
 }
 
 // 🟠 PATCH — Update automation
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const user = await getCurrentUserFixed()
     console.log("Current user full object:", user)
@@ -167,7 +166,9 @@ export async function PUT(
     // Compute username context for profile buttons
     let username: string | undefined = undefined
     try {
-      const account = await db.collection("instagram_accounts").findOne({ workspaceId: automation.workspaceId, userId: workspace.userId })
+      const account = await db
+        .collection("instagram_accounts")
+        .findOne({ workspaceId: automation.workspaceId, userId: workspace.userId })
       username = account?.username || workspace?.username
     } catch (e) {
       // non-fatal
@@ -244,13 +245,22 @@ export async function PUT(
       }
     }
 
-    const updateResult = await db.collection("automations").updateOne(
-      { _id: new ObjectId(id) },
-      { $set: setDoc }
-    )
+    const updateResult = await db.collection("automations").updateOne({ _id: new ObjectId(id) }, { $set: setDoc })
 
     if (updateResult.modifiedCount === 0) {
       return NextResponse.json({ error: "No changes made" }, { status: 400 })
+    }
+
+    try {
+      const { invalidateAutomation } = await import("@/lib/redis-cache")
+      await invalidateAutomation(
+        automation.workspaceId.toString(),
+        updates.type || automation.type,
+        updates.postId || updates.storyId,
+      )
+      console.log("🔄 Cache invalidated for updated automation:", id)
+    } catch (cacheError: any) {
+      console.warn("⚠️ Cache invalidation failed (non-fatal):", cacheError.message)
     }
 
     console.log("✅ Automation updated successfully:", id)
@@ -260,4 +270,3 @@ export async function PUT(
     return NextResponse.json({ error: "Failed to update automation" }, { status: 500 })
   }
 }
-

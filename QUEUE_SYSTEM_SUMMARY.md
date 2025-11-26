@@ -7,18 +7,18 @@ A production-grade webhook queue system that transforms your platform from handl
 ## How It Works
 
 ### Before (Direct Processing):
-```
+\`\`\`
 Instagram → Your Server → Process (5-10s) → Return 200
 Problem: If 100 webhooks arrive → Server crashes
-```
+\`\`\`
 
 ### After (Queue System):
-```
+\`\`\`
 Instagram → Your Server → Queue (10ms) → Return 200 ✅
                               ↓
                      Workers Process (background)
 Result: Handle 100 webhooks/second without crashing
-```
+\`\`\`
 
 ## Key Features
 
@@ -79,20 +79,20 @@ Result: Handle 100 webhooks/second without crashing
 ## Quick Start
 
 ### 1. Database Setup (DONE ✅)
-```bash
+\`\`\`bash
 node scripts/setup-queue-indexes.js
-```
+\`\`\`
 
 ### 2. Add Environment Variables
-```bash
+\`\`\`bash
 # Add to .env:
 USE_QUEUE_SYSTEM=false  # Start disabled for safety
 QUEUE_WORKERS=180
 QUEUE_ENABLE_METRICS=true
-```
+\`\`\`
 
 ### 3. Deploy Code
-```bash
+\`\`\`bash
 git add .
 git commit -m "feat: add webhook queue system"
 git push origin main
@@ -101,10 +101,10 @@ git push origin main
 git pull
 pnpm build
 pm2 restart chatautodm
-```
+\`\`\`
 
 ### 4. Test (When Ready)
-```bash
+\`\`\`bash
 # Enable queue:
 USE_QUEUE_SYSTEM=true
 
@@ -113,11 +113,11 @@ pm2 start scripts/start-workers.js --name "webhook-workers"
 
 # Monitor:
 curl http://localhost:3000/api/webhooks/queue-stats | jq
-```
+\`\`\`
 
 ## Monitoring Commands
 
-```bash
+\`\`\`bash
 # Queue stats:
 curl http://localhost:3000/api/webhooks/queue-stats | jq
 
@@ -129,46 +129,46 @@ pm2 logs webhook-workers | grep "QUEUE METRICS"
 
 # System health:
 pm2 monit
-```
+\`\`\`
 
 ## Emergency Rollback
 
-```bash
+\`\`\`bash
 # Instant disable (30 seconds):
 nano .env
 # Change: USE_QUEUE_SYSTEM=false
 pm2 restart chatautodm
 pm2 stop webhook-workers
-```
+\`\`\`
 
 ## Configuration Tuning
 
 ### High Load (Queue Building Up):
-```bash
+\`\`\`bash
 # Increase workers:
 QUEUE_WORKERS=360  # Double capacity
-```
+\`\`\`
 
 ### Low Resources (High CPU):
-```bash
+\`\`\`bash
 # Reduce workers:
 QUEUE_WORKERS=90  # Half capacity
-```
+\`\`\`
 
 ### Webhook Flood Protection:
-```bash
+\`\`\`bash
 # Limit queue size:
 QUEUE_MAX_WEBHOOKS_PER_MINUTE=5000
-```
+\`\`\`
 
 ## Support
 
 See full details in `DEPLOYMENT_GUIDE.md`
 
 Monitor anytime:
-```bash
+\`\`\`bash
 curl http://localhost:3000/api/webhooks/queue-stats | jq
-```
+\`\`\`
 
 ## Next Steps
 

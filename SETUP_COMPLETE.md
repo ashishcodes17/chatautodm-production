@@ -31,22 +31,22 @@ Everything is now **100% automatic**. No manual work needed!
 
 In **Coolify Dashboard** → Environment Variables, add:
 
-```bash
+\`\`\`bash
 USE_QUEUE_SYSTEM=true
 QUEUE_WORKERS=180
 QUEUE_ENABLE_METRICS=true
 MONGODB_URI=mongodb://ashish:1196843649%401@62.72.42.195:27017/instaautodm?authSource=instaautodm&retryWrites=true&w=majority
-```
+\`\`\`
 
 (Copy all from `.env.example`)
 
 ### Step 2: Push Code (30 seconds)
 
-```bash
+\`\`\`bash
 git add .
 git commit -m "feat: auto-starting webhook queue system - zero manual work"
 git push origin main
-```
+\`\`\`
 
 ### Step 3: Deploy in Coolify (automatic)
 
@@ -64,12 +64,12 @@ Coolify will:
 
 When you run `npm start` (which Coolify does automatically):
 
-```
+\`\`\`
 🚀 ChatAutoDM Production Startup
 → Starting Next.js Server... ✅
 → Starting Webhook Queue Workers... ✅
 🎉 All systems operational!
-```
+\`\`\`
 
 **Both server AND workers start automatically!**
 
@@ -78,9 +78,9 @@ When you run `npm start` (which Coolify does automatically):
 ## 📊 Verify It Works
 
 ### Check Queue Stats:
-```bash
+\`\`\`bash
 curl https://yourdomain.com/api/webhooks/queue-stats
-```
+\`\`\`
 
 ### Check Coolify Logs:
 Look for:
@@ -145,25 +145,25 @@ Comment on Instagram → Check logs → Should see:
 ## 🎛️ Control Panel
 
 **Enable Queue:**
-```bash
+\`\`\`bash
 # In Coolify → Environment:
 USE_QUEUE_SYSTEM=true
-```
+\`\`\`
 
 **Disable Queue:**
-```bash
+\`\`\`bash
 # In Coolify → Environment:
 USE_QUEUE_SYSTEM=false
-```
+\`\`\`
 
 **Adjust Workers:**
-```bash
+\`\`\`bash
 # More power:
 QUEUE_WORKERS=360
 
 # Less CPU:
 QUEUE_WORKERS=90
-```
+\`\`\`
 
 **That's it!** Just change env variable and redeploy.
 
@@ -201,11 +201,11 @@ QUEUE_WORKERS=90
 ## 🆘 If Anything Goes Wrong
 
 **Instant Disable:**
-```bash
+\`\`\`bash
 # In Coolify environment:
 USE_QUEUE_SYSTEM=false
 # Redeploy
-```
+\`\`\`
 
 System immediately falls back to old behavior. Zero data loss.
 
@@ -214,9 +214,9 @@ System immediately falls back to old behavior. Zero data loss.
 ## 📞 Support
 
 **Monitor Queue:**
-```bash
+\`\`\`bash
 curl https://yourdomain.com/api/webhooks/queue-stats
-```
+\`\`\`
 
 **Check Logs:**
 Coolify Dashboard → Your App → Logs

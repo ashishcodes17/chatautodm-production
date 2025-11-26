@@ -20,7 +20,7 @@ Go to **Coolify Dashboard** → Your App → **Environment Variables**
 
 Click "Add" and paste these one by one:
 
-```bash
+\`\`\`bash
 # Queue System - Enable/Disable
 USE_QUEUE_SYSTEM=true
 
@@ -38,7 +38,7 @@ QUEUE_METRICS_INTERVAL=60000
 
 # Database (you already have this, but verify it's correct)
 MONGODB_URI=mongodb://ashish:1196843649%401@62.72.42.195:27017/instaautodm?authSource=instaautodm&retryWrites=true&w=majority
-```
+\`\`\`
 
 **Save** all variables.
 
@@ -46,13 +46,13 @@ MONGODB_URI=mongodb://ashish:1196843649%401@62.72.42.195:27017/instaautodm?authS
 
 ### ✅ STEP 2: Push Code to GitHub (1 minute)
 
-```bash
+\`\`\`bash
 # Run these commands:
 git add .
 git status  # Review what's being committed
 git commit -m "feat: webhook queue system with auto-start - handles 10k+ webhooks/min"
 git push origin main
-```
+\`\`\`
 
 **Wait** for push to complete.
 
@@ -84,7 +84,7 @@ git push origin main
 
 In Coolify Dashboard → Logs, you should see:
 
-```
+\`\`\`
 🚀 ========================================
    ChatAutoDM Production Startup
 ========================================
@@ -100,7 +100,7 @@ In Coolify Dashboard → Logs, you should see:
 ========================================
 🎉 All systems operational!
 ========================================
-```
+\`\`\`
 
 ✅ **Looks good?** Continue to Check 2.  
 ❌ **Error?** See troubleshooting below.
@@ -109,17 +109,17 @@ In Coolify Dashboard → Logs, you should see:
 
 Run this command (replace with your domain):
 
-```bash
+\`\`\`bash
 curl https://yourdomain.com/api/webhooks/queue-stats
-```
+\`\`\`
 
 Or open in browser:
-```
+\`\`\`
 https://yourdomain.com/api/webhooks/queue-stats
-```
+\`\`\`
 
 **Expected response:**
-```json
+\`\`\`json
 {
   "success": true,
   "queue": {
@@ -134,7 +134,7 @@ https://yourdomain.com/api/webhooks/queue-stats
     "message": "Queue is healthy"
   }
 }
-```
+\`\`\`
 
 ✅ **Got this response?** Perfect! Continue to Check 3.  
 ❌ **Error 404/500?** See troubleshooting below.
@@ -147,13 +147,13 @@ Trigger a real Instagram webhook:
 - Reply to a story
 
 **Watch Coolify logs for:**
-```
+\`\`\`
 📥 === WEBHOOK RECEIVED ===
 ⚡ Queue system ENABLED - fast response mode
 ✅ Webhook queued successfully
 🔄 Worker 1: Processing job...
 ✅ Worker 1: Completed job...
-```
+\`\`\`
 
 ✅ **Message sent to user?** SUCCESS! 🎉  
 ❌ **No message?** See troubleshooting below.
@@ -179,20 +179,20 @@ You've succeeded if:
 ### Problem: "Cannot find module 'dotenv'"
 
 **Solution:** 
-```bash
+\`\`\`bash
 # Add dotenv to package.json dependencies
 npm install dotenv --save
 git add package.json package-lock.json
 git commit -m "fix: add dotenv dependency"
 git push origin main
-```
+\`\`\`
 
 ### Problem: Workers not starting
 
 **Coolify Logs show:**
-```
+\`\`\`
 ⚠️  Queue system is DISABLED
-```
+\`\`\`
 
 **Solution:** 
 1. Check environment variable in Coolify: `USE_QUEUE_SYSTEM=true` (must be exact!)
@@ -203,12 +203,12 @@ git push origin main
 **Don't worry!** The fallback system will activate automatically.
 
 **Coolify Logs should show:**
-```
+\`\`\`
 ❌ Worker system failed to start
 Trying alternative startup method...
 🚀 Starting Webhook Queue Workers (Simple)...
 ✅ Started 180 workers
-```
+\`\`\`
 
 This is the fallback - it works perfectly!
 
@@ -219,7 +219,7 @@ This is the fallback - it works perfectly!
 2. Route file not deployed
 
 **Solution:**
-```bash
+\`\`\`bash
 # Verify file exists:
 ls app/api/webhooks/queue-stats/route.ts
 
@@ -227,22 +227,22 @@ ls app/api/webhooks/queue-stats/route.ts
 git add app/api/webhooks/queue-stats/route.ts
 git commit -m "fix: add queue stats route"
 git push origin main
-```
+\`\`\`
 
 ### Problem: High CPU usage (95%+)
 
 **Solution:** Reduce workers in Coolify environment:
-```bash
+\`\`\`bash
 QUEUE_WORKERS=90  # Half the workers
-```
+\`\`\`
 Redeploy.
 
 ### Problem: Queue building up (pending > 1000)
 
 **Solution:** Increase workers in Coolify environment:
-```bash
+\`\`\`bash
 QUEUE_WORKERS=360  # Double the workers
-```
+\`\`\`
 Redeploy.
 
 ---
@@ -254,9 +254,9 @@ If anything goes seriously wrong:
 ### Option 1: Disable Queue (30 seconds)
 
 In Coolify environment variables:
-```bash
+\`\`\`bash
 USE_QUEUE_SYSTEM=false  # Change true to false
-```
+\`\`\`
 
 Click "Redeploy"
 
@@ -264,11 +264,11 @@ System immediately falls back to old behavior.
 
 ### Option 2: Git Rollback (2 minutes)
 
-```bash
+\`\`\`bash
 git log --oneline | head -5  # Find commit before queue
 git revert <commit-hash>
 git push origin main
-```
+\`\`\`
 
 Coolify auto-deploys old code.
 
@@ -278,10 +278,10 @@ Coolify auto-deploys old code.
 
 ### First Hour - Check Every 15 Minutes
 
-```bash
+\`\`\`bash
 # Quick health check:
 curl https://yourdomain.com/api/webhooks/queue-stats | jq '.health'
-```
+\`\`\`
 
 **Look for:**
 - Status: "healthy" ✅
@@ -297,10 +297,10 @@ curl https://yourdomain.com/api/webhooks/queue-stats | jq '.health'
 
 ### Daily Monitoring
 
-```bash
+\`\`\`bash
 # Morning check:
 curl https://yourdomain.com/api/webhooks/queue-stats
-```
+\`\`\`
 
 **Healthy indicators:**
 - Pending: < 100
@@ -344,22 +344,22 @@ Before marking complete:
 ## 📞 Quick Reference
 
 **Queue Stats:**
-```bash
+\`\`\`bash
 curl https://yourdomain.com/api/webhooks/queue-stats
-```
+\`\`\`
 
 **Check Logs:**
 Coolify Dashboard → Your App → Logs
 
 **Disable Queue:**
-```bash
+\`\`\`bash
 USE_QUEUE_SYSTEM=false  # in Coolify env
-```
+\`\`\`
 
 **Adjust Workers:**
-```bash
+\`\`\`bash
 QUEUE_WORKERS=X  # in Coolify env
-```
+\`\`\`
 
 ---
 

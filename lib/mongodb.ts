@@ -1,12 +1,12 @@
 import { MongoClient, type Db } from "mongodb"
 
-const uri = process.env.MONGODB_URI
+const uri = process.env.MONGODB_URI || "mongodb://ashish:1196843649%401@62.72.42.195:27017/instaautodm?authSource=instaautodm&retryWrites=true&w=majority"
 const options = {}
 
 let client: MongoClient
 let clientPromise: Promise<MongoClient>
 
-if (!process.env.MONGODB_URI) {
+if (!uri) {
   throw new Error("Please add your Mongo URI to .env.local")
 }
 

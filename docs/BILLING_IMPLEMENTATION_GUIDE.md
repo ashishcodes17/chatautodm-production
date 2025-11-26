@@ -47,7 +47,7 @@ This guide outlines a comprehensive plan to transform ChatAutoDM from a free pla
 
 ### 2.1 Add Billing Fields to Workspaces Collection
 
-```typescript
+\`\`\`typescript
 // lib/types/workspace.ts
 interface Workspace {
   _id: string
@@ -98,13 +98,13 @@ interface Workspace {
     }
   }
 }
-```
+\`\`\`
 
 ### 2.2 Migration Script
 
 **File:** `scripts/add-billing-to-workspaces.ts`
 
-```typescript
+\`\`\`typescript
 import { MongoClient } from 'mongodb'
 
 const MONGODB_URI = process.env.MONGODB_URI!
@@ -166,11 +166,11 @@ async function migrate() {
 }
 
 migrate()
-```
+\`\`\`
 
 **Rollback Script:** `scripts/rollback-billing.ts`
 
-```typescript
+\`\`\`typescript
 async function rollback() {
   // Remove subscription field from all workspaces
   await workspaces.updateMany(
@@ -179,7 +179,7 @@ async function rollback() {
   )
   console.log('✅ Rollback complete!')
 }
-```
+\`\`\`
 
 ---
 
@@ -189,7 +189,7 @@ async function rollback() {
 
 Add to `.env.local`:
 
-```bash
+\`\`\`bash
 # Stripe Keys
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_PUBLISHABLE_KEY=pk_test_...
@@ -203,19 +203,19 @@ STRIPE_PRICE_TEAM_YEARLY=price_...
 
 # App URLs
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
+\`\`\`
 
 ### 3.2 Install Stripe SDK
 
-```bash
+\`\`\`bash
 pnpm add stripe @stripe/stripe-js
-```
+\`\`\`
 
 ### 3.3 Stripe Client Setup
 
 **File:** `lib/stripe.ts`
 
-```typescript
+\`\`\`typescript
 import Stripe from 'stripe'
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -229,13 +229,13 @@ export const PLAN_PRICES = {
   team_monthly: process.env.STRIPE_PRICE_TEAM_MONTHLY!,
   team_yearly: process.env.STRIPE_PRICE_TEAM_YEARLY!,
 }
-```
+\`\`\`
 
 ### 3.4 Checkout Session API
 
 **File:** `app/api/billing/checkout/route.ts`
 
-```typescript
+\`\`\`typescript
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe, PLAN_PRICES } from '@/lib/stripe'
 import { getDatabase } from '@/lib/mongodb'
@@ -313,13 +313,13 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-```
+\`\`\`
 
 ### 3.5 Customer Portal API
 
 **File:** `app/api/billing/portal/route.ts`
 
-```typescript
+\`\`\`typescript
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { getDatabase } from '@/lib/mongodb'
@@ -363,7 +363,7 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-```
+\`\`\`
 
 ---
 
@@ -371,7 +371,7 @@ export async function POST(request: NextRequest) {
 
 **File:** `app/api/billing/webhooks/route.ts`
 
-```typescript
+\`\`\`typescript
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { getDatabase } from '@/lib/mongodb'
@@ -504,7 +504,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ received: true })
 }
-```
+\`\`\`
 
 ---
 
@@ -514,7 +514,7 @@ export async function POST(request: NextRequest) {
 
 **File:** `lib/billing/check-limits.ts`
 
-```typescript
+\`\`\`typescript
 import { getDatabase } from '@/lib/mongodb'
 
 export async function checkWorkspaceLimits(workspaceId: string) {
@@ -556,13 +556,13 @@ export async function incrementUsage(
     { $inc: { [fieldMap[type]]: 1 } }
   )
 }
-```
+\`\`\`
 
 ### 5.2 Update Automation Creation API
 
 **File:** `app/api/[wsid]/automations/route.ts` (add checks)
 
-```typescript
+\`\`\`typescript
 import { checkWorkspaceLimits } from '@/lib/billing/check-limits'
 
 export async function POST(request: NextRequest, { params }: { params: { wsid: string } }) {
@@ -587,7 +587,7 @@ export async function POST(request: NextRequest, { params }: { params: { wsid: s
 
   return NextResponse.json({ success: true })
 }
-```
+\`\`\`
 
 ---
 
@@ -597,7 +597,7 @@ export async function POST(request: NextRequest, { params }: { params: { wsid: s
 
 **File:** `components/upgrade-modal.tsx`
 
-```typescript
+\`\`\`typescript
 'use client'
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -726,13 +726,13 @@ export function UpgradeModal({ open, onClose, currentPlan, feature, workspaceId 
     </Dialog>
   )
 }
-```
+\`\`\`
 
 ### 6.2 Usage Widget Component
 
 **File:** `components/usage-widget.tsx`
 
-```typescript
+\`\`\`typescript
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -801,7 +801,7 @@ export function UsageWidget({ subscription }: UsageWidgetProps) {
     </Card>
   )
 }
-```
+\`\`\`
 
 ---
 
@@ -809,13 +809,13 @@ export function UsageWidget({ subscription }: UsageWidgetProps) {
 
 ### 7.1 Email Service Setup (Resend recommended)
 
-```bash
+\`\`\`bash
 pnpm add resend
-```
+\`\`\`
 
 **File:** `lib/email.ts`
 
-```typescript
+\`\`\`typescript
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -853,13 +853,13 @@ export async function sendPaymentFailedEmail(
     `,
   })
 }
-```
+\`\`\`
 
 ### 7.2 Cron Job for Trial Reminders
 
 **File:** `app/api/cron/trial-reminders/route.ts`
 
-```typescript
+\`\`\`typescript
 import { NextRequest, NextResponse } from 'next/server'
 import { getDatabase } from '@/lib/mongodb'
 import { sendTrialExpiringEmail } from '@/lib/email'
@@ -896,7 +896,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ sent: workspaces.length })
 }
-```
+\`\`\`
 
 ---
 
@@ -904,7 +904,7 @@ export async function GET(request: NextRequest) {
 
 ### 8.1 Test Stripe Webhooks Locally
 
-```bash
+\`\`\`bash
 # Install Stripe CLI
 brew install stripe/stripe-cli/stripe
 
@@ -918,13 +918,13 @@ stripe listen --forward-to localhost:3000/api/billing/webhooks
 stripe trigger checkout.session.completed
 stripe trigger customer.subscription.updated
 stripe trigger invoice.payment_failed
-```
+\`\`\`
 
 ### 8.2 Unit Tests Example
 
 **File:** `__tests__/billing/limits.test.ts`
 
-```typescript
+\`\`\`typescript
 import { checkWorkspaceLimits } from '@/lib/billing/check-limits'
 
 describe('Billing Limits', () => {
@@ -938,7 +938,7 @@ describe('Billing Limits', () => {
     expect(limits.canSendDM).toBe(true)
   })
 })
-```
+\`\`\`
 
 ---
 
@@ -978,7 +978,7 @@ describe('Billing Limits', () => {
 
 ### Key Metrics to Track
 
-```typescript
+\`\`\`typescript
 // Dashboard queries
 const metrics = {
   // Revenue
@@ -1002,7 +1002,7 @@ const metrics = {
   supportTickets: await getSupportTickets('last_7_days'),
   nps: await getNPS(),
 }
-```
+\`\`\`
 
 ---
 

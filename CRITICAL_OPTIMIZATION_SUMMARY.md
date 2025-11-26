@@ -5,10 +5,10 @@
 ChatGPT was absolutely right - we were still calling the Next.js POST route handler in the worker, which has massive overhead even when imported once.
 
 ### ❌ Before (Slow):
-```typescript
+\`\`\`typescript
 // Worker calls POST route handler
 await webhookRouteHandler(mockRequest) // 500-1000ms overhead
-```
+\`\`\`
 
 **Why slow?**
 - Next.js constructs Request/Response objects
@@ -18,10 +18,10 @@ await webhookRouteHandler(mockRequest) // 500-1000ms overhead
 - Total overhead: **500-1000ms per webhook**
 
 ### ✅ After (Fast):
-```typescript
+\`\`\`typescript
 // Worker calls PURE function directly
 await webhookRouteHandler(data) // 5-25ms - just processing logic
-```
+\`\`\`
 
 **Why fast?**
 - No Request/Response objects
@@ -64,12 +64,12 @@ await webhookRouteHandler(data) // 5-25ms - just processing logic
 - Can handle viral spikes (30k-50k comments/hour)
 
 ### Math:
-```
+\`\`\`
 Before: 500-1000ms per webhook = 60-120/min
 After: 5-25ms per webhook = 800-1,200/min
 
 Speed increase: 10-12x
-```
+\`\`\`
 
 ## Production Safety
 
@@ -94,11 +94,11 @@ Speed increase: 10-12x
 ## How to Deploy
 
 1. **Push code to production:**
-   ```bash
+   \`\`\`bash
    git add app/api/webhooks/instagram/route.ts app/api/webhooks/worker.ts
    git commit -m "CRITICAL: Extract pure webhook processor (10-12x speed boost)"
    git push origin main
-   ```
+   \`\`\`
 
 2. **No environment variable changes needed:**
    - Current settings are optimal
@@ -113,15 +113,15 @@ Speed increase: 10-12x
 ## Monitoring After Deploy
 
 Run this to watch queue speed:
-```bash
+\`\`\`bash
 node scripts/queue-speed.js
-```
+\`\`\`
 
 **Expected results (within 2-3 minutes):**
-```
+\`\`\`
 Pending: 3,500 → 2,000 → 800 → 200 → <100
 Per Minute: 100 → 300 → 600 → 900 → 1,000+
-```
+\`\`\`
 
 **Backlog should clear in:** 4-6 minutes (vs 35+ minutes before)
 

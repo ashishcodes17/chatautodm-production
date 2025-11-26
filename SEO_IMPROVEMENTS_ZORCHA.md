@@ -77,12 +77,12 @@ Target keywords covered:
 ### Recommended Additional Improvements:
 
 1. **Create FAQ Section**
-   ```tsx
+   \`\`\`tsx
    - Q: Is ChatAutoDM really cheaper than Zorcha?
    - Q: Can I migrate from Zorcha to ChatAutoDM?
    - Q: What features does ChatAutoDM have that Zorcha doesn't?
    - Q: How long does it take to set up ChatAutoDM?
-   ```
+   \`\`\`
 
 2. **Add Comparison Table Schema**
    - Implement ComparisonTable structured data

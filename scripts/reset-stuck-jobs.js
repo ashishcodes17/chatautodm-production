@@ -10,8 +10,8 @@
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://ashish:1196843649%401@62.72.42.195:27017/instaautodm?authSource=instaautodm&retryWrites=true&w=majority';
-const STUCK_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+const MONGODB_URI = 'mongodb://ashish:1196843649%401@62.72.42.195:27017/instaautodm?authSource=instaautodm&retryWrites=true&w=majority';
+const STUCK_THRESHOLD = 2 * 60 * 1000; // 2 minutes (faster reset)
 
 async function resetStuckJobs() {
   console.log('\n🔧 ========== RESET STUCK JOBS ==========\n');

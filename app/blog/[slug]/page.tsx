@@ -605,5 +605,3 @@ export async function generateStaticParams() {
   }))
 
 }
-
-

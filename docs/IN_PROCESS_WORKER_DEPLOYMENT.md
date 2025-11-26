@@ -15,40 +15,40 @@ and call `POST()` function directly - **ZERO HTTP, ZERO NETWORKING!**
 ### 1. Wait for Coolify Auto-Deploy
 
 Coolify will automatically deploy commit `ca00fe6`:
-```
+\`\`\`
 feat: in-process workers call compiled Next.js routes directly (REAL FIX!)
-```
+\`\`\`
 
 Watch Coolify logs for:
-```
+\`\`\`
 🚀 Starting Next.js Server with integrated workers...
 ⚡ Queue System: ENABLED
 🔧 Starting workers IN-PROCESS (no HTTP needed)...
 ✅ MongoDB connected
 ✅ Started 180 workers
-```
+\`\`\`
 
 ### 2. Reset Stuck Jobs
 
 SSH to your server and run:
-```bash
+\`\`\`bash
 cd /path/to/chatautodm-web
 node scripts/reset-stuck-jobs.js
-```
+\`\`\`
 
 This will reset 24,239 stuck jobs from "processing" → "pending"
 
 ### 3. Monitor Progress
 
 Run the queue monitor:
-```bash
+\`\`\`bash
 node scripts/watch-queue.js
-```
+\`\`\`
 
 OR check the API directly:
-```bash
+\`\`\`bash
 curl https://www.chatautodm.com/api/webhooks/queue-stats
-```
+\`\`\`
 
 You should see:
 - `completed` increasing rapidly
@@ -67,7 +67,7 @@ NOT 4 hours! The original estimate was wrong.
 
 ### Original Webhook Handling (route.ts lines 175-365)
 
-```typescript
+\`\`\`typescript
 // 1. Log webhook
 await db.collection("webhook_logs").insertOne(webhookLog)
 
@@ -88,17 +88,17 @@ for (const entry of data.entry) {
     await handleBusinessLoginComment(...)
   }
 }
-```
+\`\`\`
 
 ### New Queue Flow (SAME processing!)
 
-```
+\`\`\`
 Instagram → Queue (10ms) → Worker claims job → Import compiled route
                                               ↓
                                           route.POST(mockRequest)
                                               ↓
                                     [EXACT SAME PROCESSING AS ABOVE]
-```
+\`\`\`
 
 **Key**: Workers set `X-Internal-Worker: true` header, so route.ts:
 1. Skips queue insertion (line 110: `isWorkerCall` detection)
@@ -122,48 +122,48 @@ After deployment, verify:
 ### If workers still not processing:
 
 1. **Check logs for import error:**
-   ```
+   \`\`\`
    ❌ [WORKER] Failed to import compiled route
-   ```
+   \`\`\`
    **Fix**: Ensure Next.js build completed before workers started
 
 2. **Check if .next folder exists:**
-   ```bash
+   \`\`\`bash
    ls -la .next/server/app/api/webhooks/instagram/
-   ```
+   \`\`\`
    Should show `route.js` file
 
 3. **Restart everything:**
-   ```bash
+   \`\`\`bash
    # In Coolify, trigger manual redeploy
    # OR
    pm2 restart all  # if using PM2
-   ```
+   \`\`\`
 
 ### If jobs stuck in "processing":
 
-```bash
+\`\`\`bash
 node scripts/reset-stuck-jobs.js
-```
+\`\`\`
 
 This resets jobs > 5 minutes old back to "pending"
 
 ## 📊 MONITORING COMMANDS
 
 **Watch queue in real-time:**
-```bash
+\`\`\`bash
 node scripts/watch-queue.js
-```
+\`\`\`
 
 **Check current status:**
-```bash
+\`\`\`bash
 node scripts/check-queue-status.js
-```
+\`\`\`
 
 **View Coolify logs:**
-```bash
+\`\`\`bash
 # In Coolify dashboard, view application logs
-```
+\`\`\`
 
 ## ✅ SUCCESS CRITERIA
 

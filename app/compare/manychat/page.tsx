@@ -786,5 +786,3 @@ const ManychatComparePage = () => {
 }
 
 export default ManychatComparePage
-
-

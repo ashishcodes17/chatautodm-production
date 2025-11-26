@@ -10,7 +10,7 @@
 ## Deployment Steps
 
 ### Step 1: Backup (5 minutes)
-```bash
+\`\`\`bash
 # On VPS - Backup current code
 cd /path/to/chatautodm-web
 git branch backup-before-queue-$(date +%Y%m%d)
@@ -18,10 +18,10 @@ git push origin backup-before-queue-$(date +%Y%m%d)
 
 # Backup database (optional but recommended)
 mongodump --uri="mongodb://ashish:1196843649%401@62.72.42.195:27017/instaautodm?authSource=instaautodm" --out=/tmp/backup-$(date +%Y%m%d)
-```
+\`\`\`
 
 ### Step 2: Deploy Code (10 minutes)
-```bash
+\`\`\`bash
 # On local machine:
 git add .
 git status  # Review changes
@@ -33,10 +33,10 @@ cd /path/to/chatautodm-web
 git pull origin main
 pnpm install
 pnpm build
-```
+\`\`\`
 
 ### Step 3: Update Environment Variables (2 minutes)
-```bash
+\`\`\`bash
 # On VPS:
 nano .env  # or vim .env
 
@@ -54,36 +54,36 @@ QUEUE_ENABLE_METRICS=true
 QUEUE_METRICS_INTERVAL=60000
 
 # Save and exit
-```
+\`\`\`
 
 ### Step 4: Restart Server (1 minute)
-```bash
+\`\`\`bash
 # On VPS:
 pm2 restart chatautodm
 
 # Verify it's running:
 pm2 status
 pm2 logs chatautodm --lines 50
-```
+\`\`\`
 
 - [ ] Server restarted successfully
 - [ ] No errors in logs
 - [ ] Can access website
 
 ### Step 5: Test Queue Endpoint (1 minute)
-```bash
+\`\`\`bash
 # On VPS or local:
 curl http://your-vps-ip:3000/api/webhooks/queue-stats | jq
 
 # Or on local machine:
 node scripts/test-queue.js
-```
+\`\`\`
 
 - [ ] Queue stats endpoint works
 - [ ] Shows healthy status
 
 ### Step 6: Enable Queue System (5 minutes - CAREFUL!)
-```bash
+\`\`\`bash
 # On VPS:
 nano .env
 
@@ -100,27 +100,27 @@ pm2 start scripts/start-workers.js --name "webhook-workers"
 
 # Save PM2 config:
 pm2 save
-```
+\`\`\`
 
 - [ ] Queue system enabled
 - [ ] Workers started
 - [ ] Both processes running (chatautodm + webhook-workers)
 
 ### Step 7: Verify Workers (2 minutes)
-```bash
+\`\`\`bash
 # Check worker logs:
 pm2 logs webhook-workers --lines 50
 
 # Should see:
 # "🚀 Started 180 workers"
 # "👷 Worker X started"
-```
+\`\`\`
 
 - [ ] Workers started successfully
 - [ ] No errors in worker logs
 
 ### Step 8: Send Test Webhook (5 minutes)
-```bash
+\`\`\`bash
 # Trigger a real webhook:
 # - Comment on an Instagram post
 # - Send a DM
@@ -132,7 +132,7 @@ pm2 logs webhook-workers --lines 0 &
 
 # Check queue stats:
 curl http://localhost:3000/api/webhooks/queue-stats | jq
-```
+\`\`\`
 
 - [ ] Webhook received (logs show "✅ Webhook queued successfully")
 - [ ] Worker processed it (logs show "🔄 Worker X: Processing job")
@@ -141,7 +141,7 @@ curl http://localhost:3000/api/webhooks/queue-stats | jq
 - [ ] Queue stats show 1 completed job
 
 ### Step 9: Spike Test (10 minutes - IMPORTANT!)
-```bash
+\`\`\`bash
 # Trigger 10-20 webhooks quickly:
 # - Have multiple people comment
 # - Or use Instagram's test webhooks feature
@@ -153,7 +153,7 @@ curl http://localhost:3000/api/webhooks/queue-stats | jq -r '.queue | to_entries
 
 # Watch logs in real-time:
 pm2 logs --lines 100
-```
+\`\`\`
 
 - [ ] All webhooks queued successfully
 - [ ] Workers processing in parallel
@@ -163,13 +163,13 @@ pm2 logs --lines 100
 - [ ] Queue clears (pending goes back to 0)
 
 ### Step 10: Monitor for 1 Hour (60 minutes)
-```bash
+\`\`\`bash
 # Set up monitoring (run in tmux/screen):
 watch -n 60 'curl -s http://localhost:3000/api/webhooks/queue-stats | jq'
 
 # Keep logs visible:
 pm2 logs --lines 50
-```
+\`\`\`
 
 **Watch for:**
 - [ ] Queue stays healthy (pending < 100)
@@ -181,7 +181,7 @@ pm2 logs --lines 50
 ## Post-Deployment Monitoring
 
 ### First 24 Hours - Check Every Hour
-```bash
+\`\`\`bash
 # Quick health check:
 curl http://localhost:3000/api/webhooks/queue-stats | jq '.health'
 
@@ -189,10 +189,10 @@ curl http://localhost:3000/api/webhooks/queue-stats | jq '.health'
 # 1. Check worker logs: pm2 logs webhook-workers
 # 2. Increase workers if needed
 # 3. Check for errors in dead letter queue
-```
+\`\`\`
 
 ### Daily Monitoring
-```bash
+\`\`\`bash
 # Morning check:
 pm2 status
 curl http://localhost:3000/api/webhooks/queue-stats | jq
@@ -201,35 +201,35 @@ curl http://localhost:3000/api/webhooks/queue-stats | jq
 mongo
 > use instaautodm
 > db.webhook_dead_letter.countDocuments()
-```
+\`\`\`
 
 ## Rollback Plan (If Needed)
 
 ### OPTION 1: Disable Queue (30 seconds)
-```bash
+\`\`\`bash
 nano .env
 # Change: USE_QUEUE_SYSTEM=false
 pm2 restart chatautodm
 pm2 stop webhook-workers
-```
+\`\`\`
 
 ### OPTION 2: Git Rollback (2 minutes)
-```bash
+\`\`\`bash
 git log --oneline | head -5  # Find commit before queue
 git revert <commit-hash>
 pnpm build
 pm2 restart chatautodm
 pm2 stop webhook-workers
-```
+\`\`\`
 
 ### OPTION 3: Full Restore (5 minutes)
-```bash
+\`\`\`bash
 git checkout backup-before-queue-YYYYMMDD
 pnpm install
 pnpm build
 pm2 restart chatautodm
 pm2 stop webhook-workers
-```
+\`\`\`
 
 ## Success Criteria ✅
 
@@ -247,7 +247,7 @@ pm2 stop webhook-workers
 ## Troubleshooting
 
 ### Workers not processing jobs
-```bash
+\`\`\`bash
 # Check if workers are running:
 pm2 status
 
@@ -256,29 +256,29 @@ pm2 restart webhook-workers
 
 # Check MongoDB connection:
 mongo mongodb://ashish:1196843649%401@62.72.42.195:27017/instaautodm?authSource=instaautodm
-```
+\`\`\`
 
 ### Queue building up (pending > 1000)
-```bash
+\`\`\`bash
 # Increase workers:
 nano .env
 # Change: QUEUE_WORKERS=360
 pm2 restart webhook-workers
-```
+\`\`\`
 
 ### High CPU usage
-```bash
+\`\`\`bash
 # Reduce workers:
 nano .env
 # Change: QUEUE_WORKERS=90
 pm2 restart webhook-workers
-```
+\`\`\`
 
 ### Memory leak
-```bash
+\`\`\`bash
 # Restart workers periodically:
 pm2 restart webhook-workers --cron "0 */6 * * *"
-```
+\`\`\`
 
 ## Emergency Contacts
 

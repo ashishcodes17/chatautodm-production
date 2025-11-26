@@ -575,5 +575,3 @@ function TeamSection() {
     </section>
   );
 }
-
-

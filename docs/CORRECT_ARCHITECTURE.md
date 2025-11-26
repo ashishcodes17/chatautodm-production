@@ -19,7 +19,7 @@
 
 Add these to your `.env` file:
 
-```bash
+\`\`\`bash
 # Queue System
 USE_QUEUE_SYSTEM=false          # Start disabled, test first!
 
@@ -40,7 +40,7 @@ QUEUE_MAX_WEBHOOKS_PER_MINUTE=10000
 # Monitoring
 QUEUE_ENABLE_METRICS=true
 QUEUE_METRICS_INTERVAL=60000
-```
+\`\`\`
 
 ---
 
@@ -67,17 +67,17 @@ QUEUE_METRICS_INTERVAL=60000
 ## 🏗️ Architecture Comparison
 
 ### ❌ WRONG (What I suggested before):
-```
+\`\`\`
 180 separate Node.js processes
   ├─ Process 1 (V8 engine, 50MB RAM)
   ├─ Process 2 (V8 engine, 50MB RAM)
   ├─ ...
   └─ Process 180 (V8 engine, 50MB RAM)
 Total: 9GB RAM, CPU thrashing, server crash
-```
+\`\`\`
 
 ### ✅ CORRECT (What it should be):
-```
+\`\`\`
 1 Node.js process
   └─ Event loop processing 10 webhooks concurrently
      ├─ Webhook 1 (async operation)
@@ -85,31 +85,31 @@ Total: 9GB RAM, CPU thrashing, server crash
      ├─ ...
      └─ Webhook 10 (async operation)
 Total: 200MB RAM, 30% CPU, stable
-```
+\`\`\`
 
 ---
 
 ## 🚀 How to Deploy (SAFE)
 
 ### Step 1: Update Environment Variables
-```bash
+\`\`\`bash
 nano .env
 
 # Add/update these:
 USE_QUEUE_SYSTEM=false
 QUEUE_CONCURRENCY=10
-```
+\`\`\`
 
 ### Step 2: Deploy Code
-```bash
+\`\`\`bash
 git pull
 pnpm install
 pnpm build
 pm2 restart all
-```
+\`\`\`
 
 ### Step 3: Test Queue System
-```bash
+\`\`\`bash
 # Enable queue
 nano .env
 # Change: USE_QUEUE_SYSTEM=true
@@ -119,39 +119,39 @@ pm2 restart all
 
 # Monitor
 curl http://localhost:3000/api/webhooks/queue-stats
-```
+\`\`\`
 
 ### Step 4: Monitor CPU/RAM
-```bash
+\`\`\`bash
 htop
 
 # Watch for:
 # - CPU should be 20-60% (not 100%+)
 # - RAM should be stable (not climbing)
 # - Load average should be < 6.0
-```
+\`\`\`
 
 ---
 
 ## 🎯 Tuning Guide
 
 ### If queue is slow (pending jobs building up):
-```bash
+\`\`\`bash
 # Increase concurrency
 nano .env
 # Change: QUEUE_CONCURRENCY=20
 
 pm2 restart all
-```
+\`\`\`
 
 ### If CPU too high (>80%):
-```bash
+\`\`\`bash
 # Decrease concurrency
 nano .env
 # Change: QUEUE_CONCURRENCY=5
 
 pm2 restart all
-```
+\`\`\`
 
 ### If still not enough capacity:
 - Option 1: Optimize webhook processing (make it faster)
@@ -172,7 +172,7 @@ pm2 restart all
 
 ## 🔍 How to Verify It's Working
 
-```bash
+\`\`\`bash
 # Check processes (should see only 2):
 pm2 list
 # - chatautodm (Next.js)
@@ -188,7 +188,7 @@ curl http://localhost:3000/api/webhooks/queue-stats | jq
 # Check CPU:
 htop
 # Should be 20-60%, not 100%+
-```
+\`\`\`
 
 ---
 

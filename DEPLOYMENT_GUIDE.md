@@ -10,7 +10,7 @@ Database indexes have been created successfully on your VPS MongoDB.
 ### Step 1: Add Environment Variables
 Add these to your `.env` file on the VPS:
 
-```bash
+\`\`\`bash
 # START - Add to .env file
 USE_QUEUE_SYSTEM=false          # ⚠️ CRITICAL: Start with FALSE (disabled)
 QUEUE_WORKERS=180               # 30 workers per CPU core × 6 cores
@@ -24,10 +24,10 @@ QUEUE_MAX_WEBHOOKS_PER_MINUTE=10000 # Max queue size
 QUEUE_ENABLE_METRICS=true       # Log statistics
 QUEUE_METRICS_INTERVAL=60000    # Log every 60 seconds
 # END - Add to .env file
-```
+\`\`\`
 
 ### Step 2: Commit and Deploy Code
-```bash
+\`\`\`bash
 # On your local machine:
 git add .
 git commit -m "feat: add webhook queue system with feature flag (disabled by default)"
@@ -38,17 +38,17 @@ cd /path/to/chatautodm-web
 git pull origin main
 pnpm install  # Install any new dependencies
 pnpm build    # Build production
-```
+\`\`\`
 
 ### Step 3: Restart Next.js Server
-```bash
+\`\`\`bash
 # If using PM2:
 pm2 restart chatautodm
 
 # If using systemd or direct:
 # Stop current process
 # Start: pnpm start
-```
+\`\`\`
 
 **⚠️ IMPORTANT:** At this point, nothing changes! Queue is DISABLED (USE_QUEUE_SYSTEM=false).
 Your app runs exactly as before.
@@ -60,21 +60,21 @@ Your app runs exactly as before.
 ### Step 1: Start Workers (Test Mode)
 In a separate terminal on your VPS:
 
-```bash
+\`\`\`bash
 cd /path/to/chatautodm-web
 node scripts/start-workers.js
-```
+\`\`\`
 
 You should see:
-```
+\`\`\`
 ⚠️  Queue system is DISABLED (USE_QUEUE_SYSTEM=false)
 To enable, set USE_QUEUE_SYSTEM=true in your .env file
-```
+\`\`\`
 
 This confirms workers are ready but waiting.
 
 ### Step 2: Enable Queue for Testing
-```bash
+\`\`\`bash
 # On VPS, edit .env:
 nano .env
 
@@ -82,10 +82,10 @@ nano .env
 USE_QUEUE_SYSTEM=true  # Changed from false to true
 
 # Save and exit (Ctrl+X, Y, Enter)
-```
+\`\`\`
 
 ### Step 3: Restart Everything
-```bash
+\`\`\`bash
 # Restart Next.js:
 pm2 restart chatautodm
 
@@ -94,20 +94,20 @@ pm2 start scripts/start-workers.js --name "webhook-workers"
 
 # Check status:
 pm2 status
-```
+\`\`\`
 
 You should see TWO processes:
 - `chatautodm` (Next.js server)
 - `webhook-workers` (Queue processors)
 
 ### Step 4: Monitor Queue in Real-Time
-```bash
+\`\`\`bash
 # Watch queue stats (auto-refresh every 2 seconds):
 watch -n 2 'curl -s http://localhost:3000/api/webhooks/queue-stats | jq'
 
 # Or view PM2 logs:
 pm2 logs webhook-workers
-```
+\`\`\`
 
 ---
 
@@ -125,12 +125,12 @@ Trigger a webhook (comment on Instagram, send DM, etc.)
 6. Marks as completed (logs show: "✅ Worker X: Completed job...")
 
 ### Test 2: Check Queue Stats
-```bash
+\`\`\`bash
 curl http://localhost:3000/api/webhooks/queue-stats | jq
-```
+\`\`\`
 
 Should show:
-```json
+\`\`\`json
 {
   "queue": {
     "pending": 0,
@@ -147,7 +147,7 @@ Should show:
     "status": "healthy"
   }
 }
-```
+\`\`\`
 
 ### Test 3: Spike Test (IMPORTANT!)
 Trigger multiple webhooks quickly (10-20 within a few seconds):
@@ -164,7 +164,7 @@ Trigger multiple webhooks quickly (10-20 within a few seconds):
 ## 🎯 Phase 5: Monitor Production Load
 
 ### During Normal Operation:
-```bash
+\`\`\`bash
 # Check queue every minute:
 curl http://localhost:3000/api/webhooks/queue-stats
 
@@ -173,7 +173,7 @@ htop
 
 # Monitor PM2:
 pm2 monit
-```
+\`\`\`
 
 ### Key Metrics to Watch:
 - **Queue Pending**: Should stay < 100 (if > 1000, increase workers)
@@ -186,7 +186,7 @@ pm2 monit
 ## ⚠️ Rollback Plan (If Something Goes Wrong)
 
 ### INSTANT Rollback (30 seconds):
-```bash
+\`\`\`bash
 # Option 1: Disable queue (falls back to old behavior)
 nano .env
 # Change: USE_QUEUE_SYSTEM=false
@@ -197,7 +197,7 @@ pm2 stop webhook-workers
 git revert HEAD
 pnpm build
 pm2 restart chatautodm
-```
+\`\`\`
 
 Your platform will immediately revert to the old direct processing mode.
 No data loss (queued jobs stay in database).
@@ -207,7 +207,7 @@ No data loss (queued jobs stay in database).
 ## 🔧 Tuning Performance
 
 ### If Queue Builds Up (pending > 1000):
-```bash
+\`\`\`bash
 # Option 1: Increase workers
 nano .env
 # Change: QUEUE_WORKERS=360  # Double the workers
@@ -215,18 +215,18 @@ pm2 restart webhook-workers
 
 # Option 2: Add more servers (horizontal scaling)
 # Start workers on multiple servers pointing to same MongoDB
-```
+\`\`\`
 
 ### If CPU Too High (> 95%):
-```bash
+\`\`\`bash
 # Reduce workers
 nano .env
 # Change: QUEUE_WORKERS=90  # Half the workers
 pm2 restart webhook-workers
-```
+\`\`\`
 
 ### If Too Many Failures:
-```bash
+\`\`\`bash
 # Check dead letter queue:
 mongo
 > use instaautodm
@@ -237,7 +237,7 @@ mongo
     { status: "failed" },
     { $set: { status: "pending", attempts: 0 } }
   )
-```
+\`\`\`
 
 ---
 
@@ -260,7 +260,7 @@ mongo
 ## 🆘 Troubleshooting
 
 ### Workers Not Starting:
-```bash
+\`\`\`bash
 # Check logs:
 pm2 logs webhook-workers --lines 100
 
@@ -268,10 +268,10 @@ pm2 logs webhook-workers --lines 100
 # 1. Missing dependencies: pnpm install
 # 2. TypeScript errors: pnpm build
 # 3. MongoDB connection: Check MONGODB_URI in .env
-```
+\`\`\`
 
 ### Queue Growing Forever:
-```bash
+\`\`\`bash
 # Check if workers are running:
 pm2 status
 
@@ -280,13 +280,13 @@ pm2 logs webhook-workers | grep "Completed job"
 
 # Manual intervention:
 # Increase workers or clear old jobs
-```
+\`\`\`
 
 ### High Memory Usage:
-```bash
+\`\`\`bash
 # Restart workers periodically:
 pm2 restart webhook-workers --cron "0 */6 * * *"  # Every 6 hours
-```
+\`\`\`
 
 ---
 
@@ -308,14 +308,14 @@ pm2 restart webhook-workers --cron "0 */6 * * *"  # Every 6 hours
 ## 📞 Need Help?
 
 Check queue stats anytime:
-```bash
+\`\`\`bash
 curl http://your-vps-ip:3000/api/webhooks/queue-stats | jq
-```
+\`\`\`
 
 View live metrics:
-```bash
+\`\`\`bash
 pm2 logs webhook-workers | grep "QUEUE METRICS"
-```
+\`\`\`
 
 ---
 
