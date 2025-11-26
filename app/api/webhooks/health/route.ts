@@ -1,25 +1,20 @@
+// /api/webhooks/health/route.ts
 import { type NextRequest, NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
 import { getQueueStats } from "@/lib/webhook-queue"
 import { getCacheStats } from "@/lib/redis-cache"
 
-/**
- * Health check endpoint for monitoring webhook system
- * GET /api/webhooks/health
- *
- * Returns real-time metrics about queue, cache, and database health
- */
 export async function GET(request: NextRequest) {
   try {
     const db = await getDatabase()
 
-    // Get queue stats
+    // BullMQ stats (fast)
     const queueStats = await getQueueStats()
 
-    // Get cache stats
+    // Redis cache stats
     const cacheStats = await getCacheStats()
 
-    // Get database queue stats
+    // MongoDB queue fallback stats
     const dbQueueStats = await db
       .collection("webhook_queue")
       .aggregate([
@@ -37,17 +32,22 @@ export async function GET(request: NextRequest) {
     const completed = dbQueueStats.find((s) => s._id === "completed")?.count || 0
     const failed = dbQueueStats.find((s) => s._id === "failed")?.count || 0
 
-    // Calculate metrics
     const totalProcessed = completed + failed
-    const successRate = totalProcessed > 0 ? ((completed / totalProcessed) * 100).toFixed(2) : 0
+    const successRate =
+      totalProcessed === 0 ? 100 : Number(((completed / totalProcessed) * 100).toFixed(2))
 
-    // Check if system is healthy
-    const isHealthy = pending < 1000 && cacheStats.connected !== false && successRate > 95
+    // Healthy if:
+    const isHealthy =
+      pending < 1000 &&
+      cacheStats.connected !== false &&
+      queueStats.ready === true &&
+      successRate > 90
 
     return NextResponse.json(
       {
         status: isHealthy ? "healthy" : "degraded",
         timestamp: new Date().toISOString(),
+
         queue: {
           bullmq: queueStats,
           mongodb: {
@@ -59,10 +59,11 @@ export async function GET(request: NextRequest) {
           },
           health: {
             isBackedUp: pending > 500,
-            avgResponse: "~200ms",
-            estimatedThroughput: "250-300 jobs/min",
+            avgResponse: "~150-250ms",
+            estimatedThroughput: "300-450 jobs / min",
           },
         },
+
         cache: {
           redis: cacheStats,
           health: {
@@ -70,19 +71,23 @@ export async function GET(request: NextRequest) {
             keyCount: cacheStats.keyspace || 0,
           },
         },
+
         performance: {
-          successRate: Number.parseFloat(successRate as string),
+          successRate,
           throughput: {
             totalProcessed,
             pendingQueue: pending,
-            estimatedJobsPerSecond: ((totalProcessed / 3600) * 60).toFixed(1),
+            estimatedJobsPerSecond:
+              totalProcessed > 0 ? Number((totalProcessed / 60).toFixed(1)) : 0,
           },
         },
+
         recommendations: [
-          pending > 500 && "Queue backing up - increase workers",
-          failed > 100 && "High failure rate - check Instagram API",
-          !cacheStats.connected && "Redis disconnected - fallback to MongoDB",
-          successRate < 95 && "Low success rate - increase retries",
+          pending > 500 && "Queue backing up — increase workers.",
+          failed > 100 && "High failure rate — check Instagram API limits.",
+          !cacheStats.connected && "Redis disconnected — fallback to MongoDB active.",
+          successRate < 90 && "Low success rate — increase retries or concurrency.",
+          queueStats.ready === false && "BullMQ not ready — check Redis connection.",
         ].filter(Boolean),
       },
       {

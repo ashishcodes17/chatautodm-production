@@ -257,21 +257,68 @@ function generateJobId(data: any): string {
 }
 
 export async function getQueueStats() {
-  if (!BULLMQ_ENABLED || !webhookQueue) return { enabled: false }
+  if (!BULLMQ_ENABLED || !webhookQueue) {
+    return { enabled: false }
+  }
+
   try {
-    const [waiting, active, completed, failed, delayed] = await Promise.all([
+    const [
+      waiting,
+      active,
+      completed,
+      failed,
+      delayed,
+      isPaused,
+      repeatable,
+      sampleJobs,
+    ] = await Promise.all([
       webhookQueue.getWaitingCount(),
       webhookQueue.getActiveCount(),
       webhookQueue.getCompletedCount(),
       webhookQueue.getFailedCount(),
       webhookQueue.getDelayedCount(),
+      webhookQueue.isPaused(),
+      webhookQueue.getRepeatableJobs(),
+      webhookQueue.getJobs(["waiting", "active", "delayed"], 0, 20),
     ])
-    const deadCount = deadLetterQueue ? await deadLetterQueue.getWaitingCount() : 0
-    return { enabled: true, ready, waiting, active, completed, failed, delayed, deadLetter: deadCount }
+
+    return {
+      enabled: true,
+      ready,
+
+      // HIGH-LEVEL queue health
+      waiting,
+      active,
+      completed,
+      failed,
+      delayed,
+      paused: isPaused,
+      deadLetter: deadLetterQueue
+        ? await deadLetterQueue.getWaitingCount()
+        : 0,
+
+      // Repeatable jobs
+      repeatableJobsCount: repeatable.length,
+
+      // Job samples (first 20)
+      jobs: sampleJobs.map((job: Job<any>) => ({
+        id: job.id,
+        name: job.name,
+        attemptsMade: job.attemptsMade,
+        timestamp: job.timestamp,
+        returnValue: job.returnvalue,
+        failedReason: job.failedReason,
+      })),
+    }
   } catch (err: any) {
-    return { enabled: true, ready: false, error: err?.message || err }
+    return {
+      enabled: true,
+      ready: false,
+      error: err?.message || err,
+    }
   }
 }
+
 
 export function isQueueEnabled() {
   return BULLMQ_ENABLED && ready
