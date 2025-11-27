@@ -250,47 +250,71 @@ function setupIdleBackoff(worker: any) {
 
 export async function getQueueStats() {
   if (!BULLMQ_ENABLED || !webhookQueue) {
-    return { enabled: false }
+    return { enabled: false };
   }
 
   try {
-    const [waiting, active, completed, failed, delayed, isPaused, repeatable, sampleJobs] = await Promise.all([
+    const [
+      waiting,
+      active,
+      completed,
+      failed,
+      delayed,
+      isPaused,
+      deadLetterCount,
+      jobs
+    ] = await Promise.all([
       webhookQueue.getWaitingCount(),
       webhookQueue.getActiveCount(),
       webhookQueue.getCompletedCount(),
       webhookQueue.getFailedCount(),
       webhookQueue.getDelayedCount(),
       webhookQueue.isPaused(),
-      webhookQueue.getRepeatableJobs(),
-      webhookQueue.getJobs(["waiting", "active", "delayed"], 0, 20),
-    ])
+      deadLetterQueue?.getWaitingCount() ?? 0,
+      webhookQueue.getJobs(
+        ["waiting", "active", "completed", "failed", "delayed"],
+        0,
+        20
+      )
+    ]);
+
+    const totalProcessed = completed + failed;
+    const successRate =
+      totalProcessed === 0
+        ? 100
+        : Number(((completed / totalProcessed) * 100).toFixed(2));
 
     return {
       enabled: true,
       ready,
-      waiting,
-      active,
+
+      // 🔥 KEY METRICS (you asked for)
+      pending: waiting,
+      processing: active,
       completed,
       failed,
       delayed,
       paused: isPaused,
-      deadLetter: deadLetterQueue ? await deadLetterQueue.getWaitingCount() : 0,
-      repeatableJobsCount: repeatable.length,
-      jobs: sampleJobs.map((job: Job<any>) => ({
+      deadLetter: deadLetterCount,
+      totalProcessed,
+      successRate,
+
+      // optional detailed list
+      jobs: jobs.map((job) => ({
         id: job.id,
         name: job.name,
         attemptsMade: job.attemptsMade,
         timestamp: job.timestamp,
         returnValue: job.returnvalue,
-        failedReason: job.failedReason,
-      })),
-    }
-  } catch (err: any) {
+        failedReason: job.failedReason
+      }))
+    };
+  } catch (err) {
     return {
       enabled: true,
       ready: false,
-      error: err?.message || err,
-    }
+      error: (err as any)?.message || err
+    };
   }
 }
 
