@@ -1,9 +1,10 @@
 // lib/webhook-queue.ts
-import { Queue, Worker, QueueEvents, Job } from "bullmq"
-import Redis, { RedisOptions } from "ioredis"
+import { Queue, Worker, QueueEvents, type Job } from "bullmq"
+import type RedisType from "ioredis"
+
+import { initRedisFactory, getClient, isFactoryInitialized } from "./redis-factory"
 
 const BULLMQ_ENABLED = process.env.BULLMQ_ENABLED === "true"
-const REDIS_URL = process.env.REDIS_URL
 
 export const PRIORITY = {
   DM: 1,
@@ -12,46 +13,27 @@ export const PRIORITY = {
   RETRY: 20,
 } as const
 
-const DEFAULT_CONCURRENCY = Number(process.env.WEBHOOK_WORKER_CONCURRENCY || "10")
-const DEFAULT_LIMITER_MAX = Number(process.env.WEBHOOK_LIMITER_MAX || "500")
+// Calculation: 1,000,000 / 3600 = 278 webhooks/sec
+// With 30 workers @ 50 concurrency each = 1500 jobs/sec capacity (5x buffer)
+const DEFAULT_CONCURRENCY = Number(process.env.WEBHOOK_WORKER_CONCURRENCY || "50")
+const DEFAULT_LIMITER_MAX = Number(process.env.WEBHOOK_LIMITER_MAX || "1000")
 const DEFAULT_LIMITER_DURATION = Number(process.env.WEBHOOK_LIMITER_DURATION || "1000")
+
+const ENABLE_IDLE_BACKOFF = process.env.WEBHOOK_ENABLE_IDLE_BACKOFF !== "false"
+const IDLE_CHECK_INTERVAL = Number(process.env.WEBHOOK_IDLE_CHECK_INTERVAL || "10000")
 
 let webhookQueue: Queue | null = null
 let deadLetterQueue: Queue | null = null
 let queueEvents: QueueEvents | null = null
 let initPromise: Promise<void> | null = null
 let ready = false
-let adminRedis: Redis | null = null
+let currentWorker: any = null
+let idleCheckTimer: NodeJS.Timeout | null = null
 
-function normalizeRedisUrl() {
-  if (!REDIS_URL) return null
-  return REDIS_URL
-}
-
-function createRedisClient(name: string) {
-  const url = normalizeRedisUrl()
-  if (!url) throw new Error("REDIS_URL not set")
-  const opts: RedisOptions = {
-    maxRetriesPerRequest: null,
-    connectTimeout: 20000,
-    lazyConnect: false,
-    retryStrategy(times: number) {
-      if (times > 10) return null
-      return Math.min(times * 1000, 10000)
-    },
-    reconnectOnError(err: Error) {
-      const msg = err?.message || ""
-      if (msg.includes("READONLY You can't write against a read only replica.")) return true
-      if (msg.includes("EPIPE") || msg.includes("ECONNRESET") || msg.includes("ETIMEDOUT")) return true
-      return false
-    },
-  }
-  const r = new Redis(url, opts)
-  r.on("error", (e) => console.error(`[BullMQ:${name}] Redis error: ${e.message}`))
-  r.on("connect", () => console.log(`[BullMQ:${name}] Redis connected`))
-  return r
-}
-
+/**
+ * initQueue()
+ * - uses shared redis clients from redis-factory
+ */
 export async function initQueue() {
   if (initPromise) {
     await initPromise
@@ -64,12 +46,6 @@ export async function initQueue() {
     return
   }
 
-  if (!REDIS_URL) {
-    console.error("❌ REDIS_URL missing - BullMQ disabled")
-    ready = false
-    return
-  }
-
   initPromise = initQueueInternal()
   await initPromise
   initPromise = null
@@ -77,27 +53,31 @@ export async function initQueue() {
 
 async function initQueueInternal() {
   try {
-    console.log("🔄 Initializing BullMQ (TS-compatible)...")
+    console.log("🔄 Initializing BullMQ with shared Redis clients...")
 
-    adminRedis = createRedisClient("admin")
+    // Ensure factory is initialized (idempotent)
+    if (!isFactoryInitialized()) {
+      await initRedisFactory()
+    }
 
-    // Create dedicated clients for each role (avoids createClient typing issues)
-    const clientConn = createRedisClient("client")
-    const eventsConn = createRedisClient("events")
-    const workerConn = createRedisClient("worker")
-    const dlqConn = createRedisClient("dlq")
+    const clientConn = getClient("bull:client") as unknown as RedisType
+    const eventsConn = getClient("bull:events") as unknown as RedisType
+    const workerConn = getClient("bull:worker") as unknown as RedisType
+    const dlqConn = getClient("bull:dlq") as unknown as RedisType
 
-    // NOTE: we cast defaultJobOptions to any to avoid version-specific TS complaints (timeout vs jobTimeout)
+    if (!clientConn || !eventsConn || !workerConn || !dlqConn) {
+      throw new Error("Missing shared Redis clients for BullMQ")
+    }
+
     webhookQueue = new Queue("webhooks", {
       connection: clientConn,
-      defaultJobOptions: ( {
-        attempts: 3,
-        backoff: { type: "exponential", delay: 2000 },
-        // keep the timeout you wanted; some BullMQ versions call this "timeout" and some "jobTimeout"
-        timeout: 90000,
-        removeOnComplete: { age: 3600, count: 1000 },
+      defaultJobOptions: {
+        attempts: Number(process.env.QUEUE_MAX_RETRIES ?? 2), // Reduced from 3 for faster throughput
+        backoff: { type: "exponential", delay: 1000 }, // Faster backoff for high throughput
+        timeout: 60000, // Reduced from 90s to keep queue fresh (webhooks are typically <5s)
+        removeOnComplete: { age: 1800, count: 5000 }, // Aggressive cleanup (30min, 5k jobs)
         removeOnFail: false,
-      } as any ),
+      } as any,
     })
 
     deadLetterQueue = new Queue("webhooks-dead", {
@@ -113,11 +93,14 @@ async function initQueueInternal() {
     queueEvents.on("stalled", ({ jobId }) => console.warn(`⚠️ Job stalled: ${jobId}`))
     queueEvents.on("error", (err) => console.error("❌ QueueEvents error:", err.message || err))
 
+    // wait until queue created and ready
     await webhookQueue.waitUntilReady()
     await deadLetterQueue.waitUntilReady()
 
     ready = true
-    console.log("✅ BullMQ ready (TS-compatible, dedicated connections)")
+    console.log(
+      `✅ BullMQ ready for 1M webhooks/hr (concurrency=${DEFAULT_CONCURRENCY}, limiter=${DEFAULT_LIMITER_MAX}/${DEFAULT_LIMITER_DURATION}ms)`,
+    )
     setupGracefulShutdown()
   } catch (err: any) {
     console.error("❌ BullMQ initialization failed:", err?.message || err)
@@ -125,6 +108,7 @@ async function initQueueInternal() {
     deadLetterQueue = null
     queueEvents = null
     ready = false
+    throw err
   }
 }
 
@@ -150,7 +134,11 @@ export async function enqueueWebhook(
     const webhookType = determineWebhookType(data)
     const jobPriority = typeof priority === "number" ? priority : getPriorityForType(webhookType)
 
-    await webhookQueue.add("process", { data, type: webhookType }, { priority: jobPriority, jobId: generateJobId(data) })
+    await webhookQueue.add(
+      "process",
+      { data, type: webhookType },
+      { priority: jobPriority, jobId: generateJobId(data) },
+    )
     return true
   } catch (err: any) {
     console.error("⚠️ enqueueWebhook failed:", err.message || err)
@@ -173,7 +161,11 @@ export function createWorker(processWebhookFn: (data: any) => Promise<void>, con
     return null
   }
 
-  const workerConnection = createRedisClient("worker-client")
+  const workerConnection = getClient("bull:worker") as unknown as RedisType
+  if (!workerConnection) {
+    console.error("❌ Worker connection missing - aborting worker creation")
+    return null
+  }
 
   const worker = new Worker(
     "webhooks",
@@ -183,7 +175,7 @@ export function createWorker(processWebhookFn: (data: any) => Promise<void>, con
       } catch (err: any) {
         try {
           const attemptsMade = job.attemptsMade ?? 0
-          const maxAttempts = (job.opts?.attempts as number) ?? 3
+          const maxAttempts = (job.opts?.attempts as number) ?? 2
           if (attemptsMade >= maxAttempts) {
             await deadLetterQueue?.add("failed", {
               original: job.data,
@@ -208,15 +200,150 @@ export function createWorker(processWebhookFn: (data: any) => Promise<void>, con
 
   worker.on("failed", (job, err) => {
     if (job) {
-      console.error(`❌ Worker: job ${job.id} failed (attempt ${job.attemptsMade}/${job.opts.attempts}): ${err?.message || err}`)
+      console.error(
+        `❌ Worker: job ${job.id} failed (attempt ${job.attemptsMade}/${job.opts.attempts}): ${err?.message || err}`,
+      )
     } else {
       console.error("❌ Worker failed with no job:", err)
     }
   })
   worker.on("error", (err) => console.error("❌ Worker encountered error:", err?.message || err))
 
-  console.log(`✅ Worker started (concurrency=${concurrency})`)
+  if (ENABLE_IDLE_BACKOFF) {
+    setupIdleBackoff(worker)
+  }
+
+  currentWorker = worker
+  console.log(`✅ Worker started (concurrency=${concurrency}, idle-backoff=${ENABLE_IDLE_BACKOFF})`)
   return worker
+}
+
+function setupIdleBackoff(worker: any) {
+  if (idleCheckTimer) clearInterval(idleCheckTimer)
+
+  const checkInterval = Number(process.env.WEBHOOK_IDLE_CHECK_INTERVAL || "10000")
+
+  idleCheckTimer = setInterval(async () => {
+    try {
+      if (!webhookQueue) return
+
+      const waiting = await webhookQueue.getWaitingCount()
+      const active = await webhookQueue.getActiveCount()
+      const delayed = await webhookQueue.getDelayedCount()
+
+      if (waiting === 0 && active === 0 && delayed === 0) {
+        if (!worker.isPaused) {
+          console.log("😴 Queue idle - pausing worker to save CPU")
+          await worker.pause()
+        }
+      } else {
+        if (worker.isPaused) {
+          console.log("🔄 Queue has jobs - resuming worker")
+          await worker.resume()
+        }
+      }
+    } catch (err) {
+      console.warn("[idle-backoff] check failed:", (err as any)?.message || err)
+    }
+  }, checkInterval)
+}
+
+export async function getQueueStats() {
+  if (!BULLMQ_ENABLED || !webhookQueue) {
+    return { enabled: false }
+  }
+
+  try {
+    const [waiting, active, completed, failed, delayed, isPaused, repeatable, sampleJobs] = await Promise.all([
+      webhookQueue.getWaitingCount(),
+      webhookQueue.getActiveCount(),
+      webhookQueue.getCompletedCount(),
+      webhookQueue.getFailedCount(),
+      webhookQueue.getDelayedCount(),
+      webhookQueue.isPaused(),
+      webhookQueue.getRepeatableJobs(),
+      webhookQueue.getJobs(["waiting", "active", "delayed"], 0, 20),
+    ])
+
+    return {
+      enabled: true,
+      ready,
+      waiting,
+      active,
+      completed,
+      failed,
+      delayed,
+      paused: isPaused,
+      deadLetter: deadLetterQueue ? await deadLetterQueue.getWaitingCount() : 0,
+      repeatableJobsCount: repeatable.length,
+      jobs: sampleJobs.map((job: Job<any>) => ({
+        id: job.id,
+        name: job.name,
+        attemptsMade: job.attemptsMade,
+        timestamp: job.timestamp,
+        returnValue: job.returnvalue,
+        failedReason: job.failedReason,
+      })),
+    }
+  } catch (err: any) {
+    return {
+      enabled: true,
+      ready: false,
+      error: err?.message || err,
+    }
+  }
+}
+
+export function isQueueEnabled() {
+  return BULLMQ_ENABLED && ready
+}
+
+export async function closeQueue() {
+  if (idleCheckTimer) {
+    clearInterval(idleCheckTimer)
+    idleCheckTimer = null
+  }
+
+  try {
+    if (queueEvents) {
+      await queueEvents.close().catch((e) => console.warn("⚠️ queueEvents close error:", e?.message || e))
+      queueEvents = null
+    }
+    if (webhookQueue) {
+      await webhookQueue.close().catch((e) => console.warn("⚠️ webhookQueue close error:", e?.message || e))
+      webhookQueue = null
+    }
+    if (deadLetterQueue) {
+      await deadLetterQueue.close().catch((e) => console.warn("⚠️ deadLetterQueue close error:", e?.message || e))
+      deadLetterQueue = null
+    }
+
+    currentWorker = null
+    ready = false
+    console.log("✅ BullMQ closed gracefully")
+  } catch (err) {
+    console.error("❌ Error during closeQueue:", (err as any)?.message || err)
+  }
+}
+
+function setupGracefulShutdown() {
+  const onSignal = async (signal: string) => {
+    console.log(`🔻 Received ${signal}, closing BullMQ...`)
+    try {
+      const timeout = setTimeout(() => {
+        console.warn("⚠️ Graceful shutdown timed out, exiting process")
+        process.exit(1)
+      }, 30000)
+      await closeQueue()
+      clearTimeout(timeout)
+      console.log("🔻 Graceful shutdown complete")
+    } catch (err) {
+      console.error("❌ Error during graceful shutdown:", (err as any)?.message || err)
+      process.exit(1)
+    }
+  }
+  process.once("SIGINT", () => onSignal("SIGINT"))
+  process.once("SIGTERM", () => onSignal("SIGTERM"))
 }
 
 function determineWebhookType(data: any): string {
@@ -254,117 +381,4 @@ function generateJobId(data: any): string {
   } catch {
     return `job-${Date.now()}-${Math.random()}`
   }
-}
-
-export async function getQueueStats() {
-  if (!BULLMQ_ENABLED || !webhookQueue) {
-    return { enabled: false }
-  }
-
-  try {
-    const [
-      waiting,
-      active,
-      completed,
-      failed,
-      delayed,
-      isPaused,
-      repeatable,
-      sampleJobs,
-    ] = await Promise.all([
-      webhookQueue.getWaitingCount(),
-      webhookQueue.getActiveCount(),
-      webhookQueue.getCompletedCount(),
-      webhookQueue.getFailedCount(),
-      webhookQueue.getDelayedCount(),
-      webhookQueue.isPaused(),
-      webhookQueue.getRepeatableJobs(),
-      webhookQueue.getJobs(["waiting", "active", "delayed"], 0, 20),
-    ])
-
-    return {
-      enabled: true,
-      ready,
-
-      // HIGH-LEVEL queue health
-      waiting,
-      active,
-      completed,
-      failed,
-      delayed,
-      paused: isPaused,
-      deadLetter: deadLetterQueue
-        ? await deadLetterQueue.getWaitingCount()
-        : 0,
-
-      // Repeatable jobs
-      repeatableJobsCount: repeatable.length,
-
-      // Job samples (first 20)
-      jobs: sampleJobs.map((job: Job<any>) => ({
-        id: job.id,
-        name: job.name,
-        attemptsMade: job.attemptsMade,
-        timestamp: job.timestamp,
-        returnValue: job.returnvalue,
-        failedReason: job.failedReason,
-      })),
-    }
-  } catch (err: any) {
-    return {
-      enabled: true,
-      ready: false,
-      error: err?.message || err,
-    }
-  }
-}
-
-
-export function isQueueEnabled() {
-  return BULLMQ_ENABLED && ready
-}
-
-export async function closeQueue() {
-  try {
-    if (queueEvents) {
-      await queueEvents.close().catch((e) => console.warn("⚠️ queueEvents close error:", e?.message || e))
-      queueEvents = null
-    }
-    if (webhookQueue) {
-      await webhookQueue.close().catch((e) => console.warn("⚠️ webhookQueue close error:", e?.message || e))
-      webhookQueue = null
-    }
-    if (deadLetterQueue) {
-      await deadLetterQueue.close().catch((e) => console.warn("⚠️ deadLetterQueue close error:", e?.message || e))
-      deadLetterQueue = null
-    }
-    if (adminRedis) {
-      await adminRedis.quit().catch(() => adminRedis?.disconnect())
-      adminRedis = null
-    }
-    ready = false
-    console.log("✅ BullMQ closed gracefully")
-  } catch (err) {
-    console.error("❌ Error during closeQueue:", (err as any)?.message || err)
-  }
-}
-
-function setupGracefulShutdown() {
-  const onSignal = async (signal: string) => {
-    console.log(`🔻 Received ${signal}, closing BullMQ...`)
-    try {
-      const timeout = setTimeout(() => {
-        console.warn("⚠️ Graceful shutdown timed out, exiting process")
-        process.exit(1)
-      }, 30000)
-      await closeQueue()
-      clearTimeout(timeout)
-      console.log("🔻 Graceful shutdown complete")
-    } catch (err) {
-      console.error("❌ Error during graceful shutdown:", (err as any)?.message || err)
-      process.exit(1)
-    }
-  }
-  process.once("SIGINT", () => onSignal("SIGINT"))
-  process.once("SIGTERM", () => onSignal("SIGTERM"))
 }
