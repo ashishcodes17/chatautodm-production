@@ -148,22 +148,18 @@ export async function invalidateAutomation(workspaceId: string, type?: string, p
 }
 
 export async function getUserState(senderId: string, accountId: string, db: Db): Promise<any> {
-  const cacheKey = `user_state:${accountId}:${senderId}`
-  const cached = await safeRedisGet<any>(cacheKey)
-  if (cached) return cached
-
-  const state = await db.collection("user_states").findOne({ senderId, accountId })
-  if (state) await safeRedisSet(cacheKey, state, TTL.USER_STATE)
-  return state
+  // NEVER use Redis for user_state (fast-changing)
+  return db.collection("user_states").findOne({ senderId, accountId })
 }
 
+
 export async function setUserState(senderId: string, accountId: string, state: any, db: Db): Promise<void> {
-  const cacheKey = `user_state:${accountId}:${senderId}`
-  await safeRedisSet(cacheKey, state, TTL.USER_STATE)
+  // NEVER write user_state to Redis
   db.collection("user_states")
     .updateOne({ senderId, accountId }, { $set: state }, { upsert: true })
     .catch((e) => console.warn("⚠️ user_states write failed:", e?.message || e))
 }
+
 
 export async function getContact(senderId: string, accountId: string, db: Db): Promise<any> {
   const cacheKey = `contact:${accountId}:${senderId}`
