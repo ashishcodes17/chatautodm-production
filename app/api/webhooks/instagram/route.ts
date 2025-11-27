@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
 import crypto from "crypto"
+import { ObjectId } from "mongodb"
 import { initRedis, getWorkspaceByInstagramId, getAutomation } from "@/lib/redis-cache"
 import { initQueue, enqueueWebhook, isQueueEnabled, PRIORITY } from "@/lib/webhook-queue"
 // Initialize once per server start (NOT per request)
@@ -1098,12 +1099,39 @@ async function handlePostback(messagingEvent: any, accountId: string, db: any) {
     }
 
     // const account = await findAccountByInstagramId(accountId, db)
-    const account = await db.collection("instagram_accounts").findOne({
+//     const account = await db.collection("instagram_accounts").findOne({
+//   $or: [
+//     { instagramUserId: accountId },
+//     { instagramProfessionalId: accountId }
+//   ]
+// })
+      // 1. Look up account using BOTH IDs always
+const account = await db.collection("instagram_accounts").findOne({
   $or: [
     { instagramUserId: accountId },
     { instagramProfessionalId: accountId }
   ]
-})
+});
+
+if (!account) {
+  console.log("❌ No account found for:", accountId);
+  return;
+}
+
+// 2. Look up user state using BOTH IDs
+const userState = await db.collection("user_states").findOne({
+  senderId,
+  accountId: {
+    $in: [
+      account.instagramUserId,        // how story flow stored it
+      account.instagramProfessionalId // how webhook arrives
+    ]
+  }
+});
+
+console.log("🔘 User state:", userState);
+
+
 
 
     if (!account) {
@@ -1167,17 +1195,22 @@ async function handlePostback(messagingEvent: any, accountId: string, db: any) {
     //   senderId: senderId,
     //   accountId: account.instagramUserId, // Use correct account ID field
     // })
-     const userState = await db.collection("user_states").findOne({
-  senderId,
-  accountId: { 
-    $in: [
-      account.instagramUserId,
-      account.instagramProfessionalId
-    ] 
-  }
-})
+//      const userState = await db.collection("user_states").findOne({
+//   senderId,
+//   accountId: { 
+//     $in: [
+//       account.instagramUserId,
+//       account.instagramProfessionalId
+//     ] 
+//   }
+// })
 
-    console.log("🔘 User state:", userState)
+   console.log("🔘 User state:", userState);
+
+// 🔥 FIX: Ensure automationId is ObjectId
+if (userState && typeof userState.automationId === "string") {
+  userState.automationId = new ObjectId(userState.automationId);
+}
 
     if (!userState) {
       console.log("❌ No user state found for postback handling")
