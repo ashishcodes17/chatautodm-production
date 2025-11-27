@@ -3,6 +3,15 @@ import { getDatabase } from "@/lib/mongodb"
 import crypto from "crypto"
 import { initRedis, getWorkspaceByInstagramId, getAutomation } from "@/lib/redis-cache"
 import { initQueue, enqueueWebhook, isQueueEnabled, PRIORITY } from "@/lib/webhook-queue"
+// Initialize once per server start (NOT per request)
+const redisInitPromise = initRedis().catch((e) =>
+  console.error("Redis init error:", e?.message)
+)
+
+const queueInitPromise = initQueue().catch((e) =>
+  console.error("Queue init error:", e?.message)
+)
+
 
 // Instagram Webhook endpoint (Meta Graph API)
 // High-level map:
@@ -261,20 +270,24 @@ export async function POST(request: NextRequest) {
 
     const db = await getDatabase()
 
-    let redisInitialized = false
-    let queueInitialized = false
+    // let redisInitialized = false
+    // let queueInitialized = false
 
-    if (!redisInitialized) {
-      await initRedis().catch((err) => console.error("⚠️ Redis init failed (using MongoDB fallback):", err.message))
-      redisInitialized = true
-    }
+    // if (!redisInitialized) {
+    //   await initRedis().catch((err) => console.error("⚠️ Redis init failed (using MongoDB fallback):", err.message))
+    //   redisInitialized = true
+    // }
 
-    if (!queueInitialized) {
-      await initQueue().catch((err) =>
-        console.error("⚠️ BullMQ init failed (using MongoDB queue fallback):", err.message),
-      )
-      queueInitialized = true
-    }
+    // if (!queueInitialized) {
+    //   await initQueue().catch((err) =>
+    //     console.error("⚠️ BullMQ init failed (using MongoDB queue fallback):", err.message),
+    //   )
+    //   queueInitialized = true
+    // }
+    // Ensure global initialization finished
+               await redisInitPromise
+              await queueInitPromise
+
 
     // Check if this is an internal worker call (skip queueing, process directly)
     const isWorkerCall = request.headers.get("X-Internal-Worker") === "true"
