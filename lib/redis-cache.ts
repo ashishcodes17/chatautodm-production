@@ -32,6 +32,59 @@ async function safeRedisGet<T>(key: string): Promise<T | null> {
     return null
   }
 }
+export async function warmCache(db: Db): Promise<void> {
+  if (!REDIS_ENABLED || !isFactoryInitialized()) {
+    console.log("⚠️ skipping cache warm (redis disabled)");
+    return;
+  }
+
+  console.log("🔥 warming cache...");
+
+  try {
+    // Warm automations
+    const autoCursor = db.collection("automations").find({ isActive: true }).batchSize(500);
+    let autoCount = 0;
+
+    while (await autoCursor.hasNext()) {
+      const auto = await autoCursor.next();
+      if (!auto) continue;
+      const key = `automation:${auto.workspaceId}:${auto.type}:${auto.selectedPost ?? "all"}`;
+      await safeRedisSet(key, auto, TTL.AUTOMATION);
+      autoCount++;
+    }
+
+    console.log(`✅ warmed ${autoCount} automations`);
+
+    // Warm accounts
+    const accCursor = db.collection("instagram_accounts").find({}).batchSize(500);
+    let accCount = 0;
+
+    while (await accCursor.hasNext()) {
+      const acc = await accCursor.next();
+      if (!acc) continue;
+
+      const normalized = {
+        instagramUserId: acc.instagramUserId,
+        instagramProfessionalId: acc.instagramProfessionalId,
+        accessToken: acc.accessToken,
+        workspaceId: acc.workspaceId,
+        username: acc.username
+      };
+
+      if (acc.instagramUserId)
+        await safeRedisSet(`workspace:${acc.instagramUserId}`, normalized, TTL.WORKSPACE);
+
+      if (acc.instagramProfessionalId)
+        await safeRedisSet(`workspace:${acc.instagramProfessionalId}`, normalized, TTL.WORKSPACE);
+
+      accCount++;
+    }
+
+    console.log(`✅ warmed ${accCount} workspace accounts`);
+  } catch (err: any) {
+    console.warn("⚠️ warmCache error:", err?.message || err);
+  }
+}
 
 // Safe Redis SET with TTL
 async function safeRedisSet(key: string, value: any, ttlSec: number): Promise<void> {
@@ -171,76 +224,95 @@ export async function getContact(senderId: string, accountId: string, db: Db): P
   return contact
 }
 
-export async function getWorkspaceByInstagramId(instagramId: string, db: Db): Promise<any> {
-  const cacheKey = `workspace:${instagramId}`
-  const cached = await safeRedisGet<any>(cacheKey)
-  if (cached) return cached
+// export async function getWorkspaceByInstagramId(instagramId: string, db: Db): Promise<any> {
+//   const cacheKey = `workspace:${instagramId}`
+//   const cached = await safeRedisGet<any>(cacheKey)
+//   if (cached) return cached
 
+//   const account = await db.collection("instagram_accounts").findOne({
+//     $or: [{ instagramUserId: instagramId }, { instagramProfessionalId: instagramId }],
+//   })
+//   if (account) {
+//     await safeRedisSet(cacheKey, account, TTL.WORKSPACE)
+//     return account
+//   }
+
+//   const workspace = await db.collection("workspaces").findOne({
+//     $or: [
+//       { instagramUserId: instagramId },
+//       { instagramProfessionalId: instagramId },
+//       { "instagramAccount.instagramUserId": instagramId },
+//       { "instagramAccount.instagramProfessionalId": instagramId },
+//     ],
+//   })
+//   if (workspace) {
+//     const normalized = {
+//       instagramUserId: workspace.instagramUserId || workspace.instagramAccount?.instagramUserId,
+//       instagramProfessionalId: workspace.instagramProfessionalId || workspace.instagramAccount?.instagramProfessionalId,
+//       accessToken: workspace.accessToken || workspace.instagramAccount?.accessToken,
+//       workspaceId: workspace._id,
+//       username: workspace.name?.replace("@", "") || workspace.username,
+//     }
+//     await safeRedisSet(cacheKey, normalized, TTL.WORKSPACE)
+//     return normalized
+//   }
+
+//   return null
+// }
+
+export async function getWorkspaceByInstagramId(instagramId: string, db: Db): Promise<any> {
+  const cacheKey = `workspace:${instagramId}`;
+  const cached = await safeRedisGet<any>(cacheKey);
+  if (cached) return cached;
+
+  // 1️⃣ Try instagram_accounts first
   const account = await db.collection("instagram_accounts").findOne({
-    $or: [{ instagramUserId: instagramId }, { instagramProfessionalId: instagramId }],
-  })
+    $or: [
+      { instagramUserId: instagramId },
+      { instagramProfessionalId: instagramId }
+    ]
+  });
+
   if (account) {
-    await safeRedisSet(cacheKey, account, TTL.WORKSPACE)
-    return account
+    const normalized = {
+      instagramUserId: account.instagramUserId,
+      instagramProfessionalId: account.instagramProfessionalId,
+      accessToken: account.accessToken,
+      workspaceId: account.workspaceId,
+      username: account.username
+    };
+
+    await safeRedisSet(cacheKey, normalized, TTL.WORKSPACE);
+    return normalized;
   }
 
+  // 2️⃣ Try workspace lookup
   const workspace = await db.collection("workspaces").findOne({
     $or: [
       { instagramUserId: instagramId },
       { instagramProfessionalId: instagramId },
       { "instagramAccount.instagramUserId": instagramId },
-      { "instagramAccount.instagramProfessionalId": instagramId },
-    ],
-  })
+      { "instagramAccount.instagramProfessionalId": instagramId }
+    ]
+  });
+
   if (workspace) {
     const normalized = {
       instagramUserId: workspace.instagramUserId || workspace.instagramAccount?.instagramUserId,
       instagramProfessionalId: workspace.instagramProfessionalId || workspace.instagramAccount?.instagramProfessionalId,
       accessToken: workspace.accessToken || workspace.instagramAccount?.accessToken,
       workspaceId: workspace._id,
-      username: workspace.name?.replace("@", "") || workspace.username,
-    }
-    await safeRedisSet(cacheKey, normalized, TTL.WORKSPACE)
-    return normalized
+      username: workspace.name?.replace("@", "") || workspace.username
+    };
+
+    await safeRedisSet(cacheKey, normalized, TTL.WORKSPACE);
+    return normalized;
   }
 
-  return null
+  return null;
 }
 
-export async function warmCache(db: Db): Promise<void> {
-  if (!REDIS_ENABLED || !isFactoryInitialized()) {
-    console.log("⚠️ skipping cache warm (redis disabled)")
-    return
-  }
-  console.log("🔥 warming cache... (batched, index-optimized)")
 
-  try {
-    const cursor = db.collection("automations").find({ isActive: true }).batchSize(500)
-    let warmed = 0
-    while (await cursor.hasNext()) {
-      const auto = await cursor.next()
-      if (!auto) continue
-      const key = `automation:${auto.workspaceId}:${auto.type}:${auto.selectedPost ?? "all"}`
-      await safeRedisSet(key, auto, TTL.AUTOMATION)
-      warmed++
-    }
-    console.log(`✅ warmed ${warmed} automations`)
-
-    const accCursor = db.collection("instagram_accounts").find({}).batchSize(500)
-    let warmedAcc = 0
-    while (await accCursor.hasNext()) {
-      const acc = await accCursor.next()
-      if (!acc) continue
-      if (acc.instagramUserId) await safeRedisSet(`workspace:${acc.instagramUserId}`, acc, TTL.WORKSPACE)
-      if (acc.instagramProfessionalId)
-        await safeRedisSet(`workspace:${acc.instagramProfessionalId}`, acc, TTL.WORKSPACE)
-      warmedAcc++
-    }
-    console.log(`✅ warmed ${warmedAcc} workspaces`)
-  } catch (err: any) {
-    console.warn("⚠️ warmCache error:", err?.message || err)
-  }
-}
 
 export async function getCacheStats(): Promise<any> {
   if (!REDIS_ENABLED || !isFactoryInitialized()) return { enabled: false }

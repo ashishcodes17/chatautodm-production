@@ -1098,38 +1098,38 @@ async function handlePostback(messagingEvent: any, accountId: string, db: any) {
       return
     }
 
-    // const account = await findAccountByInstagramId(accountId, db)
+    const account = await findAccountByInstagramId(accountId, db)
 //     const account = await db.collection("instagram_accounts").findOne({
 //   $or: [
 //     { instagramUserId: accountId },
 //     { instagramProfessionalId: accountId }
 //   ]
 // })
-      // 1. Look up account using BOTH IDs always
-const account = await db.collection("instagram_accounts").findOne({
-  $or: [
-    { instagramUserId: accountId },
-    { instagramProfessionalId: accountId }
-  ]
-});
+//       // 1. Look up account using BOTH IDs always
+// const account = await db.collection("instagram_accounts").findOne({
+//   $or: [
+//     { instagramUserId: accountId },
+//     { instagramProfessionalId: accountId }
+//   ]
+// });
 
 if (!account) {
   console.log("❌ No account found for:", accountId);
   return;
 }
 
-// 2. Look up user state using BOTH IDs
-const userState = await db.collection("user_states").findOne({
-  senderId,
-  accountId: {
-    $in: [
-      account.instagramUserId,        // how story flow stored it
-      account.instagramProfessionalId // how webhook arrives
-    ]
-  }
-});
+// // 2. Look up user state using BOTH IDs
+// const userState = await db.collection("user_states").findOne({
+//   senderId,
+//   accountId: {
+//     $in: [
+//       account.instagramUserId,        // how story flow stored it
+//       account.instagramProfessionalId // how webhook arrives
+//     ]
+//   }
+// });
 
-console.log("🔘 User state:", userState);
+// console.log("🔘 User state:", userState);
 
 
 
@@ -1191,10 +1191,10 @@ console.log("🔘 User state:", userState);
       }
     }
 
-    // const userState = await db.collection("user_states").findOne({
-    //   senderId: senderId,
-    //   accountId: account.instagramUserId, // Use correct account ID field
-    // })
+    const userState = await db.collection("user_states").findOne({
+      senderId: senderId,
+      accountId: account.instagramUserId, // Use correct account ID field
+    })
 //      const userState = await db.collection("user_states").findOne({
 //   senderId,
 //   accountId: { 
@@ -1207,24 +1207,24 @@ console.log("🔘 User state:", userState);
 
    console.log("🔘 User state:", userState);
 
-// 🔥 FIX: Ensure automationId is ObjectId
-if (userState && typeof userState.automationId === "string") {
-  userState.automationId = new ObjectId(userState.automationId);
-}
+// // 🔥 FIX: Ensure automationId is ObjectId
+// if (userState && typeof userState.automationId === "string") {
+//   userState.automationId = new ObjectId(userState.automationId);
+// }
 
     if (!userState) {
       console.log("❌ No user state found for postback handling")
       return
     }
 
-    // Get the automation
-    // const automation = await db.collection("automations").findOne({
-    //   _id: userState.automationId,
-    // })
+    // Get the automation linked to this user state
     const automation = await db.collection("automations").findOne({
-  _id: userState.automationId,
-  workspaceId: account.workspaceId,
-})
+      _id: userState.automationId,
+    })
+//     const automation = await db.collection("automations").findOne({
+//   _id: userState.automationId,
+//   workspaceId: account.workspaceId,
+// })
 
 
     if (!automation) {
