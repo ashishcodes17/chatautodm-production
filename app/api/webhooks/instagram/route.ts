@@ -1207,10 +1207,10 @@ if (!account) {
 
    console.log("🔘 User state:", userState);
 
-// // 🔥 FIX: Ensure automationId is ObjectId
-// if (userState && typeof userState.automationId === "string") {
-//   userState.automationId = new ObjectId(userState.automationId);
-// }
+// 🔥 FIX: Ensure automationId is ObjectId
+if (userState && typeof userState.automationId === "string") {
+  userState.automationId = new ObjectId(userState.automationId);
+}
 
     if (!userState) {
       console.log("❌ No user state found for postback handling")
