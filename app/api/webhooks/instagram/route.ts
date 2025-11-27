@@ -916,6 +916,7 @@ async function handleStoryReplyFlowEnhanced(
     // STEP 2: Send opening DM with buttons (if enabled)
     if (automation.actions?.openingDM?.enabled && automation.actions.openingDM.message) {
       console.log("📤 STEP 2: Sending opening DM with buttons...")
+       await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_opening_response", db)
 
       const openingSuccess = await sendDirectMessageWithButtons(
         account.instagramUserId,
@@ -927,13 +928,18 @@ async function handleStoryReplyFlowEnhanced(
       )
 
       console.log("📤 Opening DM result:", openingSuccess)
+      if (!openingSuccess) {
+               await clearUserState(senderId, account.instagramUserId, db)
+                 // continue flow or fallback
+                     return
+                }
 
       if (openingSuccess) {
         success = true
         await updateAccountUsage(account, "opening_dm", automation.name, messageText)
 
         // Store user state for button flow
-        await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_opening_response", db)
+        // await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_opening_response", db)
 
         // Don't proceed to next steps immediately - wait for button click
         await logAutomation(automation, senderId, storyId, messageText, true, account.instagramUserId, db)
@@ -945,6 +951,7 @@ async function handleStoryReplyFlowEnhanced(
     // STEP 3: Ask follow if enabled (only if no opening DM or opening DM was skipped)
     if (automation.actions?.askFollow?.enabled && automation.actions.askFollow.message) {
       console.log("📤 STEP 3: Asking user to follow...")
+       await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_follow_confirmation", db)
 
       const followSuccess = await sendDirectMessageWithButtons(
         account.instagramUserId,
@@ -953,13 +960,18 @@ async function handleStoryReplyFlowEnhanced(
         automation.actions.askFollow.message,
         transformButtons(automation.actions.askFollow.buttons) || [],
       )
+      if (!followSuccess) {
+               await clearUserState(senderId, account.instagramUserId, db)
+                 // continue flow or fallback
+                     return
+                }
 
       if (followSuccess) {
         success = true
         await updateAccountUsage(account, "ask_follow", automation.name, messageText)
 
         // Store user state for follow flow
-        await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_follow_confirmation", db)
+        // await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_follow_confirmation", db)
 
         // Don't proceed to main DM immediately - wait for follow confirmation
         await logAutomation(automation, senderId, storyId, messageText, true, account.instagramUserId, db)
@@ -1007,6 +1019,7 @@ async function handleStoryReplyFlowEnhanced(
 
       console.log("📤 Main DM result:", mainDMSuccess)
       success = mainDMSuccess
+      
 
       if (success) {
         await storeOrUpdateContact(
@@ -2405,6 +2418,7 @@ async function handleCommentToDMFlow(
     // STEP 2: Send opening DM as private reply with buttons (if enabled)
     if (automation.actions?.openingDM?.enabled && automation.actions.openingDM.message) {
       console.log("📤 STEP 2: Sending opening DM as private reply with buttons...")
+        await storeUserState(commenterId, account.instagramUserId, automation._id, "awaiting_opening_response", db)
 
       const openingSuccess = await sendPrivateReplyWithButtons(
         account.instagramUserId,
@@ -2416,13 +2430,18 @@ async function handleCommentToDMFlow(
       )
 
       console.log("📤 Opening DM private reply result:", openingSuccess)
+      if (!openingSuccess) {
+               await clearUserState(commenterId, account.instagramUserId, db)
+                 // continue flow or fallback
+                     return
+                }
 
       if (openingSuccess) {
         success = true
         await updateAccountUsage(account, "opening_dm", automation.name, commentText)
 
         // Store user state for button flow
-        await storeUserState(commenterId, account.instagramUserId, automation._id, "awaiting_opening_response", db)
+        // await storeUserState(commenterId, account.instagramUserId, automation._id, "awaiting_opening_response", db)
 
         // Don't proceed to next steps immediately - wait for button click
         await logAutomation(automation, commenterId, postId, commentText, true, account.instagramUserId, db)
@@ -2438,6 +2457,7 @@ async function handleCommentToDMFlow(
       !automation.actions?.openingDM?.enabled
     ) {
       console.log("📤 STEP 3: Asking user to follow as private reply...")
+      await storeUserState(commenterId, account.instagramUserId, automation._id, "awaiting_follow_confirmation", db)
 
       const followSuccess = await sendPrivateReplyWithButtons(
         account.instagramUserId,
@@ -2446,13 +2466,18 @@ async function handleCommentToDMFlow(
         automation.actions.askFollow.message,
         transformButtons(automation.actions.askFollow.buttons) || [],
       )
+      if (!followSuccess) {
+        await clearUserState(commenterId, account.instagramUserId, db)
+        // continue flow or fallback
+        return
+      }
 
       if (followSuccess) {
         success = true
         await updateAccountUsage(account, "ask_follow", automation.name, commentText)
 
         // Store user state for follow flow
-        await storeUserState(commenterId, account.instagramUserId, automation._id, "awaiting_follow_confirmation", db)
+        // await storeUserState(commenterId, account.instagramUserId, automation._id, "awaiting_follow_confirmation", db)
 
         // Don't proceed to main DM immediately - wait for follow confirmation
         await logAutomation(automation, commenterId, postId, commentText, true, account.instagramUserId, db)
@@ -3085,6 +3110,7 @@ async function handleDMAutomationFlowEnhanced(
     // STEP 1: Send opening DM with buttons (if enabled)
     if (automation.actions?.openingDM?.enabled && automation.actions.openingDM.message) {
       console.log("📤 STEP 1: Sending opening DM with buttons...")
+       await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_opening_response", db)
 
       const openingSuccess = await sendDirectMessageWithButtons(
         account.instagramUserId,
@@ -3096,13 +3122,18 @@ async function handleDMAutomationFlowEnhanced(
       )
 
       console.log("📤 Opening DM result:", openingSuccess)
+      if (!openingSuccess) {
+               await clearUserState(senderId, account.instagramUserId, db)
+                 // continue flow or fallback
+                     return
+                }
 
       if (openingSuccess) {
         success = true
         await updateAccountUsage(account, "opening_dm", automation.name, messageText)
 
         // Store user state for button flow
-        await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_opening_response", db)
+        // await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_opening_response", db)
 
         // Don't proceed to next steps immediately - wait for button click
         await logAutomation(automation, senderId, messageId, messageText, true, account.instagramUserId, db)
@@ -3118,6 +3149,7 @@ async function handleDMAutomationFlowEnhanced(
       !automation.actions?.openingDM?.enabled
     ) {
       console.log("📤 STEP 2: Asking user to follow with buttons...")
+       await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_follow_confirmation", db)
 
       const followSuccess = await sendDirectMessageWithButtons(
         account.instagramUserId,
@@ -3128,13 +3160,18 @@ async function handleDMAutomationFlowEnhanced(
       )
 
       console.log("📤 Ask follow result:", followSuccess)
+      if (!followSuccess) {
+        await clearUserState(senderId, account.instagramUserId, db)
+        // continue flow or fallback
+        return
+      }
 
       if (followSuccess) {
         success = true
         await updateAccountUsage(account, "ask_follow", automation.name, messageText)
 
         // Store user state for follow flow
-        await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_follow_confirmation", db)
+        // await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_follow_confirmation", db)
 
         // Don't proceed to main DM immediately - wait for follow confirmation
         await logAutomation(automation, senderId, messageId, messageText, true, account.instagramUserId, db)
