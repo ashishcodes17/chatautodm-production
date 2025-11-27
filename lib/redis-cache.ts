@@ -7,7 +7,7 @@ const REDIS_URL = process.env.REDIS_URL
 // TTLs (seconds)
 const TTL = {
   AUTOMATION: 3600,
-  USER_STATE: 600,
+  USER_STATE: 0,
   CONTACT: 300,
   WORKSPACE: 3600,
 }
