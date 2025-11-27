@@ -386,7 +386,7 @@ export async function POST(request: NextRequest) {
     console.log("📝 Webhook logged to database")
 
     // Use the pure processing function (same logic, no duplication)
-    await processWebhookData(data)
+    // await processWebhookData(data)
 
     // Mark webhook as processed
     await db
