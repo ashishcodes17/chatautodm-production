@@ -88,18 +88,18 @@
     "swr": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
+    "tailwindcss": "^3.4.17",
+    "postcss": "^8.5",
+    "@tailwindcss/typography": "^0.5.19",
     "vaul": "latest",
     "vue-router": "latest",
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "esbuild-register": "^3.6.0",
-    "postcss": "^8.5",
-    "tailwindcss": "^3.4.17",
     "tsx": "^4.20.6",
     "typescript": "^5"
   },
