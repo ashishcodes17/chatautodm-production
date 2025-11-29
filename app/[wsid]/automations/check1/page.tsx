@@ -11,7 +11,7 @@ import { toast, Toaster } from "sonner"
 
 
 import Image from "next/image"
-import { Sidebar } from "@/components/Sidebar"
+// import { Sidebar } from "@/components/Sidebar"
 
 interface InstagramPost {
   id: string
@@ -71,7 +71,7 @@ export default function PostDMBuilder() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [isUploadingOpeningImage, setIsUploadingOpeningImage] = useState(false)
-    const router = useRouter()
+  const router = useRouter()
 
   // Feature flags
   const ENABLE_OPENING_DM_IMAGE = false // 🚫 Temporarily disabled for testing
@@ -214,7 +214,7 @@ export default function PostDMBuilder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditMode, automationId])
 
-   useEffect(() => {
+  useEffect(() => {
     const validateToken = async () => {
       try {
         const response = await axios.get("/api/auth/me")
@@ -235,7 +235,7 @@ export default function PostDMBuilder() {
   }, [router])
 
 
-useEffect(() => {
+  useEffect(() => {
     const fetchUserData = async () => {
       try {
         setLoading(true)
@@ -404,8 +404,8 @@ useEffect(() => {
       // Validate required fields
       if (!automation.actions.sendDM.message.trim()) {
         toast.error("Missing Message", {
-        description: "Please enter a main DM message before saving your automation.",
-      })
+          description: "Please enter a main DM message before saving your automation.",
+        })
         return
       }
 
@@ -441,25 +441,25 @@ useEffect(() => {
       console.log("API response:", response.data)
 
       if (response.data.success) {
-         toast.success(`Automation ${isEditMode ? "Updated" : "Saved"} Successfully`, {
-        description: isEditMode
-          ? "Your automation changes have been saved successfully."
-          : isNextPost 
-            ? "Your Next Post automation is ready! It will activate when you post new content."
-            : "Your new automation has been created and activated.",
-      })
+        toast.success(`Automation ${isEditMode ? "Updated" : "Saved"} Successfully`, {
+          description: isEditMode
+            ? "Your automation changes have been saved successfully."
+            : isNextPost
+              ? "Your Next Post automation is ready! It will activate when you post new content."
+              : "Your new automation has been created and activated.",
+        })
         // Optionally redirect or reset form
-          if (!isEditMode) {
-        setTimeout(() => router.push(`/${wsid}/automations`), 1500)
-      }
+        if (!isEditMode) {
+          setTimeout(() => router.push(`/${wsid}/automations`), 1500)
+        }
       }
 
-        
+
       else {
         console.error(" API returned error:", response.data.error)
         toast.error(`Failed to ${isEditMode ? "Update" : "Save"} Automation`, {
-        description: "Something went wrong. Please try again.",
-      })
+          description: "Something went wrong. Please try again.",
+        })
       }
     } catch (error: unknown) {
       console.error(" Error saving automation:", error)
@@ -605,7 +605,7 @@ useEffect(() => {
             <h1 className="text-base font-semibold text-white">Posts</h1>
             <div className="absolute right-4">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-               
+
               </svg>
             </div>
           </div>
@@ -634,129 +634,128 @@ useEffect(() => {
           </div>
 
           {/* Selected Post or Placeholder */}
-{/* Selected Post or Placeholder */}
-{selectedPost ? (
-  <div className="flex-1 bg-black rounded-lg overflow-hidden flex flex-col">
-    {/* Post Image */}
-    <AspectRatio ratio={19 / 19} className="bg-black rounded-none">
-      <img
-        src={selectedPost.thumbnail || "/placeholder.svg"}
-        alt="Selected Post"
-        className="h-full w-full object-cover"
-      />
-    </AspectRatio>
+          {/* Selected Post or Placeholder */}
+          {selectedPost ? (
+            <div className="flex-1 bg-black rounded-lg overflow-hidden flex flex-col">
+              {/* Post Image */}
+              <AspectRatio ratio={19 / 19} className="bg-black rounded-none">
+                <img
+                  src={selectedPost.thumbnail || "/placeholder.svg"}
+                  alt="Selected Post"
+                  className="h-full w-full object-cover"
+                />
+              </AspectRatio>
 
-    {/* Action Icons (always visible) */}
-    <div className="flex items-center justify-between px-2 mt-2 shrink-0">
-      <div className="flex gap-2">
-        <Image src="/qa_love_icon.svg" alt="Like" width={20} height={20} className="w-6 h-5" />
-        <Image src="/qa_comment_icon.svg" alt="Comment" width={20} height={20} className="w-6 h-5" />
-        <Image src="/qa_message_icon.svg" alt="Share" width={20} height={20} className="w-6 h-5" />
-      </div>
-      <Image src="/qa_bookmark_icon.svg" alt="Save" width={20} height={20} className="w-6 h-5" />
-    </div>
-
-    {/* Caption Area (scrollable, hidden scrollbar) */}
-    <div className="px-2 mt-1 flex-1 overflow-y-auto scrollbar-hide">
-      <p className="text-white/90 text-xs leading-snug">
-        <span className="font-semibold">{userProfile?.username || "username"}</span>{" "}
-        {selectedPost.caption || "Post caption..."}
-      </p>
-
-      <button
-        onClick={() => setShowDrawer(true)}
-        className="block mt-1 text-white/70 hover:text-white transition text-xs"
-      >
-        View all comments
-      </button>
-    </div>
-  </div>
-) : (
-  <div className="flex-1 bg-black rounded-lg overflow-hidden flex flex-col">
-    {/* Placeholder Image */}
-    <AspectRatio ratio={19 / 19} className="bg-black rounded-none">
-      <img
-        src="/placeholder.svg"
-        alt="Placeholder"
-        className="h-full w-full object-cover opacity-60"
-      />
-    </AspectRatio>
-
-    {/* Action Icons */}
-    <div className="flex items-center justify-between px-2 mt-2 shrink-0">
-      <div className="flex gap-2">
-        <Image src="/qa_love_icon.svg" alt="Like" width={20} height={20} className="w-6 h-5" />
-        <Image src="/qa_comment_icon.svg" alt="Comment" width={20} height={20} className="w-6 h-5" />
-        <Image src="/qa_message_icon.svg" alt="Share" width={20} height={20} className="w-6 h-5" />
-      </div>
-      <Image src="/qa_bookmark_icon.svg" alt="Save" width={20} height={20} className="w-6 h-5" />
-    </div>
-
-    {/* Placeholder Caption */}
-    <div className="px-2 mt-1 flex-1 overflow-y-auto scrollbar-hide">
-      <p className="text-white/50 text-xs leading-snug">
-        You haven’t picked a post yet
-      </p>
-    </div>
-  </div>
-)}
-
-              {/* Comments Drawer */}
-              {showDrawer && (
-                <div className="absolute top-0 left-0 w-full h-full bg-black/30 z-40" onClick={() => setShowDrawer(false)} />
-              )}
-
-              <div
-                className={`absolute left-0 w-full z-50 bg-[#262624] rounded-t-[30px] px-4 py-3 transition-all duration-300 ease-in-out ${
-                  showDrawer ? 'bottom-0' : '-bottom-[100%]'
-                }`}
-                style={{ height: '50%' }}
-              >
-                <div className="text-center mb-2">
-                  <h2 className="text-base font-semibold text-white">Comments</h2>
-                  <hr className="border-white/30 mt-2 w-[80px] mx-auto" />
+              {/* Action Icons (always visible) */}
+              <div className="flex items-center justify-between px-2 mt-2 shrink-0">
+                <div className="flex gap-2">
+                  <Image src="/qa_love_icon.svg" alt="Like" width={20} height={20} className="w-6 h-5" />
+                  <Image src="/qa_comment_icon.svg" alt="Comment" width={20} height={20} className="w-6 h-5" />
+                  <Image src="/qa_message_icon.svg" alt="Share" width={20} height={20} className="w-6 h-5" />
                 </div>
-
-                <div className="overflow-y-auto mb-2 h-[48%] pr-1 space-y-2">
-                  <p className="text-sm text-white">
-                    <span className="font-semibold">User</span> Leaves a Comment!
-                  </p>
-                  <p className="text-sm text-white">
-                    <span className="font-semibold">{userProfile?.username || "username"}</span> Awesome design 💜
-                  </p>
-                   
-                </div>
-
-                <div className="w-full mb-2">
-                  <Image src="/qa_reactions_icon.svg" alt="Reactions" width={1000} height={24} className="w-full h-auto" />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="Add a comment..."
-                    className="flex-1 rounded-full bg-[#222] text-white px-3 py-1 text-sm placeholder-gray-300 outline-none border border-white"
-                  />
-                </div>
+                <Image src="/qa_bookmark_icon.svg" alt="Save" width={20} height={20} className="w-6 h-5" />
               </div>
 
+              {/* Caption Area (scrollable, hidden scrollbar) */}
+              <div className="px-2 mt-1 flex-1 overflow-y-auto scrollbar-hide">
+                <p className="text-white/90 text-xs leading-snug">
+                  <span className="font-semibold">{userProfile?.username || "username"}</span>{" "}
+                  {selectedPost.caption || "Post caption..."}
+                </p>
 
-              {/* Bottom Nav */}
-              <div className="absolute bottom-6 left-0 w-full px-4 py-1 bg-black z-10">
-                <div className="flex justify-between items-center">
-                  <Image src="/qa_home_icon.svg" alt="Home" width={20} height={24} />
-                  <Image src="/qa_search_icon.svg" alt="Search" width={20} height={24} />
-                  <Image src="/qa_add_icon.svg" alt="Add" width={20} height={24} />
-                  <Image src="/qa_reel_icon.svg" alt="Reels" width={20} height={24} />
-                  <Image src={userProfile?.profilePictureUrl || "/placeholder.svg"}alt="Profile" width={20} height={24} className="rounded-full object-cover" />
+                <button
+                  onClick={() => setShowDrawer(true)}
+                  className="block mt-1 text-white/70 hover:text-white transition text-xs"
+                >
+                  View all comments
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 bg-black rounded-lg overflow-hidden flex flex-col">
+              {/* Placeholder Image */}
+              <AspectRatio ratio={19 / 19} className="bg-black rounded-none">
+                <img
+                  src="/placeholder.svg"
+                  alt="Placeholder"
+                  className="h-full w-full object-cover opacity-60"
+                />
+              </AspectRatio>
+
+              {/* Action Icons */}
+              <div className="flex items-center justify-between px-2 mt-2 shrink-0">
+                <div className="flex gap-2">
+                  <Image src="/qa_love_icon.svg" alt="Like" width={20} height={20} className="w-6 h-5" />
+                  <Image src="/qa_comment_icon.svg" alt="Comment" width={20} height={20} className="w-6 h-5" />
+                  <Image src="/qa_message_icon.svg" alt="Share" width={20} height={20} className="w-6 h-5" />
                 </div>
+                <Image src="/qa_bookmark_icon.svg" alt="Save" width={20} height={20} className="w-6 h-5" />
               </div>
 
-              {/* iOS Home Bar */}
-               <div className="absolute bottom-[8px] left-1/2 -translate-x-1/2">
-                 <div className="w-[120px] h-[4px] bg-white/70 rounded-full" />
+              {/* Placeholder Caption */}
+              <div className="px-2 mt-1 flex-1 overflow-y-auto scrollbar-hide">
+                <p className="text-white/50 text-xs leading-snug">
+                  You haven’t picked a post yet
+                </p>
               </div>
-            
+            </div>
+          )}
+
+          {/* Comments Drawer */}
+          {showDrawer && (
+            <div className="absolute top-0 left-0 w-full h-full bg-black/30 z-40" onClick={() => setShowDrawer(false)} />
+          )}
+
+          <div
+            className={`absolute left-0 w-full z-50 bg-[#262624] rounded-t-[30px] px-4 py-3 transition-all duration-300 ease-in-out ${showDrawer ? 'bottom-0' : '-bottom-[100%]'
+              }`}
+            style={{ height: '50%' }}
+          >
+            <div className="text-center mb-2">
+              <h2 className="text-base font-semibold text-white">Comments</h2>
+              <hr className="border-white/30 mt-2 w-[80px] mx-auto" />
+            </div>
+
+            <div className="overflow-y-auto mb-2 h-[48%] pr-1 space-y-2">
+              <p className="text-sm text-white">
+                <span className="font-semibold">User</span> Leaves a Comment!
+              </p>
+              <p className="text-sm text-white">
+                <span className="font-semibold">{userProfile?.username || "username"}</span> Awesome design 💜
+              </p>
+
+            </div>
+
+            <div className="w-full mb-2">
+              <Image src="/qa_reactions_icon.svg" alt="Reactions" width={1000} height={24} className="w-full h-auto" />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Add a comment..."
+                className="flex-1 rounded-full bg-[#222] text-white px-3 py-1 text-sm placeholder-gray-300 outline-none border border-white"
+              />
+            </div>
+          </div>
+
+
+          {/* Bottom Nav */}
+          <div className="absolute bottom-6 left-0 w-full px-4 py-1 bg-black z-10">
+            <div className="flex justify-between items-center">
+              <Image src="/qa_home_icon.svg" alt="Home" width={20} height={24} />
+              <Image src="/qa_search_icon.svg" alt="Search" width={20} height={24} />
+              <Image src="/qa_add_icon.svg" alt="Add" width={20} height={24} />
+              <Image src="/qa_reel_icon.svg" alt="Reels" width={20} height={24} />
+              <Image src={userProfile?.profilePictureUrl || "/placeholder.svg"} alt="Profile" width={20} height={24} className="rounded-full object-cover" />
+            </div>
+          </div>
+
+          {/* iOS Home Bar */}
+          <div className="absolute bottom-[8px] left-1/2 -translate-x-1/2">
+            <div className="w-[120px] h-[4px] bg-white/70 rounded-full" />
+          </div>
+
         </div>
       )
     }
@@ -794,8 +793,8 @@ useEffect(() => {
           {/* DM Messages */}
           <div className="flex-1 overflow-y-auto space-y-3 mt-4 px-1 pb-28 scrollbar-hide">
             {/* User comment */}
-            
-            
+
+
 
             {/* Opening DM message - if enabled */}
             {automation.actions.openingDM.enabled && automation.actions.openingDM.message && (
@@ -921,48 +920,48 @@ useEffect(() => {
                   </div>
                 </div>
 
-                
+
               </>
             )}
           </div>
 
-{/* Chat Input Wrapper (Absolute at bottom) */}
-<div className="absolute bottom-0 left-0 w-full bg-black">
-  <div className="border-t border-white/10">
-    {/* Input Row */}
-    <div className="flex items-center gap-2 bg-neutral-800 rounded-full px-3 py-2 mt-2 mx-3">
-      <input
-        type="text"
-        placeholder="Message..."
-        className="flex-1 bg-transparent text-white text-sm outline-none"
-      />
-      {/* Send Icon */}
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="w-5 h-5 text-white cursor-pointer hover:text-purple-400 transition"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={2}
-      >
-        <path d="M22 2L11 13" />
-        <path d="M22 2L15 22L11 13L2 9L22 2Z" />
-      </svg>
-    </div>
+          {/* Chat Input Wrapper (Absolute at bottom) */}
+          <div className="absolute bottom-0 left-0 w-full bg-black">
+            <div className="border-t border-white/10">
+              {/* Input Row */}
+              <div className="flex items-center gap-2 bg-neutral-800 rounded-full px-3 py-2 mt-2 mx-3">
+                <input
+                  type="text"
+                  placeholder="Message..."
+                  className="flex-1 bg-transparent text-white text-sm outline-none"
+                />
+                {/* Send Icon */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-5 h-5 text-white cursor-pointer hover:text-purple-400 transition"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path d="M22 2L11 13" />
+                  <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+                </svg>
+              </div>
 
-    {/* iOS Home Indicator */}
-    <div className="mt-2 mb-1 flex justify-center">
-      <div className="w-[120px] h-[4px] bg-white/70 rounded-full" />
-    </div>
-  </div>
-</div>
+              {/* iOS Home Indicator */}
+              <div className="mt-2 mb-1 flex justify-center">
+                <div className="w-[120px] h-[4px] bg-white/70 rounded-full" />
+              </div>
+            </div>
+          </div>
 
 
 
         </div>
 
 
-        
+
 
       )
     }
@@ -974,24 +973,24 @@ useEffect(() => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100">
-      <Sidebar />
+
       <Toaster position="top-center" richColors closeButton />
 
- {/* Left: Mobile Preview */}
-<div className="flex items-center justify-center w-full md:w-[calc(100%-450px)] bg-gray-100">
-  <div className="relative w-full max-w-sm aspect-[360/520] md:translate-x-28">
-    <Image
-      src="/mobile-frame.png"
-      alt="Phone Frame"
-      fill
-      className="object-contain z-[40] pointer-events-none select-none"
-      priority
-    />
-    <div className="absolute top-[2.5%] left-[18.6%] w-[63%] h-[95.5%] rounded-[30px] overflow-hidden bg-black z-10 shadow-inner">
-      {renderMobilePreview()}
-    </div>
-  </div>
-</div>
+      {/* Left: Mobile Preview */}
+      <div className="flex items-center justify-center w-full md:w-[calc(100%-450px)] bg-gray-100">
+        <div className="relative w-full max-w-sm aspect-[360/520] md:translate-x-28">
+          <Image
+            src="/mobile-frame.png"
+            alt="Phone Frame"
+            fill
+            className="object-contain z-[40] pointer-events-none select-none"
+            priority
+          />
+          <div className="absolute top-[2.5%] left-[18.6%] w-[63%] h-[95.5%] rounded-[30px] overflow-hidden bg-black z-10 shadow-inner">
+            {renderMobilePreview()}
+          </div>
+        </div>
+      </div>
 
 
 
@@ -1042,7 +1041,7 @@ useEffect(() => {
                 <span className="text-sm text-gray-700">Any post</span>
                 <Switch
                   checked={true}
-                  onChange={() => {}}
+                  onChange={() => { }}
                   className="bg-gray-300 relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
                 >
                   <span className="inline-block h-4 w-4 transform rounded-full bg-white transition translate-x-1" />
@@ -1053,37 +1052,37 @@ useEffect(() => {
 
           {!isNextPost && (
             <div className="mt-4 grid grid-cols-3 gap-2">
-            {posts.length === 0 ? (
-              <div className="col-span-3 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                <span className="text-sm text-gray-500">No content</span>
-              </div>
-            ) : (
-              posts.slice(0, 3).map((post: InstagramPost) => (
-                <div
-                  key={post.id}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setAutomation({ ...automation, postId: post.id, isNextPost: false })
-                  }}
-                  className={`h-24 rounded-lg cursor-pointer overflow-hidden ring-2 ${automation.postId === post.id ? "ring-purple-500" : "ring-transparent"}`}
-                >
-                  <img src={post.thumbnail || "/placeholder.svg"} alt="Post" className="w-full h-full object-cover" />
+              {posts.length === 0 ? (
+                <div className="col-span-3 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                  <span className="text-sm text-gray-500">No content</span>
                 </div>
-              ))
-            )}
-          </div>
+              ) : (
+                posts.slice(0, 3).map((post: InstagramPost) => (
+                  <div
+                    key={post.id}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setAutomation({ ...automation, postId: post.id, isNextPost: false })
+                    }}
+                    className={`h-24 rounded-lg cursor-pointer overflow-hidden ring-2 ${automation.postId === post.id ? "ring-purple-500" : "ring-transparent"}`}
+                  >
+                    <img src={post.thumbnail || "/placeholder.svg"} alt="Post" className="w-full h-full object-cover" />
+                  </div>
+                ))
+              )}
+            </div>
           )}
 
           {!isNextPost && (
             <button
-            onClick={(e) => {
-              e.stopPropagation()
-              setShowPostModal(true)
-            }}
-            className="col-span-3 mt-3 text-sm text-purple-600 hover:underline"
-          >
-            Show More
-          </button>
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowPostModal(true)
+              }}
+              className="col-span-3 mt-3 text-sm text-purple-600 hover:underline"
+            >
+              Show More
+            </button>
           )}
 
           {isNextPost && (
@@ -1466,7 +1465,7 @@ useEffect(() => {
                   </div>
                 ))}
 
-                 
+
               </div>
             </div>
           )}
@@ -1704,7 +1703,7 @@ useEffect(() => {
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 />
                 <div className="text-xs text-gray-400">{automation.actions.followUp.message.length} / 640</div>
-                
+
                 {/* Delay selector */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">Send after:</label>
@@ -1803,327 +1802,249 @@ useEffect(() => {
           </button>
         </div>
         <div className="overflow-y-auto h-[calc(90vh-60px)] px-4 pb-6">
-{/* Step 1: Select a Post Card */}
-        <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 1 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
-          onClick={() => setActiveStep(1)}
-        >
-          <div className="flex items-center gap-3 mb-4">
-            <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 1 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
-            >
-              1
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900">Select a Post</h3>
-          </div>
-
-          {/* Next Post Toggle - Mobile */}
-          <div className="flex items-center justify-between mb-4 p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-gray-900">⚡ Next Post</span>
-              <span className="text-xs text-gray-600">Create automation before posting</span>
-            </div>
-            <Switch
-              checked={isNextPost}
-              onChange={(val) => {
-                setIsNextPost(val)
-                if (val) {
-                  // Clear post selection when enabling Next Post
-                  setAutomation({ ...automation, postId: "NEXT_POST", isNextPost: true })
-                } else {
-                  setAutomation({ ...automation, postId: null, isNextPost: false })
-                }
-              }}
-              className={`${isNextPost ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${isNextPost ? "translate-x-6" : "translate-x-1"}`}
-              />
-            </Switch>
-          </div>
-
-          {!isNextPost && (
-            <>
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm text-gray-700">Any post</span>
-                <Switch
-                  checked={true}
-                  onChange={() => {}}
-                  className="bg-gray-300 relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-                >
-                  <span className="inline-block h-4 w-4 transform rounded-full bg-white transition translate-x-1" />
-                </Switch>
+          {/* Step 1: Select a Post Card */}
+          <div
+            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 1 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
+            onClick={() => setActiveStep(1)}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div
+                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 1 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
+              >
+                1
               </div>
-            </>
-          )}
+              <h3 className="text-lg font-semibold text-gray-900">Select a Post</h3>
+            </div>
 
-          {!isNextPost && (
-            <div className="mt-4 grid grid-cols-3 gap-2">
-            {posts.length === 0 ? (
-              <div className="col-span-3 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                <span className="text-sm text-gray-500">No content</span>
+            {/* Next Post Toggle - Mobile */}
+            <div className="flex items-center justify-between mb-4 p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-gray-900">⚡ Next Post</span>
+                <span className="text-xs text-gray-600">Create automation before posting</span>
               </div>
-            ) : (
-              posts.slice(0, 3).map((post: InstagramPost) => (
-                <div
-                  key={post.id}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setAutomation({ ...automation, postId: post.id, isNextPost: false })
-                  }}
-                  className={`h-24 rounded-lg cursor-pointer overflow-hidden ring-2 ${automation.postId === post.id ? "ring-purple-500" : "ring-transparent"}`}
-                >
-                  <img src={post.thumbnail || "/placeholder.svg"} alt="Post" className="w-full h-full object-cover" />
+              <Switch
+                checked={isNextPost}
+                onChange={(val) => {
+                  setIsNextPost(val)
+                  if (val) {
+                    // Clear post selection when enabling Next Post
+                    setAutomation({ ...automation, postId: "NEXT_POST", isNextPost: true })
+                  } else {
+                    setAutomation({ ...automation, postId: null, isNextPost: false })
+                  }
+                }}
+                className={`${isNextPost ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${isNextPost ? "translate-x-6" : "translate-x-1"}`}
+                />
+              </Switch>
+            </div>
+
+            {!isNextPost && (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm text-gray-700">Any post</span>
+                  <Switch
+                    checked={true}
+                    onChange={() => { }}
+                    className="bg-gray-300 relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+                  >
+                    <span className="inline-block h-4 w-4 transform rounded-full bg-white transition translate-x-1" />
+                  </Switch>
                 </div>
-              ))
+              </>
+            )}
+
+            {!isNextPost && (
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {posts.length === 0 ? (
+                  <div className="col-span-3 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                    <span className="text-sm text-gray-500">No content</span>
+                  </div>
+                ) : (
+                  posts.slice(0, 3).map((post: InstagramPost) => (
+                    <div
+                      key={post.id}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setAutomation({ ...automation, postId: post.id, isNextPost: false })
+                      }}
+                      className={`h-24 rounded-lg cursor-pointer overflow-hidden ring-2 ${automation.postId === post.id ? "ring-purple-500" : "ring-transparent"}`}
+                    >
+                      <img src={post.thumbnail || "/placeholder.svg"} alt="Post" className="w-full h-full object-cover" />
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {!isNextPost && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowPostModal(true)
+                }}
+                className="col-span-3 mt-3 text-sm text-purple-600 hover:underline"
+              >
+                Show More
+              </button>
+            )}
+
+            {isNextPost && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-gray-700 mb-2">
+                  ✅ <strong>Next Post automation ready!</strong>
+                </p>
+                <p className="text-xs text-gray-600">
+                  This automation will automatically activate when you post new content to Instagram.
+                </p>
+              </div>
             )}
           </div>
-          )}
 
-          {!isNextPost && (
-            <button
-            onClick={(e) => {
-              e.stopPropagation()
-              setShowPostModal(true)
-            }}
-            className="col-span-3 mt-3 text-sm text-purple-600 hover:underline"
+          {/* Step 2: Setup Keywords Card */}
+          <div
+            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 2 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
+            onClick={() => setActiveStep(2)}
           >
-            Show More
-          </button>
-          )}
-
-          {isNextPost && (
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-gray-700 mb-2">
-                ✅ <strong>Next Post automation ready!</strong>
-              </p>
-              <p className="text-xs text-gray-600">
-                This automation will automatically activate when you post new content to Instagram.
-              </p>
+            <div className="flex items-center gap-3 mb-4">
+              <div
+                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 2 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
+              >
+                2
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Setup Keywords</h3>
             </div>
-          )}
-        </div>
 
-        {/* Step 2: Setup Keywords Card */}
-        <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 2 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
-          onClick={() => setActiveStep(2)}
-        >
-          <div className="flex items-center gap-3 mb-4">
-            <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 2 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
-            >
-              2
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm text-gray-700">Any keyword</span>
+              <Switch
+                checked={automation.trigger.anyReply}
+                onChange={(val) => setAutomation({ ...automation, trigger: { ...automation.trigger, anyReply: val } })}
+                className={`${automation.trigger.anyReply ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.trigger.anyReply ? "translate-x-6" : "translate-x-1"}`}
+                />
+              </Switch>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">Setup Keywords</h3>
-          </div>
 
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm text-gray-700">Any keyword</span>
-            <Switch
-              checked={automation.trigger.anyReply}
-              onChange={(val) => setAutomation({ ...automation, trigger: { ...automation.trigger, anyReply: val } })}
-              className={`${automation.trigger.anyReply ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.trigger.anyReply ? "translate-x-6" : "translate-x-1"}`}
-              />
-            </Switch>
-          </div>
-
-          <input
-            type="text"
-            value={keywordInput}
-            onChange={(e) => setKeywordInput(e.target.value)}
-            onFocus={() => setActiveStep(2)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && keywordInput.trim()) {
-                e.preventDefault()
-                if (!automation.trigger.keywords.includes(keywordInput.trim())) {
-                  setAutomation({
-                    ...automation,
-                    trigger: { ...automation.trigger, keywords: [...automation.trigger.keywords, keywordInput.trim()] },
-                  })
+            <input
+              type="text"
+              value={keywordInput}
+              onChange={(e) => setKeywordInput(e.target.value)}
+              onFocus={() => setActiveStep(2)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && keywordInput.trim()) {
+                  e.preventDefault()
+                  if (!automation.trigger.keywords.includes(keywordInput.trim())) {
+                    setAutomation({
+                      ...automation,
+                      trigger: { ...automation.trigger, keywords: [...automation.trigger.keywords, keywordInput.trim()] },
+                    })
+                  }
+                  setKeywordInput("")
                 }
-                setKeywordInput("")
-              }
-            }}
-            onClick={(e) => e.stopPropagation()}
-            placeholder="Type & Hit Enter to add Keyword"
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-          />
-
-          {automation.trigger.keywords.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {automation.trigger.keywords.map((word, i) => (
-                <div
-                  key={i}
-                  className="flex items-center bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full shadow-sm"
-                >
-                  {word}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setAutomation({
-                        ...automation,
-                        trigger: {
-                          ...automation.trigger,
-                          keywords: automation.trigger.keywords.filter((k) => k !== word),
-                        },
-                      })
-                    }}
-                    className="ml-2 text-purple-500 hover:text-purple-700"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 3 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
-          onClick={() => setActiveStep(3)}
-        >
-          <div className="flex items-center gap-3 mb-4">
-            <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 3 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
-            >
-              3
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900">Send a DM</h3>
-          </div>
-
-          {/* Main DM Composition Area */}
-          <div className="border-2 border-purple-500 rounded-lg p-4 mb-4">
-            <textarea
-              placeholder="Enter your message here..."
-              value={automation.actions.sendDM.message}
-              onChange={(e) =>
-                setAutomation({
-                  ...automation,
-                  actions: { ...automation.actions, sendDM: { ...automation.actions.sendDM, message: e.target.value } },
-                })
-              }
-              onFocus={() => setActiveStep(3)}
+              }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full border-0 outline-none text-sm min-h-[60px] resize-none mb-2"
+              placeholder="Type & Hit Enter to add Keyword"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
             />
 
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-gray-400">{automation.actions.sendDM.message.length} / 640</span>
-            </div>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                setEditingButton(null)
-                setShowLinkModal(true)
-              }}
-              className="w-full border border-purple-500 text-purple-600 py-2 rounded-md text-sm font-medium hover:bg-purple-50 transition-colors flex items-center justify-center gap-2"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                <line x1="12" y1="8" x2="12" y2="16" stroke="currentColor" strokeWidth="2" />
-                <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" strokeWidth="2" />
-              </svg>
-              Add Link
-            </button>
-
-            {/* Image Upload Section */}
-            <div className="mt-3">
-              {automation.actions.sendDM.image_url ? (
-                <div className="relative">
-                  <img
-                    src={automation.actions.sendDM.image_url}
-                    alt="DM Preview"
-                    className="w-full rounded-lg border border-gray-200"
-                  />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeImage("dm")
-                    }}
-                    className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors"
+            {automation.trigger.keywords.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {automation.trigger.keywords.map((word, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full shadow-sm"
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path
-                        d="M18 6L6 18M6 6l12 12"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              ) : (
-                <label className="w-full border-2 border-dashed border-gray-300 hover:border-purple-500 rounded-lg p-4 cursor-pointer transition-colors flex flex-col items-center gap-2">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleImageUpload(e, "dm")}
-                    onClick={(e) => e.stopPropagation()}
-                    className="hidden"
-                    disabled={isUploadingImage}
-                  />
-                  {isUploadingImage ? (
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-                      <span className="text-sm text-gray-600">Uploading...</span>
-                    </div>
-                  ) : (
-                    <>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-gray-400">
-                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span className="text-sm font-medium text-gray-700">Upload Image</span>
-                      <span className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</span>
-                    </>
-                  )}
-                </label>
-              )}
-            </div>
+                    {word}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setAutomation({
+                          ...automation,
+                          trigger: {
+                            ...automation.trigger,
+                            keywords: automation.trigger.keywords.filter((k) => k !== word),
+                          },
+                        })
+                      }}
+                      className="ml-2 text-purple-500 hover:text-purple-700"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Main DM Buttons */}
-          {automation.actions.sendDM.buttons.length > 0 && (
-            <div className="space-y-2 mb-4">
-              {automation.actions.sendDM.buttons.map((button, index) => (
-                <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
-                  <span className="text-sm text-gray-700 truncate">{button.text}</span>
-                  <div className="flex items-center gap-2">
+          <div
+            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 3 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
+            onClick={() => setActiveStep(3)}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div
+                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 3 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
+              >
+                3
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Send a DM</h3>
+            </div>
+
+            {/* Main DM Composition Area */}
+            <div className="border-2 border-purple-500 rounded-lg p-4 mb-4">
+              <textarea
+                placeholder="Enter your message here..."
+                value={automation.actions.sendDM.message}
+                onChange={(e) =>
+                  setAutomation({
+                    ...automation,
+                    actions: { ...automation.actions, sendDM: { ...automation.actions.sendDM, message: e.target.value } },
+                  })
+                }
+                onFocus={() => setActiveStep(3)}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full border-0 outline-none text-sm min-h-[60px] resize-none mb-2"
+              />
+
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs text-gray-400">{automation.actions.sendDM.message.length} / 640</span>
+              </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setEditingButton(null)
+                  setShowLinkModal(true)
+                }}
+                className="w-full border border-purple-500 text-purple-600 py-2 rounded-md text-sm font-medium hover:bg-purple-50 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                  <line x1="12" y1="8" x2="12" y2="16" stroke="currentColor" strokeWidth="2" />
+                  <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" strokeWidth="2" />
+                </svg>
+                Add Link
+              </button>
+
+              {/* Image Upload Section */}
+              <div className="mt-3">
+                {automation.actions.sendDM.image_url ? (
+                  <div className="relative">
+                    <img
+                      src={automation.actions.sendDM.image_url}
+                      alt="DM Preview"
+                      className="w-full rounded-lg border border-gray-200"
+                    />
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        editButton(index, "dm")
+                        removeImage("dm")
                       }}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path
-                          d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        removeDMButton(index)
-                      }}
-                      className="text-red-500 hover:text-red-700"
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path
@@ -2136,53 +2057,131 @@ useEffect(() => {
                       </svg>
                     </button>
                   </div>
-                </div>
-              ))}
+                ) : (
+                  <label className="w-full border-2 border-dashed border-gray-300 hover:border-purple-500 rounded-lg p-4 cursor-pointer transition-colors flex flex-col items-center gap-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, "dm")}
+                      onClick={(e) => e.stopPropagation()}
+                      className="hidden"
+                      disabled={isUploadingImage}
+                    />
+                    {isUploadingImage ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                        <span className="text-sm text-gray-600">Uploading...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-gray-400">
+                          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span className="text-sm font-medium text-gray-700">Upload Image</span>
+                        <span className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</span>
+                      </>
+                    )}
+                  </label>
+                )}
+              </div>
             </div>
-          )}
 
-          {/* Opening Message Toggle */}
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm text-gray-700">Opening message</span>
-            <Switch
-              checked={automation.actions.openingDM.enabled}
-              onChange={(val) =>
-                setAutomation({
-                  ...automation,
-                  actions: { ...automation.actions, openingDM: { ...automation.actions.openingDM, enabled: val } },
-                })
-              }
-              className={`${automation.actions.openingDM.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.openingDM.enabled ? "translate-x-6" : "translate-x-1"}`}
-              />
-            </Switch>
-          </div>
+            {/* Main DM Buttons */}
+            {automation.actions.sendDM.buttons.length > 0 && (
+              <div className="space-y-2 mb-4">
+                {automation.actions.sendDM.buttons.map((button, index) => (
+                  <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
+                    <span className="text-sm text-gray-700 truncate">{button.text}</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          editButton(index, "dm")
+                        }}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeDMButton(index)
+                        }}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            d="M18 6L6 18M6 6l12 12"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-          {/* Show opening message details when enabled */}
-          {automation.actions.openingDM.enabled && (
-            <div className="bg-gray-50 rounded-lg p-3 space-y-3">
-              <textarea
-                placeholder="Enter opening message..."
-                value={automation.actions.openingDM.message}
-                onChange={(e) =>
+            {/* Opening Message Toggle */}
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm text-gray-700">Opening message</span>
+              <Switch
+                checked={automation.actions.openingDM.enabled}
+                onChange={(val) =>
                   setAutomation({
                     ...automation,
-                    actions: {
-                      ...automation.actions,
-                      openingDM: { ...automation.actions.openingDM, message: e.target.value },
-                    },
+                    actions: { ...automation.actions, openingDM: { ...automation.actions.openingDM, enabled: val } },
                   })
                 }
-                onClick={(e) => e.stopPropagation()}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[60px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-              />
+                className={`${automation.actions.openingDM.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.openingDM.enabled ? "translate-x-6" : "translate-x-1"}`}
+                />
+              </Switch>
+            </div>
 
-              <div className="text-xs text-gray-400">{automation.actions.openingDM.message.length} / 640</div>
+            {/* Show opening message details when enabled */}
+            {automation.actions.openingDM.enabled && (
+              <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+                <textarea
+                  placeholder="Enter opening message..."
+                  value={automation.actions.openingDM.message}
+                  onChange={(e) =>
+                    setAutomation({
+                      ...automation,
+                      actions: {
+                        ...automation.actions,
+                        openingDM: { ...automation.actions.openingDM, message: e.target.value },
+                      },
+                    })
+                  }
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[60px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                />
 
-              {/* Opening DM Image Upload Section */}
-              {/*
+                <div className="text-xs text-gray-400">{automation.actions.openingDM.message.length} / 640</div>
+
+                {/* Opening DM Image Upload Section */}
+                {/*
               <div className="mt-3">
                 {automation.actions.openingDM.image_url ? (
                   <div className="relative">
@@ -2238,199 +2237,20 @@ useEffect(() => {
               </div>
               */}
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Opening Buttons:</label>
-                {automation.actions.openingDM.buttons.map((button, index) => (
-                  <div key={index} className="flex items-center justify-between bg-white p-2 rounded-md border">
-                    <span className="text-sm text-gray-700 truncate">{button.text}</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          editButton(index, "opening")
-                        }}
-                        className="text-gray-500 hover:text-gray-700"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path
-                            d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-             
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 4 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
-          onClick={() => setActiveStep(4)}
-        >
-          <div className="flex items-center gap-3 mb-4">
-            <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 4 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
-            >
-              4
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900">Advanced Automations</h3>
-          </div>
-          <p className="text-sm text-gray-500 mb-4">Grow your audience faster — with smart, hands-free engagement.</p>
-
-          <div className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Publicly reply to comments</span>
-                <Switch
-                  checked={automation.actions.publicReply.enabled}
-                  onChange={(val) =>
-                    setAutomation({
-                      ...automation,
-                      actions: {
-                        ...automation.actions,
-                        publicReply: { ...automation.actions.publicReply, enabled: val },
-                      },
-                    })
-                  }
-                  className={`${automation.actions.publicReply.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.publicReply.enabled ? "translate-x-6" : "translate-x-1"}`}
-                  />
-                </Switch>
-              </div>
-
-              {automation.actions.publicReply.enabled && (
-                <div className="bg-gray-50 rounded-lg p-3 space-y-3">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Public Replies:</label>
-                    {automation.actions.publicReply.replies.map((reply, index) => (
-                      <div key={index} className="flex items-center justify-between bg-white p-3 rounded-md border">
-                        <div className="flex items-center gap-2 flex-1">
-                          <Switch
-                            checked={reply.enabled}
-                            onChange={(val) => {
-                              const updatedReplies = [...automation.actions.publicReply.replies]
-                              updatedReplies[index].enabled = val
-                              setAutomation({
-                                ...automation,
-                                actions: {
-                                  ...automation.actions,
-                                  publicReply: { ...automation.actions.publicReply, replies: updatedReplies },
-                                },
-                              })
-                            }}
-                            className={`${reply.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-5 w-9 items-center rounded-full transition-colors`}
-                          >
-                            <span
-                              className={`inline-block h-3 w-3 transform rounded-full bg-white transition ${reply.enabled ? "translate-x-5" : "translate-x-1"}`}
-                            />
-                          </Switch>
-                          <span className="text-sm text-gray-700 truncate flex-1">{reply.text}</span>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setEditingPublicReply(index)
-                            setPublicReplyText(reply.text)
-                            setShowPublicReplyModal(true)
-                          }}
-                          className="text-gray-500 hover:text-gray-700 ml-2"
-                        >
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <path
-                              d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-
-             
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-700">Ask to follow before sending DM</span>
-              <Switch
-                checked={automation.actions.askFollow}
-                onChange={(val) => setAutomation({ ...automation, actions: { ...automation.actions, askFollow: val } })}
-                className={`${automation.actions.askFollow ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.askFollow ? "translate-x-6" : "translate-x-1"}`}
-                />
-              </Switch>
-            </div>
-
-            {automation.actions.askFollow && (
-              <div className="bg-gray-50 rounded-lg p-3 space-y-3">
-                <textarea
-                  placeholder="Enter follow request message..."
-                  value={automation.actions.followMessage}
-                  onChange={(e) =>
-                    setAutomation({ ...automation, actions: { ...automation.actions, followMessage: e.target.value } })
-                  }
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[60px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                />
-
-                <div className="text-xs text-gray-400">{automation.actions.followMessage.length} / 640</div>
-
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Follow Buttons:</label>
-                  {automation.actions.followButtons.map((button, index) => (
+                  <label className="text-sm font-medium text-gray-700">Opening Buttons:</label>
+                  {automation.actions.openingDM.buttons.map((button, index) => (
                     <div key={index} className="flex items-center justify-between bg-white p-2 rounded-md border">
                       <span className="text-sm text-gray-700 truncate">{button.text}</span>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
-                            editFollowButton(index)
+                            editButton(index, "opening")
                           }}
                           className="text-gray-500 hover:text-gray-700"
                         >
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path
                               d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
                               stroke="currentColor"
@@ -2450,82 +2270,261 @@ useEffect(() => {
                       </div>
                     </div>
                   ))}
+
+
                 </div>
               </div>
             )}
+          </div>
 
-            {/* Follow-up Message */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-700">Send follow-up message</span>
-              <Switch
-                checked={automation.actions.followUp.enabled}
-                onChange={(val) =>
-                  setAutomation({
-                    ...automation,
-                    actions: {
-                      ...automation.actions,
-                      followUp: { ...automation.actions.followUp, enabled: val },
-                    },
-                  })
-                }
-                className={`${automation.actions.followUp.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+          <div
+            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 4 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
+            onClick={() => setActiveStep(4)}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div
+                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 4 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
               >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.followUp.enabled ? "translate-x-6" : "translate-x-1"}`}
-                />
-              </Switch>
+                4
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Advanced Automations</h3>
             </div>
+            <p className="text-sm text-gray-500 mb-4">Grow your audience faster — with smart, hands-free engagement.</p>
 
-            {automation.actions.followUp.enabled && (
-              <div className="bg-gray-50 rounded-lg p-3 space-y-3">
-                <textarea
-                  placeholder="Enter your follow-up message..."
-                  value={automation.actions.followUp.message}
-                  onChange={(e) =>
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">Publicly reply to comments</span>
+                  <Switch
+                    checked={automation.actions.publicReply.enabled}
+                    onChange={(val) =>
+                      setAutomation({
+                        ...automation,
+                        actions: {
+                          ...automation.actions,
+                          publicReply: { ...automation.actions.publicReply, enabled: val },
+                        },
+                      })
+                    }
+                    className={`${automation.actions.publicReply.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.publicReply.enabled ? "translate-x-6" : "translate-x-1"}`}
+                    />
+                  </Switch>
+                </div>
+
+                {automation.actions.publicReply.enabled && (
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Public Replies:</label>
+                      {automation.actions.publicReply.replies.map((reply, index) => (
+                        <div key={index} className="flex items-center justify-between bg-white p-3 rounded-md border">
+                          <div className="flex items-center gap-2 flex-1">
+                            <Switch
+                              checked={reply.enabled}
+                              onChange={(val) => {
+                                const updatedReplies = [...automation.actions.publicReply.replies]
+                                updatedReplies[index].enabled = val
+                                setAutomation({
+                                  ...automation,
+                                  actions: {
+                                    ...automation.actions,
+                                    publicReply: { ...automation.actions.publicReply, replies: updatedReplies },
+                                  },
+                                })
+                              }}
+                              className={`${reply.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-5 w-9 items-center rounded-full transition-colors`}
+                            >
+                              <span
+                                className={`inline-block h-3 w-3 transform rounded-full bg-white transition ${reply.enabled ? "translate-x-5" : "translate-x-1"}`}
+                              />
+                            </Switch>
+                            <span className="text-sm text-gray-700 truncate flex-1">{reply.text}</span>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditingPublicReply(index)
+                              setPublicReplyText(reply.text)
+                              setShowPublicReplyModal(true)
+                            }}
+                            className="text-gray-500 hover:text-gray-700 ml-2"
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+
+
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-700">Ask to follow before sending DM</span>
+                <Switch
+                  checked={automation.actions.askFollow}
+                  onChange={(val) => setAutomation({ ...automation, actions: { ...automation.actions, askFollow: val } })}
+                  className={`${automation.actions.askFollow ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.askFollow ? "translate-x-6" : "translate-x-1"}`}
+                  />
+                </Switch>
+              </div>
+
+              {automation.actions.askFollow && (
+                <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+                  <textarea
+                    placeholder="Enter follow request message..."
+                    value={automation.actions.followMessage}
+                    onChange={(e) =>
+                      setAutomation({ ...automation, actions: { ...automation.actions, followMessage: e.target.value } })
+                    }
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[60px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  />
+
+                  <div className="text-xs text-gray-400">{automation.actions.followMessage.length} / 640</div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Follow Buttons:</label>
+                    {automation.actions.followButtons.map((button, index) => (
+                      <div key={index} className="flex items-center justify-between bg-white p-2 rounded-md border">
+                        <span className="text-sm text-gray-700 truncate">{button.text}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              editFollowButton(index)
+                            }}
+                            className="text-gray-500 hover:text-gray-700"
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Follow-up Message */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-700">Send follow-up message</span>
+                <Switch
+                  checked={automation.actions.followUp.enabled}
+                  onChange={(val) =>
                     setAutomation({
                       ...automation,
                       actions: {
                         ...automation.actions,
-                        followUp: { ...automation.actions.followUp, message: e.target.value },
+                        followUp: { ...automation.actions.followUp, enabled: val },
                       },
                     })
                   }
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                />
-                <div className="text-xs text-gray-400">{automation.actions.followUp.message.length} / 1000</div>
+                  className={`${automation.actions.followUp.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.followUp.enabled ? "translate-x-6" : "translate-x-1"}`}
+                  />
+                </Switch>
+              </div>
 
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-700">Send after:</label>
-                  <select
-                    value={automation.actions.followUp.delay}
+              {automation.actions.followUp.enabled && (
+                <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+                  <textarea
+                    placeholder="Enter your follow-up message..."
+                    value={automation.actions.followUp.message}
                     onChange={(e) =>
                       setAutomation({
                         ...automation,
                         actions: {
                           ...automation.actions,
-                          followUp: { ...automation.actions.followUp, delay: parseInt(e.target.value) },
+                          followUp: { ...automation.actions.followUp, message: e.target.value },
                         },
                       })
                     }
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  >
-                    <option value={1}>1 minute</option>
-                    <option value={5}>5 minutes</option>
-                    <option value={10}>10 minutes</option>
-                    <option value={30}>30 minutes</option>
-                    <option value={60}>1 hour</option>
-                    <option value={120}>2 hours</option>
-                    <option value={360}>6 hours</option>
-                    <option value={720}>12 hours</option>
-                    <option value={1440}>24 hours</option>
-                  </select>
-                </div>
-              </div>
-            )}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  />
+                  <div className="text-xs text-gray-400">{automation.actions.followUp.message.length} / 1000</div>
 
-            {/* <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-700">Send after:</label>
+                    <select
+                      value={automation.actions.followUp.delay}
+                      onChange={(e) =>
+                        setAutomation({
+                          ...automation,
+                          actions: {
+                            ...automation.actions,
+                            followUp: { ...automation.actions.followUp, delay: parseInt(e.target.value) },
+                          },
+                        })
+                      }
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    >
+                      <option value={1}>1 minute</option>
+                      <option value={5}>5 minutes</option>
+                      <option value={10}>10 minutes</option>
+                      <option value={30}>30 minutes</option>
+                      <option value={60}>1 hour</option>
+                      <option value={120}>2 hours</option>
+                      <option value={360}>6 hours</option>
+                      <option value={720}>12 hours</option>
+                      <option value={1440}>24 hours</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* <div className="flex items-center justify-between">
               <span className="text-sm text-gray-700">Ask for emails in DMs</span>
               <Switch
                 checked={automation.actions.askEmail}
@@ -2537,32 +2536,32 @@ useEffect(() => {
                 />
               </Switch>
             </div> */}
+            </div>
           </div>
-        </div>
 
-        {/* Go Live Button */}
-        <div className="pt-4">
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitting || (!isNextPost && !automation.postId) || !automation.actions.sendDM.message}
-            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-          >
-            {isSubmitting ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Creating...
-              </>
-            ) : (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                  <polygon points="10,8 16,12 10,16 10,8" stroke="currentColor" strokeWidth="2" />
-                </svg>
-                GO LIVE
-              </>
-            )}
-          </button>
-        </div>
+          {/* Go Live Button */}
+          <div className="pt-4">
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting || (!isNextPost && !automation.postId) || !automation.actions.sendDM.message}
+              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                    <polygon points="10,8 16,12 10,16 10,8" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                  GO LIVE
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -2639,138 +2638,137 @@ useEffect(() => {
         </div>
       </Dialog>
 
-   <Dialog open={showOpeningLinkModal} onClose={() => setShowOpeningLinkModal(false)} className="relative z-[100]">
-  <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-  <div className="fixed inset-0 flex items-center justify-center p-4">
-    <DialogPanel className="mx-auto max-w-sm rounded bg-white p-6">
-      <DialogTitle className="text-lg font-medium mb-4">Add Opening Button</DialogTitle>
-      <div className="space-y-4">
-        <input
-          type="text"
-          placeholder="Button text"
-          value={openingButtonText}
-          onChange={(e) => setOpeningButtonText(e.target.value)}
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-        />
+      <Dialog open={showOpeningLinkModal} onClose={() => setShowOpeningLinkModal(false)} className="relative z-[100]">
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <DialogPanel className="mx-auto max-w-sm rounded bg-white p-6">
+            <DialogTitle className="text-lg font-medium mb-4">Add Opening Button</DialogTitle>
+            <div className="space-y-4">
+              <input
+                type="text"
+                placeholder="Button text"
+                value={openingButtonText}
+                onChange={(e) => setOpeningButtonText(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
 
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              if (editingButton) {
-                saveEditedOpeningButton()
-              } else {
-                if (openingButtonText) {
-                  setAutomation({
-                    ...automation,
-                    actions: {
-                      ...automation.actions,
-                      openingDM: {
-                        ...automation.actions.openingDM,
-                        buttons: [
-                          ...automation.actions.openingDM.buttons,
-                          { text: openingButtonText, link: "" },
-                        ],
-                      },
-                    },
-                  })
-                  setShowOpeningLinkModal(false)
-                  setOpeningButtonText("")
-                }
-              }
-            }}
-            disabled={!openingButtonText}
-            className="flex-1 bg-purple-600 text-white py-2 rounded-md text-sm font-medium hover:bg-purple-700 disabled:bg-gray-400"
-          >
-            {editingButton ? "Update" : "Add"} Button
-          </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (editingButton) {
+                      saveEditedOpeningButton()
+                    } else {
+                      if (openingButtonText) {
+                        setAutomation({
+                          ...automation,
+                          actions: {
+                            ...automation.actions,
+                            openingDM: {
+                              ...automation.actions.openingDM,
+                              buttons: [
+                                ...automation.actions.openingDM.buttons,
+                                { text: openingButtonText, link: "" },
+                              ],
+                            },
+                          },
+                        })
+                        setShowOpeningLinkModal(false)
+                        setOpeningButtonText("")
+                      }
+                    }
+                  }}
+                  disabled={!openingButtonText}
+                  className="flex-1 bg-purple-600 text-white py-2 rounded-md text-sm font-medium hover:bg-purple-700 disabled:bg-gray-400"
+                >
+                  {editingButton ? "Update" : "Add"} Button
+                </button>
 
-          <button
-            onClick={() => {
-              setShowOpeningLinkModal(false)
-              setOpeningButtonText("")
-              setEditingButton(null)
-            }}
-            className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-md text-sm font-medium hover:bg-gray-400"
-          >
-            Cancel
-          </button>
+                <button
+                  onClick={() => {
+                    setShowOpeningLinkModal(false)
+                    setOpeningButtonText("")
+                    setEditingButton(null)
+                  }}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-md text-sm font-medium hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </DialogPanel>
         </div>
-      </div>
-    </DialogPanel>
-  </div>
-</Dialog>
+      </Dialog>
 
 
-   {/* Post/Reel Selection Modal */}
-<Dialog
-  open={showPostModal}
-  onClose={() => setShowPostModal(false)}
-  className="relative z-[100]"
->
-  {/* Dark overlay */}
-  <div className="fixed inset-0 bg-black/40" />
-
-  {/* Modal container */}
-  <div className="fixed inset-0 flex items-center justify-center p-4">
-    <div className="bg-white p-6 rounded-lg w-full max-w-lg relative">
-
-      {/* Heading */}
-      <h2 className="text-lg font-semibold mb-4">Select Post or Reel</h2>
-
-      {/* Close button */}
-      <button
-        onClick={() => setShowPostModal(false)}
-        className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl font-bold"
+      {/* Post/Reel Selection Modal */}
+      <Dialog
+        open={showPostModal}
+        onClose={() => setShowPostModal(false)}
+        className="relative z-[100]"
       >
-        ✕
-      </button>
+        {/* Dark overlay */}
+        <div className="fixed inset-0 bg-black/40" />
 
-      {/* Posts Grid */}
-   {/* Posts Grid */}
-<div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[60vh] overflow-y-auto">
-  {posts.map((post: any) => (
-    <div
-      key={post.id}
-      onClick={() => setAutomation({ ...automation, postId: post.id })}
-      className={`relative h-28 bg-gray-200 rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
-        automation.postId === post.id ? "border-purple-600 scale-105" : "border-transparent"
-      }`}
-    >
-      {/* Thumbnail */}
-      <img
-        src={post.thumbnail || post.media_url}
-        alt="Post"
-        className="w-full h-full object-cover"
-      />
+        {/* Modal container */}
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-lg relative">
 
-      {/* Likes & comments overlay */}
-      <div className="absolute bottom-0 left-0 w-full bg-black/50 text-white text-xs flex justify-between px-2 py-1">
-        <span className="flex items-center gap-1">
-          <img src="/qa_love_icon.svg" alt="Likes" className="w-4 h-4 rounded-sm" />
-          {post.likeCount}
-        </span>
-        <span className="flex items-center gap-1">
-          <img src="/qa_comment_icon.svg" alt="Comments" className="w-4 h-4 rounded-sm" />
-          {post.commentCount}
-        </span>
-      </div>
+            {/* Heading */}
+            <h2 className="text-lg font-semibold mb-4">Select Post or Reel</h2>
 
-      {/* Checkmark if selected */}
-      {automation.postId === post.id && (
-        <div className="absolute top-1 right-1 bg-purple-600 text-white text-xs rounded-full p-1">✓</div>
-      )}
-    </div>
-  ))}
-</div>
+            {/* Close button */}
+            <button
+              onClick={() => setShowPostModal(false)}
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl font-bold"
+            >
+              ✕
+            </button>
 
-{/* Confirm button */}
-<Button onClick={() => setShowPostModal(false)} className="mt-4 w-full">
-  Confirm Selection
-</Button>
+            {/* Posts Grid */}
+            {/* Posts Grid */}
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[60vh] overflow-y-auto">
+              {posts.map((post: any) => (
+                <div
+                  key={post.id}
+                  onClick={() => setAutomation({ ...automation, postId: post.id })}
+                  className={`relative h-28 bg-gray-200 rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${automation.postId === post.id ? "border-purple-600 scale-105" : "border-transparent"
+                    }`}
+                >
+                  {/* Thumbnail */}
+                  <img
+                    src={post.thumbnail || post.media_url}
+                    alt="Post"
+                    className="w-full h-full object-cover"
+                  />
 
-    </div>
-  </div>
-</Dialog>
+                  {/* Likes & comments overlay */}
+                  <div className="absolute bottom-0 left-0 w-full bg-black/50 text-white text-xs flex justify-between px-2 py-1">
+                    <span className="flex items-center gap-1">
+                      <img src="/qa_love_icon.svg" alt="Likes" className="w-4 h-4 rounded-sm" />
+                      {post.likeCount}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <img src="/qa_comment_icon.svg" alt="Comments" className="w-4 h-4 rounded-sm" />
+                      {post.commentCount}
+                    </span>
+                  </div>
+
+                  {/* Checkmark if selected */}
+                  {automation.postId === post.id && (
+                    <div className="absolute top-1 right-1 bg-purple-600 text-white text-xs rounded-full p-1">✓</div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Confirm button */}
+            <Button onClick={() => setShowPostModal(false)} className="mt-4 w-full">
+              Confirm Selection
+            </Button>
+
+          </div>
+        </div>
+      </Dialog>
 
 
 

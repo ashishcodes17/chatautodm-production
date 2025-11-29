@@ -278,70 +278,70 @@ export default function Page() {
   }
 
   const handleSubmit = async () => {
-  try {
-    setIsSubmitting(true)
+    try {
+      setIsSubmitting(true)
 
-    // Validate at least one keyword
-    if (automation.trigger.keywords.length === 0) {
-      toast.error("Keywords Required", {
-        description: "Please add at least one keyword before saving your automation.",
-      })
-      setIsSubmitting(false)
-      return
-    }
-
-    // Validate required fields
-    if (!automation.actions.sendDM.message.trim()) {
-      toast.error("Missing Message", {
-        description: "Please enter a main DM message before saving.",
-      })
-      setIsSubmitting(false)
-      return
-    }
-
-    let response
-    if (isEditMode && automationId) {
-      response = await axios.put(`/api/automations/${automationId}`, {
-        ...automation,
-        type: "dm_automation",
-      })
-    } else {
-      response = await axios.post(`/api/workspaces/${wsid}/automations`, {
-        ...automation,
-        type: "dm_automation",
-      })
-    }
-
-    if (response.data.success) {
-      toast.success(
-        `Automation ${isEditMode ? "Updated" : "Saved"} Successfully`,
-        {
-          description: isEditMode
-            ? "Your automation changes have been saved."
-            : "Your new automation is now live!",
-        }
-      )
-
-      // Redirect only if it's a new one
-      if (!isEditMode) {
-        setTimeout(() => {
-          router.push(`/${wsid}/automations`)
-        }, 1500)
+      // Validate at least one keyword
+      if (automation.trigger.keywords.length === 0) {
+        toast.error("Keywords Required", {
+          description: "Please add at least one keyword before saving your automation.",
+        })
+        setIsSubmitting(false)
+        return
       }
-    } else {
-      toast.error("Operation Failed", {
-        description: `Unable to ${isEditMode ? "update" : "save"} automation. Please try again.`,
+
+      // Validate required fields
+      if (!automation.actions.sendDM.message.trim()) {
+        toast.error("Missing Message", {
+          description: "Please enter a main DM message before saving.",
+        })
+        setIsSubmitting(false)
+        return
+      }
+
+      let response
+      if (isEditMode && automationId) {
+        response = await axios.put(`/api/automations/${automationId}`, {
+          ...automation,
+          type: "dm_automation",
+        })
+      } else {
+        response = await axios.post(`/api/workspaces/${wsid}/automations`, {
+          ...automation,
+          type: "dm_automation",
+        })
+      }
+
+      if (response.data.success) {
+        toast.success(
+          `Automation ${isEditMode ? "Updated" : "Saved"} Successfully`,
+          {
+            description: isEditMode
+              ? "Your automation changes have been saved."
+              : "Your new automation is now live!",
+          }
+        )
+
+        // Redirect only if it's a new one
+        if (!isEditMode) {
+          setTimeout(() => {
+            router.push(`/${wsid}/automations`)
+          }, 1500)
+        }
+      } else {
+        toast.error("Operation Failed", {
+          description: `Unable to ${isEditMode ? "update" : "save"} automation. Please try again.`,
+        })
+      }
+    } catch (error) {
+      console.error("Error saving automation:", error)
+      toast.error("Unexpected Error", {
+        description: "Something went wrong. Please try again later.",
       })
+    } finally {
+      setIsSubmitting(false)
     }
-  } catch (error) {
-    console.error("Error saving automation:", error)
-    toast.error("Unexpected Error", {
-      description: "Something went wrong. Please try again later.",
-    })
-  } finally {
-    setIsSubmitting(false)
   }
-}
   // Get selected story
   const selectedStory = stories.find((s) => s.id === automation.storyId)
 
@@ -792,7 +792,7 @@ export default function Page() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100">
-       <Toaster position="top-center" />
+      <Toaster position="top-center" />
 
       {/* Left: Mobile Preview */}
       <div className="flex items-center justify-center w-full md:w-[calc(100%-450px)] bg-gray-100">
@@ -827,14 +827,12 @@ export default function Page() {
             <Switch
               checked={automation.isActive}
               onChange={(val) => setAutomation({ ...automation, isActive: val })}
-              className={`${
-                automation.isActive ? "bg-purple-600" : "bg-gray-300"
-              } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+              className={`${automation.isActive ? "bg-purple-600" : "bg-gray-300"
+                } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                  automation.isActive ? "translate-x-6" : "translate-x-1"
-                }`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.isActive ? "translate-x-6" : "translate-x-1"
+                  }`}
               />
             </Switch>
           </div>
@@ -909,16 +907,14 @@ export default function Page() {
 
         {/* Step 2: Setup Keywords Card */}
         <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${
-            activeStep === 2 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
-          }`}
+          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 2 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
+            }`}
           onClick={() => setActiveStep(2)}
         >
           <div className="flex items-center gap-3 mb-4">
             <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${
-                activeStep === 2 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
-              }`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 2 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
+                }`}
             >
               1
             </div>
@@ -1006,16 +1002,14 @@ export default function Page() {
 
         {/* Step 3: Send a DM Card */}
         <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${
-            activeStep === 3 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
-          }`}
+          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 3 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
+            }`}
           onClick={() => setActiveStep(3)}
         >
           <div className="flex items-center gap-3 mb-4">
             <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${
-                activeStep === 3 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
-              }`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 3 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
+                }`}
             >
               2
             </div>
@@ -1145,14 +1139,12 @@ export default function Page() {
                   },
                 })
               }
-              className={`${
-                automation.actions.openingDM.enabled ? "bg-purple-600" : "bg-gray-300"
-              } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+              className={`${automation.actions.openingDM.enabled ? "bg-purple-600" : "bg-gray-300"
+                } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                  automation.actions.openingDM.enabled ? "translate-x-6" : "translate-x-1"
-                }`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.openingDM.enabled ? "translate-x-6" : "translate-x-1"
+                  }`}
               />
             </Switch>
           </div>
@@ -1220,16 +1212,14 @@ export default function Page() {
 
         {/* Step 4: Advanced Automations Card */}
         <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${
-            activeStep === 4 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
-          }`}
+          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 4 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
+            }`}
           onClick={() => setActiveStep(4)}
         >
           <div className="flex items-center gap-3 mb-4">
             <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${
-                activeStep === 4 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
-              }`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 4 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
+                }`}
             >
               3
             </div>
@@ -1250,14 +1240,12 @@ export default function Page() {
                     },
                   })
                 }
-                className={`${
-                  automation.actions.askFollow ? "bg-purple-600" : "bg-gray-300"
-                } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                className={`${automation.actions.askFollow ? "bg-purple-600" : "bg-gray-300"
+                  } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                    automation.actions.askFollow ? "translate-x-6" : "translate-x-1"
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.askFollow ? "translate-x-6" : "translate-x-1"
+                    }`}
                 />
               </Switch>
             </div>
@@ -1331,14 +1319,12 @@ export default function Page() {
                     },
                   })
                 }
-                className={`${
-                  automation.actions.askEmail ? "bg-purple-600" : "bg-gray-300"
-                } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                className={`${automation.actions.askEmail ? "bg-purple-600" : "bg-gray-300"
+                  } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                    automation.actions.askEmail ? "translate-x-6" : "translate-x-1"
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.askEmail ? "translate-x-6" : "translate-x-1"
+                    }`}
                 />
               </Switch>
             </div>
@@ -1356,14 +1342,12 @@ export default function Page() {
                     },
                   })
                 }
-                className={`${
-                  automation.actions.reactHeart ? "bg-purple-600" : "bg-gray-300"
-                } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                className={`${automation.actions.reactHeart ? "bg-purple-600" : "bg-gray-300"
+                  } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                    automation.actions.reactHeart ? "translate-x-6" : "translate-x-1"
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.reactHeart ? "translate-x-6" : "translate-x-1"
+                    }`}
                 />
               </Switch>
             </div>
@@ -1468,16 +1452,14 @@ export default function Page() {
 
           {/* Step 2: Setup Keywords Card */}
           <div
-            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${
-              activeStep === 2 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
-            }`}
+            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 2 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
+              }`}
             onClick={() => setActiveStep(2)}
           >
             <div className="flex items-center gap-3 mb-4">
               <div
-                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${
-                  activeStep === 2 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
-                }`}
+                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 2 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
+                  }`}
               >
                 1
               </div>
@@ -1563,16 +1545,14 @@ export default function Page() {
 
           {/* Step 3: Send a DM Card */}
           <div
-            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${
-              activeStep === 3 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
-            }`}
+            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 3 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
+              }`}
             onClick={() => setActiveStep(3)}
           >
             <div className="flex items-center gap-3 mb-4">
               <div
-                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${
-                  activeStep === 3 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
-                }`}
+                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 3 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
+                  }`}
               >
                 2
               </div>
@@ -1702,14 +1682,12 @@ export default function Page() {
                     },
                   })
                 }
-                className={`${
-                  automation.actions.openingDM.enabled ? "bg-purple-600" : "bg-gray-300"
-                } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                className={`${automation.actions.openingDM.enabled ? "bg-purple-600" : "bg-gray-300"
+                  } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                    automation.actions.openingDM.enabled ? "translate-x-6" : "translate-x-1"
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.openingDM.enabled ? "translate-x-6" : "translate-x-1"
+                    }`}
                 />
               </Switch>
             </div>
@@ -1777,16 +1755,14 @@ export default function Page() {
 
           {/* Step 4: Advanced Automations Card */}
           <div
-            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${
-              activeStep === 4 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
-            }`}
+            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 4 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
+              }`}
             onClick={() => setActiveStep(4)}
           >
             <div className="flex items-center gap-3 mb-4">
               <div
-                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${
-                  activeStep === 4 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
-                }`}
+                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 4 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
+                  }`}
               >
                 3
               </div>
@@ -1807,14 +1783,12 @@ export default function Page() {
                       },
                     })
                   }
-                  className={`${
-                    automation.actions.askFollow ? "bg-purple-600" : "bg-gray-300"
-                  } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                  className={`${automation.actions.askFollow ? "bg-purple-600" : "bg-gray-300"
+                    } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                      automation.actions.askFollow ? "translate-x-6" : "translate-x-1"
-                    }`}
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.askFollow ? "translate-x-6" : "translate-x-1"
+                      }`}
                   />
                 </Switch>
               </div>
@@ -1894,14 +1868,12 @@ export default function Page() {
                       },
                     })
                   }
-                  className={`${
-                    automation.actions.askEmail ? "bg-purple-600" : "bg-gray-300"
-                  } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                  className={`${automation.actions.askEmail ? "bg-purple-600" : "bg-gray-300"
+                    } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                      automation.actions.askEmail ? "translate-x-6" : "translate-x-1"
-                    }`}
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.askEmail ? "translate-x-6" : "translate-x-1"
+                      }`}
                   />
                 </Switch>
               </div>
@@ -1919,14 +1891,12 @@ export default function Page() {
                       },
                     })
                   }
-                  className={`${
-                    automation.actions.reactHeart ? "bg-purple-600" : "bg-gray-300"
-                  } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                  className={`${automation.actions.reactHeart ? "bg-purple-600" : "bg-gray-300"
+                    } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                      automation.actions.reactHeart ? "translate-x-6" : "translate-x-1"
-                    }`}
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.reactHeart ? "translate-x-6" : "translate-x-1"
+                      }`}
                   />
                 </Switch>
               </div>
@@ -1960,9 +1930,8 @@ export default function Page() {
                 <div
                   key={story.id}
                   onClick={() => setAutomation({ ...automation, storyId: story.id })}
-                  className={`relative h-24 bg-gray-200 rounded-lg overflow-hidden cursor-pointer border-2 ${
-                    automation.storyId === story.id ? "border-purple-600" : "border-transparent"
-                  }`}
+                  className={`relative h-24 bg-gray-200 rounded-lg overflow-hidden cursor-pointer border-2 ${automation.storyId === story.id ? "border-purple-600" : "border-transparent"
+                    }`}
                 >
                   <img
                     src={story.thumbnail_url || story.media_url}
