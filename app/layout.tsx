@@ -40,28 +40,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </SWRProvider>
 
         {/* ✅ Umami client tracker */}
-     <script defer src="https://analytics.chatautodm.com/script.js" data-website-id="313e103b-6d28-42dc-ba75-c876cfdbe8e0"></script>
-         <script
-  type="application/ld+json"
-  dangerouslySetInnerHTML={{
-    __html: JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "ChatAutoDM",
-      "url": "https://www.chatautodm.com",
-      "applicationCategory": "MarketingApplication",
-      "operatingSystem": "Web",
-      "description": "ChatAutoDM is a free Instagram automation tool that automates DMs, story replies, and comment-to-DM workflows. Free alternative to ManyChat, Zorcha, and LinkDM.",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "INR"
-      }
-    }),
-  }}
-/>
+        <script defer src="https://analytics.chatautodm.com/script.js" data-website-id="03e6b6cd-d5ed-4908-b410-ed68bf64bf62"></script>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "SoftwareApplication",
+              "name": "ChatAutoDM",
+              "url": "https://www.chatautodm.com",
+              "applicationCategory": "MarketingApplication",
+              "operatingSystem": "Web",
+              "description": "ChatAutoDM is a free Instagram automation tool that automates DMs, story replies, and comment-to-DM workflows. Free alternative to ManyChat, Zorcha, and LinkDM.",
+              "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "INR"
+              }
+            }),
+          }}
+        />
 
-        
+
         <style>{`
           html {
             font-family: ${GeistSans.style.fontFamily};
