@@ -1865,14 +1865,16 @@ async function storeOrUpdateContact(
           $inc: {
             totalInteractions: 1,
           },
-          $push: {
-            // cast to any due to generic Document typing
-            interactionHistory: {
-              type: interactionType,
-              automationName,
-              timestamp: now,
-            },
-          },
+          // 📝 COMMENTED OUT: Interaction history disabled to prevent DB bloat with high-volume contacts
+          // Only tracking the count now via totalInteractions
+          // $push: {
+          //   // cast to any due to generic Document typing
+          //   interactionHistory: {
+          //     type: interactionType,
+          //     automationName,
+          //     timestamp: now,
+          //   },
+          // },
         },
       )
       console.log("✅ Contact updated successfully")
@@ -1887,13 +1889,15 @@ async function storeOrUpdateContact(
         lastInteractionType: interactionType,
         lastAutomationName: automationName,
         totalInteractions: 1,
-        interactionHistory: [
-          {
-            type: interactionType,
-            automationName,
-            timestamp: now,
-          },
-        ],
+        // 📝 COMMENTED OUT: Interaction history disabled to prevent DB bloat with high-volume contacts
+        // Only tracking the count now via totalInteractions
+        // interactionHistory: [
+        //   {
+        //     type: interactionType,
+        //     automationName,
+        //     timestamp: now,
+        //   },
+        // ],
         createdAt: now,
         updatedAt: now,
       }

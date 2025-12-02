@@ -1,8 +1,11 @@
 /**
- * Webhook Queue Worker System
+ * Webhook Queue Worker System (MongoDB Fallback)
  * 
- * This runs in the background and processes webhooks from the queue
+ * This runs in the background and processes webhooks from the MongoDB queue
  * Started separately from the main Next.js server
+ * 
+ * 🚨 IMPORTANT: This MongoDB worker is automatically DISABLED when BullMQ is enabled
+ * to prevent duplicate processing. Set BULLMQ_ENABLED=false to use this worker.
  * 
  * Features:
  * - Parallel processing (180 workers for 6 vCPU)
@@ -21,6 +24,9 @@ import type { NextRequest } from "next/server"
 
 // 🔥 IMPORT ROUTE ONCE AT STARTUP (not per-job) - MASSIVE performance gain
 let webhookRouteHandler: any = null
+
+// 🚨 Check if BullMQ is enabled - if so, this worker should NOT run
+const BULLMQ_ENABLED = process.env.BULLMQ_ENABLED === "true"
 
 // Configuration from environment - Optimized for I/O-bound workload
 // Since 95% of time is spent waiting for Instagram API/MongoDB (not CPU),
@@ -45,7 +51,7 @@ async function processNextJob(workerId: number): Promise<boolean> {
   if (isShuttingDown) return false
 
   const db = await getDatabase()
-  
+
   try {
     // Atomic findOneAndUpdate to claim a job (prevents duplicate processing)
     const job = await db.collection("webhook_queue").findOneAndUpdate(
@@ -95,7 +101,7 @@ async function processNextJob(workerId: number): Promise<boolean> {
 
       processedCount++
       console.log(`✅ Worker ${workerId}: Completed job ${job._id}`)
-      
+
       activeWorkers--
       return true
 
@@ -104,7 +110,7 @@ async function processNextJob(workerId: number): Promise<boolean> {
 
       // Check if we should retry
       const currentAttempts = job.attempts || 1
-      
+
       if (currentAttempts >= MAX_RETRIES) {
         // Max retries reached - move to dead letter queue
         await db.collection("webhook_queue").updateOne(
@@ -118,7 +124,7 @@ async function processNextJob(workerId: number): Promise<boolean> {
             }
           }
         )
-        
+
         // Copy to dead letter queue for manual inspection
         await db.collection("webhook_dead_letter").insertOne({
           originalJobId: job._id,
@@ -132,7 +138,7 @@ async function processNextJob(workerId: number): Promise<boolean> {
 
         failedCount++
         console.error(`💀 Worker ${workerId}: Job ${job._id} moved to dead letter queue after ${currentAttempts} attempts`)
-        
+
       } else {
         // Retry with exponential backoff
         const retryDelay = RETRY_DELAY * Math.pow(2, currentAttempts - 1)
@@ -204,7 +210,7 @@ async function workerLoop(workerId: number) {
   while (!isShuttingDown) {
     try {
       const processed = await processNextJob(workerId)
-      
+
       if (!processed) {
         // No job found - adaptive backoff (saves CPU when queue is empty)
         consecutiveEmptyPolls++
@@ -215,7 +221,7 @@ async function workerLoop(workerId: number) {
         consecutiveEmptyPolls = 0
         // NO DELAY - process next job immediately for viral spike handling
       }
-      
+
     } catch (error) {
       console.error(`❌ Worker ${workerId} error:`, error)
       consecutiveEmptyPolls = 0
@@ -234,7 +240,7 @@ async function logMetrics() {
 
   setInterval(async () => {
     const db = await getDatabase()
-    
+
     const stats = await db.collection("webhook_queue").aggregate([
       {
         $group: {
@@ -303,15 +309,26 @@ function setupGracefulShutdown() {
  * ⚡ Optimized for viral spike handling (30k-50k comments/hour)
  */
 export async function startWorkers() {
-  console.log("\n🚀 ========== WEBHOOK QUEUE WORKER SYSTEM ==========")
-  console.log(`📊 Configuration:`)
+  // 🚨 CRITICAL: Don't start MongoDB worker if BullMQ is enabled
+  if (BULLMQ_ENABLED) {
+    console.log("\n⚠️  ========== MONGODB WORKER DISABLED ==========")
+    console.log("🚀 BullMQ is enabled (BULLMQ_ENABLED=true)")
+    console.log("📊 MongoDB queue worker will NOT start to prevent duplicate processing")
+    console.log("💡 The BullMQ worker will handle all webhook processing")
+    console.log("💡 To use MongoDB worker instead, set BULLMQ_ENABLED=false")
+    console.log("================================================\n")
+    return
+  }
+
+  console.log("\n🚀 ========== WEBHOOK QUEUE WORKER SYSTEM (MongoDB) ==========")
+  console.log("📊 Configuration:")
   console.log(`   - Workers: ${WORKERS}`)
   console.log(`   - Poll Interval: ${POLL_INTERVAL}ms`)
   console.log(`   - Max Retries: ${MAX_RETRIES}`)
   console.log(`   - Retry Delay: ${RETRY_DELAY}ms`)
   console.log(`   - Batch Size: ${BATCH_SIZE}`)
   console.log(`🔥 Target Throughput: 1000-2000 webhooks/min (viral spike ready)`)
-  console.log("====================================================\n")
+  console.log("=============================================================\n")
 
   // 🔥 CRITICAL: Initialize route handler ONCE before starting workers
   await initializeRouteHandler()
@@ -325,7 +342,7 @@ export async function startWorkers() {
     workers.push(workerLoop(i))
   }
 
-  console.log(`✅ Started ${WORKERS} workers\n`)
+  console.log(`✅ Started ${WORKERS} MongoDB workers\n`)
 
   // Wait for all workers (runs indefinitely until shutdown)
   await Promise.all(workers)
