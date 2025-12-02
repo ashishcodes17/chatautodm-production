@@ -23,7 +23,7 @@ let totalFailed = 0;
  */
 async function getDatabase() {
   if (db) return db;
-  
+
   const client = await MongoClient.connect(MONGODB_URI);
   db = client.db();
   return db;
@@ -39,10 +39,10 @@ async function processWebhookData(data) {
   try {
     // Import the webhook processing module
     const processor = require('../lib/webhook-processor.js');
-    
+
     const result = await processor.processWebhook(data);
     return result.success;
-    
+
   } catch (error) {
     console.error('❌ [WORKER] Processing error:', error.message);
     return false;
@@ -87,10 +87,10 @@ async function processNextJob(workerId) {
     }
 
     const startTime = Date.now();
-    
+
     // Process the webhook
     const success = await processWebhookData(job.data);
-    
+
     const processingTime = Date.now() - startTime;
 
     if (success) {
@@ -108,7 +108,7 @@ async function processNextJob(workerId) {
 
       activeWorkers++;
       totalProcessed++;
-      
+
       if (totalProcessed % 100 === 0) {
         console.log(`✅ Processed ${totalProcessed} webhooks (Worker ${workerId})`);
       }
@@ -118,7 +118,7 @@ async function processNextJob(workerId) {
     } else {
       // Handle failure
       const attempts = job.attempts || 1;
-      
+
       if (attempts >= MAX_RETRIES) {
         // Move to dead letter queue
         const deadLetterCollection = db.collection('webhook_dead_letter');
@@ -129,7 +129,7 @@ async function processNextJob(workerId) {
         });
 
         await collection.deleteOne({ _id: job._id });
-        
+
         totalFailed++;
         console.error(`💀 Job failed after ${attempts} attempts (moved to DLQ)`);
 
@@ -168,12 +168,12 @@ async function workerLoop(workerId) {
   while (true) {
     try {
       const processed = await processNextJob(workerId);
-      
+
       if (!processed) {
         // No jobs available, wait before polling again
         await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
       }
-      
+
     } catch (error) {
       console.error(`❌ [Worker ${workerId}] Loop error:`, error.message);
       await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
@@ -185,8 +185,21 @@ async function workerLoop(workerId) {
  * Start all workers
  */
 async function startWorkers() {
-  console.log(`🚀 Starting ${WORKERS} in-process workers...`);
-  
+  // 🚨 CRITICAL: Don't start MongoDB workers if BullMQ is enabled
+  const BULLMQ_ENABLED = process.env.BULLMQ_ENABLED === 'true';
+
+  if (BULLMQ_ENABLED) {
+    console.log('\n⚠️  ========== MONGODB IN-PROCESS WORKERS DISABLED ==========');
+    console.log('🚀 BullMQ is enabled (BULLMQ_ENABLED=true)');
+    console.log('📊 MongoDB in-process workers will NOT start');
+    console.log('💡 BullMQ workers will handle all webhook processing');
+    console.log('💡 To use MongoDB workers, set BULLMQ_ENABLED=false');
+    console.log('============================================================\n');
+    return; // Exit immediately without starting workers
+  }
+
+  console.log(`🚀 Starting ${WORKERS} in-process MongoDB workers...`);
+
   // Test database connection first
   try {
     await getDatabase();
@@ -203,7 +216,7 @@ async function startWorkers() {
     });
   }
 
-  console.log(`✅ Started ${WORKERS} workers\n`);
+  console.log(`✅ Started ${WORKERS} MongoDB in-process workers\n`);
 
   // Log metrics periodically
   setInterval(() => {
