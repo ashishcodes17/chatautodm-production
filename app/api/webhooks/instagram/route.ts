@@ -286,8 +286,8 @@ export async function POST(request: NextRequest) {
     //   queueInitialized = true
     // }
     // Ensure global initialization finished
-               await redisInitPromise
-              await queueInitPromise
+    await redisInitPromise
+    await queueInitPromise
 
 
     // Check if this is an internal worker call (skip queueing, process directly)
@@ -917,7 +917,7 @@ async function handleStoryReplyFlowEnhanced(
     // STEP 2: Send opening DM with buttons (if enabled)
     if (automation.actions?.openingDM?.enabled && automation.actions.openingDM.message) {
       console.log("📤 STEP 2: Sending opening DM with buttons...")
-       await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_opening_response", db)
+      await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_opening_response", db)
 
       const openingSuccess = await sendDirectMessageWithButtons(
         account.instagramUserId,
@@ -930,10 +930,10 @@ async function handleStoryReplyFlowEnhanced(
 
       console.log("📤 Opening DM result:", openingSuccess)
       if (!openingSuccess) {
-               await clearUserState(senderId, account.instagramUserId, db)
-                 // continue flow or fallback
-                     return
-                }
+        await clearUserState(senderId, account.instagramUserId, db)
+        // continue flow or fallback
+        return
+      }
 
       if (openingSuccess) {
         success = true
@@ -952,7 +952,7 @@ async function handleStoryReplyFlowEnhanced(
     // STEP 3: Ask follow if enabled (only if no opening DM or opening DM was skipped)
     if (automation.actions?.askFollow?.enabled && automation.actions.askFollow.message) {
       console.log("📤 STEP 3: Asking user to follow...")
-       await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_follow_confirmation", db)
+      await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_follow_confirmation", db)
 
       const followSuccess = await sendDirectMessageWithButtons(
         account.instagramUserId,
@@ -962,10 +962,10 @@ async function handleStoryReplyFlowEnhanced(
         transformButtons(automation.actions.askFollow.buttons) || [],
       )
       if (!followSuccess) {
-               await clearUserState(senderId, account.instagramUserId, db)
-                 // continue flow or fallback
-                     return
-                }
+        await clearUserState(senderId, account.instagramUserId, db)
+        // continue flow or fallback
+        return
+      }
 
       if (followSuccess) {
         success = true
@@ -1020,7 +1020,7 @@ async function handleStoryReplyFlowEnhanced(
 
       console.log("📤 Main DM result:", mainDMSuccess)
       success = mainDMSuccess
-      
+
 
       if (success) {
         await storeOrUpdateContact(
@@ -1099,37 +1099,37 @@ async function handlePostback(messagingEvent: any, accountId: string, db: any) {
     }
 
     const account = await findAccountByInstagramId(accountId, db)
-//     const account = await db.collection("instagram_accounts").findOne({
-//   $or: [
-//     { instagramUserId: accountId },
-//     { instagramProfessionalId: accountId }
-//   ]
-// })
-//       // 1. Look up account using BOTH IDs always
-// const account = await db.collection("instagram_accounts").findOne({
-//   $or: [
-//     { instagramUserId: accountId },
-//     { instagramProfessionalId: accountId }
-//   ]
-// });
+    //     const account = await db.collection("instagram_accounts").findOne({
+    //   $or: [
+    //     { instagramUserId: accountId },
+    //     { instagramProfessionalId: accountId }
+    //   ]
+    // })
+    //       // 1. Look up account using BOTH IDs always
+    // const account = await db.collection("instagram_accounts").findOne({
+    //   $or: [
+    //     { instagramUserId: accountId },
+    //     { instagramProfessionalId: accountId }
+    //   ]
+    // });
 
-if (!account) {
-  console.log("❌ No account found for:", accountId);
-  return;
-}
+    if (!account) {
+      console.log("❌ No account found for:", accountId);
+      return;
+    }
 
-// // 2. Look up user state using BOTH IDs
-// const userState = await db.collection("user_states").findOne({
-//   senderId,
-//   accountId: {
-//     $in: [
-//       account.instagramUserId,        // how story flow stored it
-//       account.instagramProfessionalId // how webhook arrives
-//     ]
-//   }
-// });
+    // // 2. Look up user state using BOTH IDs
+    // const userState = await db.collection("user_states").findOne({
+    //   senderId,
+    //   accountId: {
+    //     $in: [
+    //       account.instagramUserId,        // how story flow stored it
+    //       account.instagramProfessionalId // how webhook arrives
+    //     ]
+    //   }
+    // });
 
-// console.log("🔘 User state:", userState);
+    // console.log("🔘 User state:", userState);
 
 
 
@@ -1195,22 +1195,22 @@ if (!account) {
       senderId: senderId,
       accountId: account.instagramUserId, // Use correct account ID field
     })
-//      const userState = await db.collection("user_states").findOne({
-//   senderId,
-//   accountId: { 
-//     $in: [
-//       account.instagramUserId,
-//       account.instagramProfessionalId
-//     ] 
-//   }
-// })
+    //      const userState = await db.collection("user_states").findOne({
+    //   senderId,
+    //   accountId: { 
+    //     $in: [
+    //       account.instagramUserId,
+    //       account.instagramProfessionalId
+    //     ] 
+    //   }
+    // })
 
-   console.log("🔘 User state:", userState);
+    console.log("🔘 User state:", userState);
 
-// 🔥 FIX: Ensure automationId is ObjectId
-if (userState && typeof userState.automationId === "string") {
-  userState.automationId = new ObjectId(userState.automationId);
-}
+    // 🔥 FIX: Ensure automationId is ObjectId
+    if (userState && typeof userState.automationId === "string") {
+      userState.automationId = new ObjectId(userState.automationId);
+    }
 
     if (!userState) {
       console.log("❌ No user state found for postback handling")
@@ -1221,10 +1221,10 @@ if (userState && typeof userState.automationId === "string") {
     const automation = await db.collection("automations").findOne({
       _id: userState.automationId,
     })
-//     const automation = await db.collection("automations").findOne({
-//   _id: userState.automationId,
-//   workspaceId: account.workspaceId,
-// })
+    //     const automation = await db.collection("automations").findOne({
+    //   _id: userState.automationId,
+    //   workspaceId: account.workspaceId,
+    // })
 
 
     if (!automation) {
@@ -1926,17 +1926,19 @@ async function updateAccountUsage(account: any, triggerType: string, automationN
       {
         $inc: { dmUsed: 1 },
         $set: { lastDMSent: new Date(), updatedAt: new Date() },
-        $push: {
-          // cast to any due to generic Document typing
-          usageHistory: {
-            type: "dm_sent",
-            timestamp: new Date(),
-            count: 1,
-            triggeredBy: triggerType,
-            messageText: messageText.substring(0, 100),
-            automationName: automationName,
-          } as any,
-        } as any,
+        // 📝 COMMENTED OUT: Usage history disabled to prevent DB bloat with 100k-1M DMs
+        // Only tracking the count now via dmUsed
+        // $push: {
+        //   // cast to any due to generic Document typing
+        //   usageHistory: {
+        //     type: "dm_sent",
+        //     timestamp: new Date(),
+        //     count: 1,
+        //     triggeredBy: triggerType,
+        //     messageText: messageText.substring(0, 100),
+        //     automationName: automationName,
+        //   } as any,
+        // } as any,
       },
     )
 
@@ -2472,7 +2474,7 @@ async function handleCommentToDMFlow(
     // STEP 2: Send opening DM as private reply with buttons (if enabled)
     if (automation.actions?.openingDM?.enabled && automation.actions.openingDM.message) {
       console.log("📤 STEP 2: Sending opening DM as private reply with buttons...")
-        await storeUserState(commenterId, account.instagramUserId, automation._id, "awaiting_opening_response", db)
+      await storeUserState(commenterId, account.instagramUserId, automation._id, "awaiting_opening_response", db)
 
       const openingSuccess = await sendPrivateReplyWithButtons(
         account.instagramUserId,
@@ -2485,10 +2487,10 @@ async function handleCommentToDMFlow(
 
       console.log("📤 Opening DM private reply result:", openingSuccess)
       if (!openingSuccess) {
-               await clearUserState(commenterId, account.instagramUserId, db)
-                 // continue flow or fallback
-                     return
-                }
+        await clearUserState(commenterId, account.instagramUserId, db)
+        // continue flow or fallback
+        return
+      }
 
       if (openingSuccess) {
         success = true
@@ -3164,7 +3166,7 @@ async function handleDMAutomationFlowEnhanced(
     // STEP 1: Send opening DM with buttons (if enabled)
     if (automation.actions?.openingDM?.enabled && automation.actions.openingDM.message) {
       console.log("📤 STEP 1: Sending opening DM with buttons...")
-       await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_opening_response", db)
+      await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_opening_response", db)
 
       const openingSuccess = await sendDirectMessageWithButtons(
         account.instagramUserId,
@@ -3177,10 +3179,10 @@ async function handleDMAutomationFlowEnhanced(
 
       console.log("📤 Opening DM result:", openingSuccess)
       if (!openingSuccess) {
-               await clearUserState(senderId, account.instagramUserId, db)
-                 // continue flow or fallback
-                     return
-                }
+        await clearUserState(senderId, account.instagramUserId, db)
+        // continue flow or fallback
+        return
+      }
 
       if (openingSuccess) {
         success = true
@@ -3203,7 +3205,7 @@ async function handleDMAutomationFlowEnhanced(
       !automation.actions?.openingDM?.enabled
     ) {
       console.log("📤 STEP 2: Asking user to follow with buttons...")
-       await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_follow_confirmation", db)
+      await storeUserState(senderId, account.instagramUserId, automation._id, "awaiting_follow_confirmation", db)
 
       const followSuccess = await sendDirectMessageWithButtons(
         account.instagramUserId,
