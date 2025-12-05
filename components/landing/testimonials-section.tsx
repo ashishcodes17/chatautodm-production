@@ -89,7 +89,7 @@ const TestimonialsSection = () => {
       <div className="max-w-[100vw] mx-auto relative">
         {/* Header */}
         <div className="text-center space-y-6 mb-16 px-4">
-          <h2 className="text-5xl md:text-5xl lg:text-6xl font-black text-gray-900 leading-tight">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 leading-tight">
             Join <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Thousands of</span> creators
             <br />
             and businesses

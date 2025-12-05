@@ -9,7 +9,10 @@ import UmamiTracker from "@/components/umami-tracker" // ✅ client script
 import './globals.css'
 import SmoothScroll from "@/components/smooth-scroll";
 
+import ClientWrapper from "./client-wrapper";  // ⬅️ NEW
+
 export const metadata: Metadata = {
+   
   title: 'ChatAutoDM — Free Instagram DM Tool for Creators',
   description:
     'Automate Instagram DMs for creators and businesses — a free alternative to Manychat, Zorcha, LinkDM, Instant DM, and other expensive tools. Collect leads, reply instantly, and grow your audience effortlessly. Get started today with Comment-to-DM and Story Reply automation flows!',
@@ -33,12 +36,12 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  
   return (
     <html lang="en">
       <body>
         <SWRProvider>
-          {children}
-           <SmoothScroll />
+           <ClientWrapper>{children}</ClientWrapper>
         </SWRProvider>
 
         {/* ✅ Umami client tracker */}
