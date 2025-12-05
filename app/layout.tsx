@@ -7,6 +7,7 @@ import Script from "next/script";
 import { SWRProvider } from "@/lib/swr-provider"
 import UmamiTracker from "@/components/umami-tracker" // ✅ client script
 import './globals.css'
+import SmoothScroll from "@/components/smooth-scroll";
 
 export const metadata: Metadata = {
   title: 'ChatAutoDM — Free Instagram DM Tool for Creators',
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <SWRProvider>
           {children}
+           <SmoothScroll />
         </SWRProvider>
 
         {/* ✅ Umami client tracker */}
