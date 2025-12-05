@@ -171,13 +171,13 @@ const HeroSection = () => {
 
         {/* Heading */}
         <h1 className="text-5xl md:text-5xl lg:text-7xl font-black text-black leading-[0.9]">
-          Convert DMs into <br className="hidden md:block" />
-          customers automatically.
+         Automate Instagram DMs effortlessly. <br className="hidden md:block" />
+         
         </h1>
 
         {/* Description */}
         <p className="text-lg md:text-xl text-gray-700 max-w-3xl mx-auto leading-relaxed">
-         Automate replies, share links, capture leads, and convert customers — without spending your whole day in the DMs.
+       Grow your audience, capture more leads, and turn conversations into revenue — without living inside your DMs
         </p>
 
         {/* CTA */}
