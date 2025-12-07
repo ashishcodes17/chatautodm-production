@@ -77,10 +77,20 @@ function generateSessionToken(): string {
 export async function verifyWorkspaceAccess(workspaceId: string, userId: string) {
   try {
     const db = await getDatabase()
+    console.log("🔍 [VERIFY ACCESS] Looking for workspace:", { _id: workspaceId, userId: userId })
+    
     const workspace = await db.collection("workspaces").findOne({
       _id: workspaceId,
       userId: userId, // Verify the user owns this workspace
     })
+    
+    console.log("🔍 [VERIFY ACCESS] Found workspace:", workspace ? "YES" : "NO")
+    if (!workspace) {
+      // Let's also check what workspaces exist for this user
+      const userWorkspaces = await db.collection("workspaces").find({ userId: userId }).toArray()
+      console.log("🔍 [VERIFY ACCESS] User's workspaces:", userWorkspaces.map(w => ({ _id: w._id, userId: w.userId })))
+    }
+    
     return !!workspace
   } catch (error) {
     console.error("Error verifying workspace access:", error)

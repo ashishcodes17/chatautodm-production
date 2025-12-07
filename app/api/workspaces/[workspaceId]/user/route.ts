@@ -11,12 +11,18 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
 
     const currentUser = await getCurrentUser()
     if (!currentUser) {
+      console.log("❌ [USER API] No current user found")
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
     const userId = currentUser.userId || currentUser._id || currentUser.id
+    console.log("✅ [USER API] Checking access - workspaceId:", workspaceId, "userId:", userId)
+    
     const hasAccess = await verifyWorkspaceAccess(workspaceId, userId)
+    console.log("🔍 [USER API] Access result:", hasAccess)
+    
     if (!hasAccess) {
+      console.log("❌ [USER API] Access denied for workspace:", workspaceId)
       return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 })
     }
 

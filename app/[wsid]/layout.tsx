@@ -127,6 +127,10 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   } = useSWR("/api/auth/me", fetcher, {
     revalidateOnFocus: false,
     dedupingInterval: 60000,
+    // Retry on temporary failures
+    shouldRetryOnError: true,
+    errorRetryCount: 2,
+    errorRetryInterval: 500,
   })
 
   const authenticated = !!authUser && !authError
@@ -142,8 +146,20 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     {
       revalidateOnFocus: false,
       dedupingInterval: 30000,
+      // ⚠️ Retry on error to handle temporary network issues
+      shouldRetryOnError: true,
+      errorRetryCount: 3,
+      errorRetryInterval: 1000,
+      onSuccess: (data) => {
+        console.log("✅ [LAYOUT] Workspace access check success:", data)
+      },
+      onError: (err) => {
+        console.log("❌ [LAYOUT] Workspace access check error:", err)
+      },
     }
   )
+  
+  console.log("[LAYOUT] Current state:", { wsid, authenticated, wsLoading, wsError, wsAccess })
 
   // === REDIRECT LOGIC ===
   //  Run this in render instead of effects to avoid race conditions.
@@ -160,7 +176,9 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     return null
   }
 
-  if (wsLoading) {
+  // ⚠️ CRITICAL: Wait for workspace check to complete before deciding
+  // Don't redirect while still loading - this prevents race conditions
+  if (wsLoading || (!wsAccess && !wsError)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p>Loading workspace...</p>
@@ -168,7 +186,9 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     )
   }
 
-  if (wsError || wsAccess?.success === false) {
+  // Only redirect if we have a definitive error or explicit failure
+  if (wsError || (wsAccess && wsAccess.success === false)) {
+    console.log("❌ [LAYOUT] Redirecting to select-workspace due to:", { wsError, wsAccess })
     router.replace("/select-workspace")
     return null
   }
