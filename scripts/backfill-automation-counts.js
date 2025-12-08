@@ -27,39 +27,39 @@ async function backfillCounts() {
     
     console.log("\n📊 Calculating actual run counts from automation_runs...\n")
 
-    // Get actual counts from automation_runs collection
-    const runCounts = await db.collection("automation_runs").aggregate([
-      { $group: { _id: "$automationId", count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
-    ]).toArray()
-
-    console.log(`Found ${runCounts.length} automations with runs\n`)
+    // Get all automations first
+    const automations = await db.collection("automations").find({}).toArray()
+    
+    console.log(`Found ${automations.length} total automations\n`)
 
     let updated = 0
     let failed = 0
+    let skipped = 0
 
-    for (const item of runCounts) {
-      const automationId = item._id
-      const actualCount = item.count
-
+    for (const automation of automations) {
       try {
-        // Try to convert to ObjectId if it's a valid hex string
-        let query
-        if (typeof automationId === 'string' && automationId.match(/^[0-9a-fA-F]{24}$/)) {
-          query = { _id: new ObjectId(automationId) }
-        } else {
-          query = { _id: automationId }
+        const automationId = automation._id
+        
+        // Count runs for this automation (check both string and ObjectId formats)
+        const stringId = automationId.toString()
+        const actualCount = await db.collection("automation_runs").countDocuments({
+          $or: [
+            { automationId: stringId },
+            { automationId: automationId }
+          ]
+        })
+
+        if (actualCount === 0) {
+          skipped++
+          continue
         }
 
-        // Get current automation
-        const automation = await db.collection("automations").findOne(query)
+        const currentCount = automation.totalRuns || 0
         
-        if (automation) {
-          const currentCount = automation.totalRuns || 0
-          
-          // Update the count
+        // Only update if the count changed
+        if (currentCount !== actualCount) {
           const result = await db.collection("automations").updateOne(
-            query,
+            { _id: automationId },
             {
               $set: {
                 totalRuns: actualCount,
@@ -73,17 +73,17 @@ async function backfillCounts() {
             updated++
           }
         } else {
-          console.log(`⚠️ Automation not found: ${automationId}`)
-          failed++
+          skipped++
         }
       } catch (error) {
-        console.error(`❌ Error updating ${automationId}:`, error.message)
+        console.error(`❌ Error updating ${automation._id}:`, error.message)
         failed++
       }
     }
 
     console.log(`\n✅ Backfill complete!`)
     console.log(`   Updated: ${updated}`)
+    console.log(`   Skipped (no change or no runs): ${skipped}`)
     console.log(`   Failed: ${failed}\n`)
 
   } catch (error) {
