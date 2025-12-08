@@ -26,9 +26,31 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
 
     const automations = await db.collection("automations").find(filter).sort({ createdAt: -1 }).toArray()
 
+    // Add run counts to each automation
+    const automationsWithStats = await Promise.all(
+      automations.map(async (automation) => {
+        // Get total runs from automation document (faster than counting)
+        const totalRuns = automation.totalRuns || 0
+        
+        // Get recent runs if needed
+        const last24Hours = await db.collection("automation_runs").countDocuments({
+          automationId: automation._id,
+          createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+        })
+        
+        return {
+          ...automation,
+          stats: {
+            totalRuns,
+            last24Hours,
+          }
+        }
+      })
+    )
+
     return NextResponse.json({
       success: true,
-      automations,
+      automations: automationsWithStats,
       user: {
         username: workspace.username,
         instagramUserId: workspace.instagramUserId,
@@ -237,6 +259,8 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
       },
 
       isActive: body.isActive ?? true, // respect incoming status
+      totalRuns: 0, // Initialize run counter
+      lastRunAt: null, // Track last run timestamp
       createdAt: new Date(),
       updatedAt: new Date(),
     }

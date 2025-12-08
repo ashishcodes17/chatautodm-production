@@ -4,6 +4,7 @@ import crypto from "crypto"
 import { ObjectId } from "mongodb"
 import { initRedis, getWorkspaceByInstagramId, getAutomation } from "@/lib/redis-cache"
 import { initQueue, enqueueWebhook, isQueueEnabled, PRIORITY } from "@/lib/webhook-queue"
+import { trackAutomationRun } from "@/lib/automation-tracking"
 // Initialize once per server start (NOT per request)
 const redisInitPromise = initRedis().catch((e) =>
   console.error("Redis init error:", e?.message)
@@ -937,6 +938,14 @@ async function handleStoryReplyFlowEnhanced(
 
       if (openingSuccess) {
         success = true
+        // Track automation run on first trigger (opening DM for DM automation/story flow)
+        await trackAutomationRun(
+          automation._id,
+          account.workspaceId,
+          "opening_dm",
+          senderId,
+          { messageText, storyId, conversationId: senderId }
+        )
         await updateAccountUsage(account, "opening_dm", automation.name, messageText)
 
         // Store user state for button flow
@@ -969,6 +978,16 @@ async function handleStoryReplyFlowEnhanced(
 
       if (followSuccess) {
         success = true
+        // Track run if opening DM was not enabled (this is first trigger)
+        if (!automation.actions?.openingDM?.enabled) {
+          await trackAutomationRun(
+            automation._id,
+            account.workspaceId,
+            "ask_follow",
+            senderId,
+            { messageText, storyId, conversationId: senderId }
+          )
+        }
         await updateAccountUsage(account, "ask_follow", automation.name, messageText)
 
         // Store user state for follow flow
@@ -1033,6 +1052,16 @@ async function handleStoryReplyFlowEnhanced(
           account.workspaceId,
         )
 
+        // Track run if this is the first trigger (no opening DM or follow)
+        if (!automation.actions?.openingDM?.enabled && !automation.actions?.askFollow?.enabled) {
+          await trackAutomationRun(
+            automation._id,
+            account.workspaceId,
+            "main_dm",
+            senderId,
+            { messageText, storyId, conversationId: senderId }
+          )
+        }
         await updateAccountUsage(account, "main_dm", automation.name, messageText)
         await clearUserState(senderId, account.instagramUserId, db)
 
@@ -2498,6 +2527,14 @@ async function handleCommentToDMFlow(
 
       if (openingSuccess) {
         success = true
+        // Track automation run on first trigger (opening DM for comment-to-DM flow)
+        await trackAutomationRun(
+          automation._id,
+          account.workspaceId,
+          "opening_dm",
+          commenterId,
+          { messageText: commentText, postId, conversationId: commenterId }
+        )
         await updateAccountUsage(account, "opening_dm", automation.name, commentText)
 
         // Store user state for button flow
@@ -2534,6 +2571,16 @@ async function handleCommentToDMFlow(
 
       if (followSuccess) {
         success = true
+        // Track run if opening DM was not enabled (this is first trigger)
+        if (!automation.actions?.openingDM?.enabled) {
+          await trackAutomationRun(
+            automation._id,
+            account.workspaceId,
+            "ask_follow",
+            commenterId,
+            { messageText: commentText, postId, conversationId: commenterId }
+          )
+        }
         await updateAccountUsage(account, "ask_follow", automation.name, commentText)
 
         // Store user state for follow flow
@@ -2602,6 +2649,16 @@ async function handleCommentToDMFlow(
           account.workspaceId,
         )
 
+        // Track run if this is the first trigger (no opening DM or follow)
+        if (!automation.actions?.openingDM?.enabled && !automation.actions?.askFollow?.enabled) {
+          await trackAutomationRun(
+            automation._id,
+            account.workspaceId,
+            "main_dm",
+            commenterId,
+            { messageText: commentText, postId, conversationId: commenterId }
+          )
+        }
         await updateAccountUsage(account, "main_dm", automation.name, commentText)
         await clearUserState(commenterId, account.instagramUserId, db)
 
