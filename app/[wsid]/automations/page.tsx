@@ -14,6 +14,12 @@ interface Automation {
   type: string
   isActive: boolean
   createdAt: string
+  totalRuns?: number
+  lastRunAt?: string
+  stats?: {
+    totalRuns: number
+    last24Hours: number
+  }
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
@@ -295,7 +301,14 @@ const toggleActive = async (automation: Automation) => {
                           {automation.name}
                         </td>
                         <td className="px-4 py-4 text-gray-600">{getAutomationTypeLabel(automation.type)}</td>
-                        <td className="px-4 py-4 text-gray-600">1</td>
+                        <td className="px-4 py-4 text-gray-600">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-gray-900">{automation.stats?.totalRuns || automation.totalRuns || 0}</span>
+                            {(automation.stats?.last24Hours || 0) > 0 && (
+                              <span className="text-xs text-green-600">+{automation.stats?.last24Hours} today</span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 py-4">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-semibold ${
@@ -348,7 +361,10 @@ const toggleActive = async (automation: Automation) => {
                         <span className="font-medium">Type:</span> {getAutomationTypeLabel(automation.type)}
                       </p>
                       <p>
-                        <span className="font-medium">Runs:</span> 1
+                        <span className="font-medium">Runs:</span> {automation.stats?.totalRuns || automation.totalRuns || 0}
+                        {(automation.stats?.last24Hours || 0) > 0 && (
+                          <span className="ml-1 text-green-600">(+{automation.stats?.last24Hours} today)</span>
+                        )}
                       </p>
                       <p>
                         <span className="font-medium">Last Published:</span>{" "}
