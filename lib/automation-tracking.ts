@@ -50,8 +50,14 @@ export async function trackAutomationRun(
       })
       
       // Increment the run count on the automation document
+      // Handle both string and ObjectId formats
+      const { ObjectId } = require("mongodb")
+      const automationQuery = typeof automationId === 'string' && automationId.match(/^[0-9a-fA-F]{24}$/)
+        ? { _id: new ObjectId(automationId) }
+        : { _id: automationId }
+      
       await db.collection("automations").updateOne(
-        { _id: automationId } as any,
+        automationQuery as any,
         {
           $inc: { totalRuns: 1 },
           $set: { lastRunAt: new Date(), updatedAt: new Date() }
