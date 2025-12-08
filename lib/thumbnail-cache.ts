@@ -1,26 +1,22 @@
-import { createClient } from "ioredis"
+import Redis from "ioredis"
 
-let redisClient: any = null
+let redisClient: Redis | null = null
 
 /**
  * Get Redis client (singleton)
  */
-async function getRedisClient() {
-  if (redisClient && redisClient.isOpen) {
+function getRedisClient(): Redis {
+  if (redisClient && redisClient.status === "ready") {
     return redisClient
   }
 
   try {
-    redisClient = createClient({
-      url: process.env.REDIS_URL || "redis://localhost:6379",
-    })
-
-    await redisClient.connect()
+    redisClient = new Redis(process.env.REDIS_URL || "redis://localhost:6379")
     console.log("✅ Redis connected for thumbnails")
     return redisClient
   } catch (error) {
     console.error("❌ Redis connection error:", error)
-    return null
+    throw error
   }
 }
 
@@ -37,8 +33,7 @@ export async function fetchAndStoreThumbnail(
   type: 'post' | 'story' = 'post'
 ): Promise<string | null> {
   try {
-    const redis = await getRedisClient()
-    if (!redis) return null
+    const redis = getRedisClient()
 
     const redisKey = `thumbnail:${type}:${postId}`
 
@@ -80,8 +75,9 @@ export async function fetchAndStoreThumbnail(
     const imageBuffer = await imageResponse.arrayBuffer()
     const imageBytes = Buffer.from(imageBuffer)
 
-    // Store in Redis (no expiry - forever)
-    await redis.set(redisKey, imageBytes)
+    // Store in Redis as binary (no expiry - forever)
+    // ioredis automatically stores Buffer as binary
+    await redis.set(redisKey, imageBytes as any)
     
     console.log(`✅ Stored thumbnail in Redis: ${redisKey} (${(imageBytes.length / 1024).toFixed(1)} KB)`)
     
@@ -100,10 +96,9 @@ export async function fetchAndStoreThumbnail(
  */
 export async function getThumbnailFromRedis(redisKey: string): Promise<Buffer | null> {
   try {
-    const redis = await getRedisClient()
-    if (!redis) return null
+    const redis = getRedisClient()
 
-    const imageData = await redis.get(Buffer.from(redisKey))
+    const imageData = await redis.getBuffer(redisKey)
     
     if (!imageData) {
       console.log(`⚠️ Thumbnail not found: ${redisKey}`)
@@ -124,8 +119,7 @@ export async function getThumbnailFromRedis(redisKey: string): Promise<Buffer | 
  */
 export async function deleteThumbnailFromRedis(redisKey: string): Promise<boolean> {
   try {
-    const redis = await getRedisClient()
-    if (!redis) return false
+    const redis = getRedisClient()
 
     await redis.del(redisKey)
     console.log(`🗑️ Deleted thumbnail: ${redisKey}`)
