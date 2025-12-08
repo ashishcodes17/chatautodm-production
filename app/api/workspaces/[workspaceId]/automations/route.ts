@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getDatabase } from "@/lib/mongodb"
+import { fetchAndStoreThumbnail } from "@/lib/thumbnail-cache"
 
 export async function GET(request: NextRequest, { params }: { params: { workspaceId: string } }) {
   try {
@@ -197,6 +198,14 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
         ? "dm_automation"
         : body.type || (body.postId ? "comment_reply_flow" : "story_reply_flow")
 
+    // 🖼️ Fetch and store thumbnail in Redis
+    let thumbnailKey = null
+    if (body.postId && body.postId !== "NEXT_POST" && workspace.accessToken) {
+      thumbnailKey = await fetchAndStoreThumbnail(body.postId, workspace.accessToken, 'post')
+    } else if (body.storyId && workspace.accessToken) {
+      thumbnailKey = await fetchAndStoreThumbnail(body.storyId, workspace.accessToken, 'story')
+    }
+
     const automation = {
       workspaceId,
       instagramUserId: workspace.instagramUserId,
@@ -206,6 +215,7 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
       type: automationType,
       selectedStory: body.storyId,
       selectedPost: body.postId === "NEXT_POST" ? null : body.postId, // Don't store "NEXT_POST" as selectedPost
+      thumbnailKey: thumbnailKey, // 🖼️ Redis key for thumbnail
       isNextPost: body.isNextPost === true || body.postId === "NEXT_POST", // 🆕 Flag for next post automations
       snapshotId: snapshotId, // 🆕 Link to media snapshot
 

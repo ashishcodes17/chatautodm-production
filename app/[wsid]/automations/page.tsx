@@ -16,6 +16,9 @@ interface Automation {
   createdAt: string
   totalRuns?: number
   lastRunAt?: string
+  thumbnailKey?: string
+  selectedPost?: string
+  selectedStory?: string
   stats?: {
     totalRuns: number
     last24Hours: number
@@ -201,6 +204,33 @@ const toggleActive = async (automation: Automation) => {
     }
   }
 
+  const getThumbnailElement = (automation: Automation) => {
+    // If we have a thumbnail key, show the image with fallback to icon
+    if (automation.thumbnailKey) {
+      const [, type, id] = automation.thumbnailKey.split(':') // thumbnail:post:123 -> ["thumbnail", "post", "123"]
+      return (
+        <div className="relative flex items-center gap-2">
+          <img 
+            src={`/api/thumbnails/${type}/${id}`}
+            alt={automation.name}
+            className="h-8 w-8 rounded object-cover"
+            loading="lazy"
+            onError={(e) => {
+              // Fallback to icon if image fails to load
+              const target = e.target as HTMLImageElement
+              target.style.display = 'none'
+            }}
+          />
+          <span style={{ display: 'none' }}>
+            {getAutomationIcon(automation.type)}
+          </span>
+        </div>
+      )
+    }
+    // Fallback to icon if no thumbnail
+    return getAutomationIcon(automation.type)
+  }
+
   const getAutomationTypeLabel = (type: string) => {
     switch (type) {
       case "dm_automation":
@@ -297,7 +327,7 @@ const toggleActive = async (automation: Automation) => {
                     {automations.map((automation) => (
                       <tr key={automation._id} className="hover:bg-gray-50 transition">
                         <td className="px-4 py-4 whitespace-nowrap font-medium text-gray-900 flex items-center gap-2">
-                          {getAutomationIcon(automation.type)}
+                          {getThumbnailElement(automation)}
                           {automation.name}
                         </td>
                         <td className="px-4 py-4 text-gray-600">{getAutomationTypeLabel(automation.type)}</td>
@@ -344,7 +374,7 @@ const toggleActive = async (automation: Automation) => {
                   <div key={automation._id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        {getAutomationIcon(automation.type)}
+                        {getThumbnailElement(automation)}
                         <h2 className="font-semibold text-gray-900">{automation.name}</h2>
                       </div>
                       <span
