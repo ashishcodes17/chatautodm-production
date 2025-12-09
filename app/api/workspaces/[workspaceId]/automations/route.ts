@@ -200,10 +200,16 @@ export async function POST(request: NextRequest, { params }: { params: { workspa
 
     // 🖼️ Fetch and store thumbnail in Redis
     let thumbnailKey = null
-    if (body.postId && body.postId !== "NEXT_POST" && workspace.accessToken) {
-      thumbnailKey = await fetchAndStoreThumbnail(body.postId, workspace.accessToken, 'post')
-    } else if (body.storyId && workspace.accessToken) {
-      thumbnailKey = await fetchAndStoreThumbnail(body.storyId, workspace.accessToken, 'story')
+    const accessToken = instagramAccount?.accessToken || workspace.accessToken
+    
+    if (body.postId && body.postId !== "NEXT_POST" && accessToken) {
+      console.log(`🖼️ Fetching thumbnail for post ${body.postId}`)
+      thumbnailKey = await fetchAndStoreThumbnail(body.postId, accessToken, 'post')
+      console.log(`🖼️ Thumbnail key: ${thumbnailKey}`)
+    } else if (body.storyId && accessToken) {
+      console.log(`🖼️ Fetching thumbnail for story ${body.storyId}`)
+      thumbnailKey = await fetchAndStoreThumbnail(body.storyId, accessToken, 'story')
+      console.log(`🖼️ Thumbnail key: ${thumbnailKey}`)
     }
 
     const automation = {
