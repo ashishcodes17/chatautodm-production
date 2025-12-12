@@ -1952,13 +1952,29 @@ async function updateAccountUsage(account: any, triggerType: string, automationN
     console.log(`📊 [DEBUG] Updating account usage for: ${account.instagramUserId}`)
     console.log(`📊 [DEBUG] Trigger type: ${triggerType}, Automation: ${automationName}`)
 
+    // Get current month for tracking
+    const now = new Date()
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+
+    // Check if month changed and reset counter if needed
+    const accountData = await db.collection("instagram_accounts").findOne({
+      $or: [{ instagramUserId: account.instagramUserId }, { instagramProfessionalId: account.instagramUserId }],
+    })
+
+    const isNewMonth = accountData?.currentMonth !== currentMonth
+
     const updateResult = await db.collection("instagram_accounts").updateOne(
       {
         $or: [{ instagramUserId: account.instagramUserId }, { instagramProfessionalId: account.instagramUserId }],
       },
       {
-        $inc: { dmUsed: 1 },
-        $set: { lastDMSent: new Date(), updatedAt: new Date() },
+        $inc: { dmUsed: 1, monthlyDmUsed: isNewMonth ? 0 : 1 },
+        $set: { 
+          lastDMSent: new Date(), 
+          updatedAt: new Date(), 
+          currentMonth,
+          ...(isNewMonth && { monthlyDmUsed: 1 })
+        },
         // 📝 COMMENTED OUT: Usage history disabled to prevent DB bloat with 100k-1M DMs
         // Only tracking the count now via dmUsed
         // $push: {

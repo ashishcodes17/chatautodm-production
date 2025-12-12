@@ -710,7 +710,7 @@ export default function SettingsPage() {
             <Separator />
 
             {/* Danger Zone */}
-            <div className="space-y-4">
+       {/*   <div className="space-y-4">
               <div className="flex items-center space-x-2">
                 <Shield className="h-4 w-4 md:h-5 md:w-5 text-red-600" />
                 <h4 className="font-medium text-red-900 text-sm md:text-base">Danger Zone</h4>
@@ -759,9 +759,10 @@ export default function SettingsPage() {
                 </AlertDialog>
               </div>
             </div>
+            */}  
           </CardContent>
         </Card>
-
+ 
         {/* Additional Settings Sections */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {/* Notifications */}

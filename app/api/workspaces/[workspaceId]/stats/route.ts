@@ -14,14 +14,29 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
 
     const instagramUserId = workspace.instagramUserId
 
-    // Get Instagram account for DM usage
+    // Get current month date range
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    startOfMonth.setHours(0, 0, 0, 0)
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    endOfMonth.setHours(23, 59, 59, 999)
+
+    // Get Instagram account
     const instagramAccount = await db.collection("instagram_accounts").findOne({
       $or: [{ instagramUserId }, { instagramProfessionalId: instagramUserId }],
     })
 
-    const dmsSent = instagramAccount?.dmUsed || 0
+    if (!instagramAccount) {
+      return NextResponse.json({ error: "Instagram account not found" }, { status: 404 })
+    }
 
-    // Get total contacts
+    // Get monthly DM usage from instagram_accounts
+    // If monthlyDmUsed doesn't exist or is from a previous month, it will show 0
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+    const accountMonth = instagramAccount.currentMonth
+    const dmsSent = accountMonth === currentMonth ? (instagramAccount.monthlyDmUsed || 0) : 0
+
+    // Get total contacts (all-time, as this is a cumulative metric)
     const totalContacts = await db.collection("contacts").countDocuments({ instagramUserId })
 
     // Get active automations count
@@ -34,8 +49,11 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
       $or: [{ instagramUserId }, { workspaceId }],
     })
 
-    // Calculate conversion rate (comments to DMs)
-    const totalComments = await db.collection("comments").countDocuments({ instagramUserId })
+    // Calculate conversion rate (comments to DMs) for current month
+    const totalComments = await db.collection("comments").countDocuments({
+      instagramUserId,
+      createdAt: { $gte: startOfMonth, $lte: endOfMonth },
+    })
     const conversionRate = totalComments > 0 ? Math.round((dmsSent / totalComments) * 100) : 0
 
     // Get today's stats
