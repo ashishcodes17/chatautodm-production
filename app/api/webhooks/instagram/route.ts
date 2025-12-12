@@ -1963,18 +1963,32 @@ async function updateAccountUsage(account: any, triggerType: string, automationN
 
     const isNewMonth = accountData?.currentMonth !== currentMonth
 
+    // Prepare update operation based on whether it's a new month
+    const updateOperation: any = {
+      $inc: { dmUsed: 1 },
+      $set: { 
+        lastDMSent: new Date(), 
+        updatedAt: new Date(), 
+        currentMonth,
+      }
+    }
+
+    if (isNewMonth) {
+      // New month: reset counter to 1
+      updateOperation.$set.monthlyDmUsed = 1
+    } else {
+      // Same month: increment counter
+      updateOperation.$inc.monthlyDmUsed = 1
+    }
+
     const updateResult = await db.collection("instagram_accounts").updateOne(
       {
         $or: [{ instagramUserId: account.instagramUserId }, { instagramProfessionalId: account.instagramUserId }],
       },
-      {
-        $inc: { dmUsed: 1, monthlyDmUsed: isNewMonth ? 0 : 1 },
-        $set: { 
-          lastDMSent: new Date(), 
-          updatedAt: new Date(), 
-          currentMonth,
-          ...(isNewMonth && { monthlyDmUsed: 1 })
-        },
+      updateOperation,
+    )
+
+    console.log(`📊 [DEBUG] Update operation:`, { isNewMonth, currentMonth, accountMonth: accountData?.currentMonth })
         // 📝 COMMENTED OUT: Usage history disabled to prevent DB bloat with 100k-1M DMs
         // Only tracking the count now via dmUsed
         // $push: {
@@ -1988,10 +2002,11 @@ async function updateAccountUsage(account: any, triggerType: string, automationN
         //     automationName: automationName,
         //   } as any,
         // } as any,
-      },
-    )
 
     console.log(`📊 [DEBUG] Update result:`, updateResult)
+
+    // Note: Admin stats updates are handled by scheduled refresh (every 60s)
+    // No per-DM notifications needed - avoids DB hammer at scale (20k+ DMs/12hrs)
 
     if (account.workspaceId) {
       await db.collection("workspaces").updateOne(

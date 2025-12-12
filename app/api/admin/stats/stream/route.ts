@@ -1,68 +1,93 @@
-// app/api/admin/stats/route.ts
+// app/api/admin/stats/stream/route.ts
 import { NextRequest } from "next/server";
-import { getDatabase } from "@/lib/mongodb";
+import { getAdminStats, refreshAdminStatsCache } from "@/lib/admin-stats-cache";
+import { getClient } from "@/lib/redis-factory";
 
 // Force dynamic since we are using SSE
 export const dynamic = "force-dynamic";
 
-// Function to compute stats
-const fetchStats = async () => {
-  const db = await getDatabase();
-  const [totalUsers, totalWorkspaces, totalContacts, totalAutomations, activeAutomations] =
-    await Promise.all([
-      db.collection("users").countDocuments(),
-      db.collection("workspaces").countDocuments(),
-      db.collection("contacts").countDocuments(),
-      db.collection("automations").countDocuments(),
-      db.collection("automations").countDocuments({ isActive: true }),
-    ]);
-
-  const instagramAccounts = await db
-    .collection("instagram_accounts")
-    .find({}, { projection: { dmUsed: 1 } })
-    .toArray();
-  const totalDMsSent = instagramAccounts.reduce(
-    (sum: number, acc: any) => sum + (acc.dmUsed || 0),
-    0
-  );
-
-  return {
-    totalUsers,
-    totalWorkspaces,
-    totalDMsSent,
-    totalContacts,
-    totalAutomations,
-    activeAutomations,
-  };
-};
-
 // SSE handler
 export async function GET(_request: NextRequest) {
   const encoder = new TextEncoder();
+  const redis = getClient("pubsub");
   
   const stream = new ReadableStream({
     async start(controller) {
-      // Send initial stats immediately
+      // Send initial stats immediately from cache
       try {
-        const initialStats = await fetchStats();
+        const initialStats = await getAdminStats();
         controller.enqueue(encoder.encode(`event: sync\ndata: ${JSON.stringify(initialStats)}\n\n`));
       } catch (err) {
         controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ message: "stats_error" })}\n\n`));
       }
 
-      // Create interval for this specific connection
-      const connectionInterval = setInterval(async () => {
-        try {
-          const stats = await fetchStats();
-          controller.enqueue(encoder.encode(`event: sync\ndata: ${JSON.stringify(stats)}\n\n`));
-        } catch (err) {
-          controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ message: "stats_error" })}\n\n`));
-        }
-      }, 2000);
+      let pollInterval: NodeJS.Timeout | null = null;
+      
+      let lastUpdateTime = Date.now();
+      
+      // Real-time updates via Redis Pub/Sub (if available)
+      if (redis) {
+        console.log("📡 SSE using Redis Pub/Sub for real-time updates");
+        
+        // Subscribe to stats update events
+        redis.subscribe("admin:stats:updated", (err) => {
+          if (err) {
+            console.error("❌ Redis subscribe error:", err);
+          }
+        });
+
+        // Listen for published updates with debouncing
+        redis.on("message", async (channel, message) => {
+          if (channel === "admin:stats:updated") {
+            // Debounce: Only send if 5s passed since last update (prevents spam to client)
+            const now = Date.now();
+            if (now - lastUpdateTime < 5000) {
+              console.log("⏱️ SSE update debounced (too frequent)");
+              return;
+            }
+            lastUpdateTime = now;
+            
+            try {
+              const stats = await getAdminStats();
+              controller.enqueue(encoder.encode(`event: sync\ndata: ${JSON.stringify(stats)}\n\n`));
+            } catch (err) {
+              console.error("❌ Error sending stats update:", err);
+            }
+          }
+        });
+
+        // Fallback: Poll every 30s in case Pub/Sub misses something
+        pollInterval = setInterval(async () => {
+          try {
+            const stats = await getAdminStats();
+            controller.enqueue(encoder.encode(`event: sync\ndata: ${JSON.stringify(stats)}\n\n`));
+            lastUpdateTime = Date.now();
+          } catch (err) {
+            controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ message: "stats_error" })}\n\n`));
+          }
+        }, 30000);
+      } else {
+        // Fallback: Poll cache every 15 seconds if Redis unavailable
+        console.log("📊 SSE using polling (Redis unavailable)");
+        pollInterval = setInterval(async () => {
+          try {
+            const stats = await getAdminStats();
+            controller.enqueue(encoder.encode(`event: sync\ndata: ${JSON.stringify(stats)}\n\n`));
+          } catch (err) {
+            controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ message: "stats_error" })}\n\n`));
+          }
+        }, 15000);
+      }
 
       // Cleanup on client disconnect
       const cleanup = () => {
-        clearInterval(connectionInterval);
+        if (pollInterval) {
+          clearInterval(pollInterval);
+        }
+        if (redis) {
+          redis.unsubscribe("admin:stats:updated");
+          redis.removeAllListeners("message");
+        }
       };
 
       // Handle abort signal

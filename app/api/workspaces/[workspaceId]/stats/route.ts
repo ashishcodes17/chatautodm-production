@@ -31,10 +31,31 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
     }
 
     // Get monthly DM usage from instagram_accounts
-    // If monthlyDmUsed doesn't exist or is from a previous month, it will show 0
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
     const accountMonth = instagramAccount.currentMonth
-    const dmsSent = accountMonth === currentMonth ? (instagramAccount.monthlyDmUsed || 0) : 0
+    
+    let dmsSent = 0
+    
+    console.log(`📊 Monthly DM tracking - Account: ${instagramAccount._id}, currentMonth: ${currentMonth}, accountMonth: ${accountMonth}, monthlyDmUsed: ${instagramAccount.monthlyDmUsed}`)
+    
+    if (accountMonth === currentMonth && instagramAccount.monthlyDmUsed !== undefined) {
+      // New tracking: Use monthlyDmUsed if available and current month matches
+      dmsSent = instagramAccount.monthlyDmUsed
+      console.log(`✅ Using monthlyDmUsed: ${dmsSent}`)
+    } else if (!accountMonth) {
+      // Fallback for accounts without monthly tracking: Count from automation_logs this month
+      console.log("⚠️ No monthly tracking, counting from automation_logs...")
+      dmsSent = await db.collection("automation_logs").countDocuments({
+        accountId: instagramAccount._id,
+        success: true,
+        timestamp: { $gte: startOfMonth, $lte: endOfMonth },
+      })
+      console.log(`📊 Counted ${dmsSent} DMs from automation_logs`)
+    } else {
+      // Month changed, counter should be 0 until next DM
+      console.log(`⚠️ Month mismatch: account is ${accountMonth}, current is ${currentMonth}`)
+      dmsSent = 0
+    }
 
     // Get total contacts (all-time, as this is a cumulative metric)
     const totalContacts = await db.collection("contacts").countDocuments({ instagramUserId })
