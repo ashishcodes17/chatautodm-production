@@ -17,18 +17,41 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getUser(request)
     const db = await getDatabase()
-    const workspacesCollection = db.collection("workspaces")
+    
+    // Fetch workspaces and Instagram accounts in parallel (much faster!)
+    const [workspaces, allInstagramAccounts] = await Promise.all([
+      db.collection("workspaces")
+        .find({ userId: user._id })
+        .sort({ createdAt: -1 })
+        .toArray(),
+      db.collection("instagram_accounts")
+        .find({ userId: user._id })
+        .toArray()
+    ])
 
-    const workspaces = await workspacesCollection.find({ userId: user._id }).sort({ createdAt: -1 }).toArray()
+    // Map Instagram accounts to workspaces (in-memory, super fast)
+    const accountsByWorkspace = new Map()
+    allInstagramAccounts.forEach(account => {
+      const wsId = account.workspaceId
+      if (!accountsByWorkspace.has(wsId)) {
+        accountsByWorkspace.set(wsId, [])
+      }
+      accountsByWorkspace.get(wsId).push(account)
+    })
 
-    // Get Instagram accounts for each workspace
-    const instagramAccountsCollection = db.collection("instagram_accounts")
-    for (const workspace of workspaces) {
-      const accounts = await instagramAccountsCollection.find({ workspaceId: workspace._id }).toArray()
+    // Attach accounts to workspaces
+    workspaces.forEach(workspace => {
+      const workspaceId = workspace._id
+      const accounts = accountsByWorkspace.get(workspaceId) || []
       workspace.instagramAccounts = accounts
-    }
+    })
 
-    return NextResponse.json(workspaces)
+    // Add cache headers for browser caching (1 minute)
+    return NextResponse.json(workspaces, {
+      headers: {
+        'Cache-Control': 'public, max-age=60, stale-while-revalidate=30'
+      }
+    })
   } catch (error) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
   }

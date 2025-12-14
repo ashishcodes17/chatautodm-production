@@ -79,19 +79,16 @@ export async function verifyWorkspaceAccess(workspaceId: string, userId: string)
     const db = await getDatabase()
     console.log("🔍 [VERIFY ACCESS] Looking for workspace:", { _id: workspaceId, userId: userId })
     
+    // Use findOne with both fields for faster lookup
     const workspace = await db.collection("workspaces").findOne({
       _id: workspaceId,
-      userId: userId, // Verify the user owns this workspace
+      userId: userId,
     })
     
-    console.log("🔍 [VERIFY ACCESS] Found workspace:", workspace ? "YES" : "NO")
-    if (!workspace) {
-      // Let's also check what workspaces exist for this user
-      const userWorkspaces = await db.collection("workspaces").find({ userId: userId }).toArray()
-      console.log("🔍 [VERIFY ACCESS] User's workspaces:", userWorkspaces.map(w => ({ _id: w._id, userId: w.userId })))
-    }
+    const hasAccess = !!workspace
+    console.log("🔍 [VERIFY ACCESS] Access granted:", hasAccess)
     
-    return !!workspace
+    return hasAccess
   } catch (error) {
     console.error("Error verifying workspace access:", error)
     return false

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Race Condition Test - ChatAutoDM</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #7c3aed;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        button {
+            background: #7c3aed;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #6d28d9;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .success { color: #00ff00; }
+        .error { color: #ff4444; }
+        .warning { color: #ffaa00; }
+        .info { color: #00aaff; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+        }
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Race Condition Test Suite</h1>
+        <p>This tool simulates rapid workspace switching to test the authentication race condition fix.</p>
+
+        <div class="test-section">
+            <h3>Configuration</h3>
+            <label>Workspace ID (get from your local select-workspace page):</label>
+            <input type="text" id="workspaceId" placeholder="ws_1234567890_abc123def" />
+            
+            <label>API Base URL:</label>
+            <input type="text" id="baseUrl" value="http://localhost:3000" />
+        </div>
+
+        <div class="test-section">
+            <h3>Test Controls</h3>
+            <button onclick="runSingleTest()">🔄 Single Navigation Test</button>
+            <button onclick="runParallelApiTest()">⚡ Parallel API Call Test (10x)</button>
+            <button onclick="runRapidNavigationTest()">🚀 Rapid Navigation Test (20x)</button>
+            <button onclick="runStressTest()">💣 Full Stress Test (100x)</button>
+            <button onclick="clearLogs()">🗑️ Clear Logs</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="successCount">0</div>
+                <div class="stat-label">Successful Loads</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="failCount">0</div>
+                <div class="stat-label">Failed Loads</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="redirectCount">0</div>
+                <div class="stat-label">Unexpected Redirects</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Logs</h3>
+            <div class="log" id="logArea"></div>
+        </div>
+    </div>
+
+    <script>
+        let successCount = 0;
+        let failCount = 0;
+        let redirectCount = 0;
+
+        function log(message, type = 'info') {
+            const logArea = document.getElementById('logArea');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type;
+            logArea.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function updateStats() {
+            document.getElementById('successCount').textContent = successCount;
+            document.getElementById('failCount').textContent = failCount;
+            document.getElementById('redirectCount').textContent = redirectCount;
+        }
+
+        function clearLogs() {
+            document.getElementById('logArea').innerHTML = '';
+            successCount = 0;
+            failCount = 0;
+            redirectCount = 0;
+            updateStats();
+            log('Logs cleared', 'info');
+        }
+
+        function getConfig() {
+            const workspaceId = document.getElementById('workspaceId').value;
+            const baseUrl = document.getElementById('baseUrl').value;
+            
+            if (!workspaceId) {
+                alert('Please enter a workspace ID first!');
+                return null;
+            }
+            
+            return { workspaceId, baseUrl };
+        }
+
+        async function testAuth() {
+            const config = getConfig();
+            if (!config) return false;
+
+            try {
+                const response = await fetch(`${config.baseUrl}/api/auth/me`, {
+                    credentials: 'include'
+                });
+                return response.ok;
+            } catch (error) {
+                log(`❌ Auth check failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function testWorkspaceAccess(config) {
+            const startTime = Date.now();
+            try {
+                const response = await fetch(`${config.baseUrl}/api/workspaces/${config.workspaceId}/user`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                const duration = Date.now() - startTime;
+
+                if (response.ok && data.success) {
+                    log(`✅ Workspace access verified in ${duration}ms`, 'success');
+                    successCount++;
+                    return true;
+                } else if (response.status === 403) {
+                    log(`❌ 403 Forbidden - you don't own this workspace`, 'error');
+                    failCount++;
+                    return false;
+                } else {
+                    log(`⚠️ Unexpected response: ${response.status} - ${JSON.stringify(data)}`, 'warning');
+                    failCount++;
+                    return false;
+                }
+            } catch (error) {
+                const duration = Date.now() - startTime;
+                log(`❌ Request failed after ${duration}ms: ${error.message}`, 'error');
+                failCount++;
+                return false;
+            }
+        }
+
+        async function runSingleTest() {
+            log('🔄 Starting single navigation test...', 'info');
+            const config = getConfig();
+            if (!config) return;
+
+            const authOk = await testAuth();
+            if (!authOk) {
+                log('❌ Not authenticated. Please login first!', 'error');
+                return;
+            }
+
+            await testWorkspaceAccess(config);
+            updateStats();
+        }
+
+        async function runParallelApiTest() {
+            log('⚡ Starting parallel API call test (10 simultaneous requests)...', 'info');
+            const config = getConfig();
+            if (!config) return;
+
+            const authOk = await testAuth();
+            if (!authOk) {
+                log('❌ Not authenticated. Please login first!', 'error');
+                return;
+            }
+
+            // Simulate the race condition: parallel calls to auth/me and workspace/user
+            const promises = [];
+            for (let i = 0; i < 10; i++) {
+                promises.push(
+                    Promise.all([
+                        fetch(`${config.baseUrl}/api/auth/me`, { credentials: 'include' }),
+                        fetch(`${config.baseUrl}/api/workspaces/${config.workspaceId}/user`, { credentials: 'include' })
+                    ])
+                );
+            }
+
+            try {
+                const results = await Promise.all(promises);
+                let parallelSuccess = 0;
+                let parallelFail = 0;
+
+                results.forEach((result, i) => {
+                    const [authRes, wsRes] = result;
+                    if (authRes.ok && wsRes.ok) {
+                        parallelSuccess++;
+                    } else {
+                        parallelFail++;
+                        log(`⚠️ Parallel request ${i + 1} failed - Auth: ${authRes.status}, WS: ${wsRes.status}`, 'warning');
+                    }
+                });
+
+                log(`✅ Parallel test complete: ${parallelSuccess} success, ${parallelFail} failed`, parallelSuccess === 10 ? 'success' : 'warning');
+                successCount += parallelSuccess;
+                failCount += parallelFail;
+            } catch (error) {
+                log(`❌ Parallel test error: ${error.message}`, 'error');
+                failCount++;
+            }
+
+            updateStats();
+        }
+
+        async function runRapidNavigationTest() {
+            log('🚀 Starting rapid navigation test (20 quick requests)...', 'info');
+            const config = getConfig();
+            if (!config) return;
+
+            for (let i = 1; i <= 20; i++) {
+                log(`🔄 Request ${i}/20`, 'info');
+                await testWorkspaceAccess(config);
+                // Small delay between requests (50ms) to simulate rapid navigation
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+
+            log('✅ Rapid navigation test complete!', 'success');
+            updateStats();
+        }
+
+        async function runStressTest() {
+            if (!confirm('This will make 100 API requests. Continue?')) return;
+            
+            log('💣 Starting full stress test (100 requests with varying delays)...', 'info');
+            const config = getConfig();
+            if (!config) return;
+
+            const initialSuccess = successCount;
+            const initialFail = failCount;
+
+            for (let i = 1; i <= 100; i++) {
+                if (i % 10 === 0) {
+                    log(`📊 Progress: ${i}/100 requests completed`, 'info');
+                }
+                
+                await testWorkspaceAccess(config);
+                
+                // Vary the delay to simulate different network conditions
+                const delay = Math.random() * 100;
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+
+            const testSuccess = successCount - initialSuccess;
+            const testFail = failCount - initialFail;
+            const successRate = ((testSuccess / 100) * 100).toFixed(1);
+
+            log(`✅ Stress test complete!`, 'success');
+            log(`📊 Results: ${testSuccess}/100 successful (${successRate}%)`, successRate > 95 ? 'success' : 'warning');
+            
+            if (successRate === '100.0') {
+                log('🎉 PERFECT! No race conditions detected!', 'success');
+            } else if (successRate > 95) {
+                log('⚠️ Some failures detected - check logs above', 'warning');
+            } else {
+                log('❌ High failure rate - race condition may still exist', 'error');
+            }
+
+            updateStats();
+        }
+
+        // Auto-test when page loads if workspace ID is in URL
+        window.addEventListener('load', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const wsid = urlParams.get('wsid');
+            if (wsid) {
+                document.getElementById('workspaceId').value = wsid;
+                log(`📝 Workspace ID loaded from URL: ${wsid}`, 'info');
+            }
+            log('🧪 Test suite ready. Please configure and run tests.', 'info');
+        });
+    </script>
+</body>
+</html>

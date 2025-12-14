@@ -174,6 +174,7 @@ interface Workspace {
 export default function SelectWorkspacePage() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showCreateWorkspace, setShowCreateWorkspace] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const router = useRouter()
@@ -181,18 +182,48 @@ export default function SelectWorkspacePage() {
   useEffect(() => {
     const fetchWorkspaces = async () => {
       try {
-        const response = await fetch("/api/workspaces")
+        const response = await fetch("/api/workspaces", { 
+          credentials: "include",
+          // Add cache control for faster subsequent loads
+          headers: {
+            'Cache-Control': 'max-age=60' // Cache for 1 minute
+          }
+        })
         if (response.ok) {
           const data = await response.json()
           setWorkspaces(data)
+          setError(null)
+          // Cache in sessionStorage for instant loading on return visits
+          sessionStorage.setItem('cached_workspaces', JSON.stringify(data))
+          sessionStorage.setItem('cached_workspaces_time', Date.now().toString())
+        } else if (response.status === 401) {
+          // Not authenticated - check cookie and redirect
+          console.warn("❌ 401 Unauthorized - Cookie might not be set yet")
+          setError("Authentication failed. Redirecting to login...")
+          setTimeout(() => router.push("/"), 1500)
         } else {
-          router.push("/")
+          console.error("Error fetching workspaces:", response.status)
+          setError(`Failed to load workspaces (${response.status})`)
         }
       } catch (error) {
         console.error("Error fetching workspaces:", error)
-        router.push("/")
+        setError("Network error. Please check your connection.")
       } finally {
         setLoading(false)
+      }
+    }
+
+    // Try to load from cache first for instant display
+    const cachedData = sessionStorage.getItem('cached_workspaces')
+    const cacheTime = sessionStorage.getItem('cached_workspaces_time')
+    
+    if (cachedData && cacheTime) {
+      const age = Date.now() - parseInt(cacheTime)
+      // Use cache if less than 2 minutes old
+      if (age < 2 * 60 * 1000) {
+        setWorkspaces(JSON.parse(cachedData))
+        setLoading(false)
+        return // Skip API call, use cache
       }
     }
 
@@ -205,7 +236,9 @@ export default function SelectWorkspacePage() {
     router.push(`/${newWorkspace._id}/dashboard`)
   }
 
-  const handleWorkspaceSelect = (workspaceId: string) => {
+  const handleWorkspaceSelect = async (workspaceId: string) => {
+    // Optimistically set workspace as valid to prevent redirect loop
+    sessionStorage.setItem(`ws_valid_${workspaceId}`, Date.now().toString())
     router.push(`/${workspaceId}/dashboard`)
   }
 
@@ -232,6 +265,26 @@ export default function SelectWorkspacePage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-2"></div>
           <p className="text-gray-600 text-sm">Loading workspaces...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error if exists
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md px-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <p className="text-red-600 font-medium mb-2">⚠️ Error</p>
+            <p className="text-gray-700 text-sm">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -270,7 +323,10 @@ export default function SelectWorkspacePage() {
 
         {/* Workspace Cards */}
         <div className="space-y-3 mb-6">
-          {workspaces.map((workspace) => (
+          {workspaces.map((workspace) => {
+            const profileUrl = workspace.instagramAccounts?.[0]?.profilePictureUrl
+            
+            return (
             <button
               key={workspace._id}
               onClick={() => handleWorkspaceSelect(workspace._id)}
@@ -281,19 +337,19 @@ export default function SelectWorkspacePage() {
               
               {/* Profile Picture */}
               <div className="relative z-10 flex-shrink-0">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center border-2 border-white shadow-sm group-hover:scale-105 transition-transform duration-200">
-                  {workspace.profilePic ? (
-                    <img
-                      src={workspace.profilePic}
-                      alt={workspace.name}
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  ) : (
+                {profileUrl ? (
+                  <img
+                    src={profileUrl}
+                    alt={workspace.name}
+                    className="h-14 w-14 rounded-full object-cover border-2 border-white shadow-sm group-hover:scale-105 transition-transform duration-200"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center border-2 border-white shadow-sm group-hover:scale-105 transition-transform duration-200">
                     <span className="text-xl font-bold text-purple-600">
                       {workspace.name.charAt(0).toUpperCase()}
                     </span>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
               
               {/* Workspace Info */}
@@ -315,7 +371,7 @@ export default function SelectWorkspacePage() {
                 </div>
               </div>
             </button>
-          ))}
+          )})}
         </div>
 
         {/* Add New Account Button */}

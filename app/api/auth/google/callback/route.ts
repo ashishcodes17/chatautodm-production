@@ -5,13 +5,21 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const code = searchParams.get("code")
   const error = searchParams.get("error")
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://www.chatautodm.com"
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+
+  console.log("[GOOGLE CALLBACK] Request received:", {
+    code: code ? "EXISTS" : "MISSING",
+    error,
+    url: request.url
+  })
 
   if (error) {
+    console.error("[GOOGLE CALLBACK] OAuth error:", error)
     return NextResponse.redirect(`${baseUrl}/?error=access_denied`)
   }
 
   if (!code) {
+    console.error("[GOOGLE CALLBACK] No code provided")
     return NextResponse.redirect(`${baseUrl}/?error=no_code`)
   }
 
@@ -71,13 +79,18 @@ export async function GET(request: NextRequest) {
     const user = await usersCollection.findOne({ email: googleUser.email })
 
     if (!user) {
+      console.error("[GOOGLE CALLBACK] Failed to create or retrieve user")
       throw new Error("Failed to create or retrieve user")
     }
 
-    console.log("[v0] User object being stored in cookie:", JSON.stringify(user, null, 2))
-
+    console.log("[GOOGLE CALLBACK] User authenticated:", {
+      userId: user._id,
+      email: user.email
+    })
+    
     const cookieValue = JSON.stringify(user)
-    console.log("[v0] Cookie value being set:", cookieValue)
+    
+    console.log("[GOOGLE CALLBACK] Cookie value length:", cookieValue.length)
 
     const forwardedHost = request.headers.get("x-forwarded-host")
     const requestUrl = new URL(request.url)
@@ -86,27 +99,37 @@ export async function GET(request: NextRequest) {
     // Remove www. prefix to make cookie work across www and non-www
     const cookieDomain = actualHost.startsWith("www.") ? actualHost.substring(4) : actualHost
 
+    console.log("[GOOGLE CALLBACK] Cookie setup:", {
+      forwardedHost,
+      requestHost: requestUrl.hostname,
+      cookieDomain,
+      isLocalhost: cookieDomain === "localhost"
+    })
+
     console.log("[v0] Forwarded host:", forwardedHost)
     console.log("[v0] Request hostname:", requestUrl.hostname)
     console.log("[v0] Setting cookie for domain:", cookieDomain)
 
     const response = NextResponse.redirect(`${baseUrl}/select-workspace`)
 
-    response.cookies.set("user_session", cookieValue, {
+    // Set cookie with proper configuration for localhost
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "lax" as const,
       maxAge: 60 * 60 * 24 * 30, // 30 days
       path: "/",
-      // Only set domain if not localhost (for development)
-      ...(cookieDomain !== "localhost" && { domain: cookieDomain }),
-    })
+    }
 
-    console.log("[v0] Cookie set successfully, redirecting to:", `${baseUrl}/select-workspace`)
+    // Only add domain for production (not localhost)
+    response.cookies.set("user_session", cookieValue, cookieOptions)
+    
+    console.log("[GOOGLE CALLBACK] Cookie set with options:", cookieOptions)
+    console.log("[GOOGLE CALLBACK] Redirecting to:", `${baseUrl}/select-workspace`)
 
     return response
   } catch (error) {
-    console.error("Google OAuth error:", error)
+    console.error("[GOOGLE CALLBACK] Error during OAuth:", error)
     return NextResponse.redirect(new URL("/?error=oauth_failed", request.url))
   }
 }
