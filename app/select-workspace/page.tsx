@@ -335,13 +335,24 @@ export default function SelectWorkspacePage() {
               {/* Hover gradient background */}
               <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-pink-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
               
-              {/* Profile Picture */}
+              {/* Profile Picture - Exact same as Sidebar approach */}
               <div className="relative z-10 flex-shrink-0">
                 {profileUrl ? (
                   <img
                     src={profileUrl}
                     alt={workspace.name}
                     className="h-14 w-14 rounded-full object-cover border-2 border-white shadow-sm group-hover:scale-105 transition-transform duration-200"
+                    onError={(e) => {
+                      // Replace with fallback element on error
+                      const parent = e.currentTarget.parentElement
+                      if (parent) {
+                        e.currentTarget.remove()
+                        const fallback = document.createElement('div')
+                        fallback.className = 'w-14 h-14 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center border-2 border-white shadow-sm group-hover:scale-105 transition-transform duration-200'
+                        fallback.innerHTML = `<span class="text-xl font-bold text-purple-600">${workspace.name.charAt(0).toUpperCase()}</span>`
+                        parent.appendChild(fallback)
+                      }
+                    }}
                   />
                 ) : (
                   <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center border-2 border-white shadow-sm group-hover:scale-105 transition-transform duration-200">
