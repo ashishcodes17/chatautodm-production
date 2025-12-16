@@ -119,134 +119,55 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   const params = useParams()
   const wsid = params.wsid as string
   const router = useRouter()
-  const hasRedirected = useRef(false) // Prevent multiple redirects
+  const hasRedirected = useRef(false)
 
-  // 1) AUTH CHECK — runs first
+  // ⚡ BLAZING FAST: Single combined auth + ownership check
   const {
-    data: authUser,
-    error: authError,
-    isLoading: authLoading,
-  } = useSWR("/api/auth/me", fetcher, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-    dedupingInterval: 120000, // 2 minutes - reduce duplicate calls
-    shouldRetryOnError: true,
-    errorRetryCount: 1, // Only retry once for faster failure
-    errorRetryInterval: 300, // Shorter retry interval (300ms)
-  })
-
-  const authenticated = !!authUser && !authError
-
-  // 2) WORKSPACE OWNERSHIP CHECK — runs only AFTER auth succeeds
-  const {
-    data: wsAccess,
-    error: wsError,
-    isLoading: wsLoading,
+    data: verifyData,
+    error: verifyError,
+    isLoading: verifyLoading,
   } = useSWR(
-    authenticated ? `/api/workspaces/${wsid}/user` : null,
+    `/api/workspaces/${wsid}/verify`,
     fetcher,
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-      dedupingInterval: 120000, // 2 minutes for consistency
-      shouldRetryOnError: false, // Don't retry on 403 - it won't change
-      errorRetryCount: 1,
-      errorRetryInterval: 300,
-      onSuccess: (data) => {
-        console.log("✅ [LAYOUT] Workspace access check success:", data)
-        // Cache valid workspace access in sessionStorage
-        if (data?.success) {
-          sessionStorage.setItem(`ws_valid_${wsid}`, Date.now().toString())
-        } else {
-          // Clear invalid cache
-          sessionStorage.removeItem(`ws_valid_${wsid}`)
-        }
-      },
-      onError: (err) => {
-        console.log("❌ [LAYOUT] Workspace access check error:", err)
-        sessionStorage.removeItem(`ws_valid_${wsid}`)
-      },
+      dedupingInterval: 120000, // 2 minutes - safe caching
+      shouldRetryOnError: true,
+      errorRetryCount: 1, // 1 retry for transient errors
+      errorRetryInterval: 500,
+      refreshWhenHidden: false,
+      refreshWhenOffline: false,
     }
   )
   
-  // Check sessionStorage for optimistic validation
-  const cachedValid = sessionStorage.getItem(`ws_valid_${wsid}`)
-  const cacheAge = cachedValid ? Date.now() - parseInt(cachedValid) : Infinity
-  const isCachedValid = cacheAge < 2 * 60 * 1000 // 2 minute cache (reduced for security)
-
-  console.log("[LAYOUT] Current state:", { wsid, authenticated, wsLoading, wsError, wsAccess, isCachedValid, cacheAge })
-  
-  // === REDIRECT LOGIC IN useEffect TO AVOID RACE CONDITIONS ===
+  // ⚡ FAST REDIRECT: Single check, immediate action
   useEffect(() => {
-    if (hasRedirected.current) return // Already redirected
+    if (hasRedirected.current) return
+    if (verifyLoading) return
     
-    // If we have valid cache, don't redirect while loading
-    if (isCachedValid && wsLoading) {
-      console.log("⏳ [LAYOUT] Using cached validation, waiting for confirmation...")
-      return
-    }
-    
-    // Only redirect when we have definitive data (not loading)
-    if (wsLoading) return
-    if (!wsAccess && !wsError) return // Still waiting for data
-    
-    // Redirect on explicit failure (but give cache a chance during initial load)
-    if (wsAccess?.success === false) {
-      console.log("❌ [LAYOUT] Redirecting to select-workspace - user doesn't own workspace", wsAccess)
-      sessionStorage.removeItem(`ws_valid_${wsid}`) // Clear bad cache
+    // Any error or denied access → instant redirect to home
+    if (verifyError || !verifyData?.hasAccess) {
       hasRedirected.current = true
-      router.replace("/select-workspace")
+      router.replace("/")
     }
-    
-    // Also redirect on persistent errors
-    if (wsError && !isCachedValid) {
-      console.log("❌ [LAYOUT] Redirecting due to error:", wsError)
-      sessionStorage.removeItem(`ws_valid_${wsid}`)
-      hasRedirected.current = true
-      router.replace("/select-workspace")
-    }
-  }, [wsLoading, wsAccess, wsError, router, isCachedValid, wsid])
+  }, [verifyLoading, verifyData, verifyError, router])
 
-  if (authError || !authenticated) {
-    return null
-  }
-
-  // ⚠️ CRITICAL: Wait for workspace check UNLESS we have valid cache
-  if ((wsLoading || (!wsAccess && !wsError)) && !isCachedValid) {
+  // ⚡ FAST LOADING: Single check
+  if (verifyLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-purple-600 mx-auto mb-2"></div>
-          <p className="text-gray-600 text-sm">Loading workspace...</p>
+          <p className="text-gray-600 text-sm">Loading...</p>
         </div>
       </div>
     )
   }
 
-  // If we have an error but valid cache, continue rendering
-  if (wsError) {
-    const cachedValid = sessionStorage.getItem(`ws_valid_${wsid}`)
-    const cacheTime = cachedValid ? parseInt(cachedValid) : 0
-    const isCacheValid = Date.now() - cacheTime < 5 * 60 * 1000 // 5 minutes
-    
-    if (!isCacheValid) {
-      console.log("❌ [LAYOUT] Error and no valid cache - showing error state")
-      return (
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="text-center">
-            <p className="text-red-600 mb-4">Unable to load workspace. Please try again.</p>
-            <button 
-              onClick={() => router.replace("/select-workspace")}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-            >
-              Back to Workspaces
-            </button>
-          </div>
-        </div>
-      )
-    } else {
-      console.log("⚠️ [LAYOUT] Using cached workspace validation due to temporary error")
-    }
+  // Don't render on error (redirect will happen)
+  if (verifyError || !verifyData?.hasAccess) {
+    return null
   }
 
   // === AUTH + WORKSPACE VERIFIED, SHOW DASHBOARD ===

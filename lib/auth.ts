@@ -3,7 +3,7 @@ import { getDatabase } from "@/lib/mongodb"
 
 export async function getCurrentUser() {
   try {
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const userSession = cookieStore.get("user_session")?.value
 
     if (!userSession) {
@@ -20,7 +20,7 @@ export async function getCurrentUser() {
 }
 export async function getCurrentUserFixed() {
   try {
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const userSession = cookieStore.get("user_session")?.value
 
     if (!userSession) return null

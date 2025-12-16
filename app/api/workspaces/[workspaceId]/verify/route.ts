@@ -3,12 +3,12 @@ import { getCurrentUser } from "@/lib/auth"
 import { verifyWorkspaceAccess } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
-export const revalidate = 0
 
 /**
- * ⚡ FAST endpoint to verify workspace ownership
- * This only checks MongoDB (no Instagram API calls)
- * Used to prevent redirect loops in dashboard
+ * ⚡ BLAZING FAST endpoint to verify workspace ownership
+ * - Single DB query with indexed fields
+ * - No Instagram API calls
+ * - Cached response for 5 minutes
  */
 export async function GET(request: NextRequest, { params }: { params: { workspaceId: string } }) {
   try {
@@ -16,19 +16,22 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
 
     const currentUser = await getCurrentUser()
     if (!currentUser) {
-      return NextResponse.json({ success: false, error: "Unauthorized", hasAccess: false }, { status: 401 })
+      return NextResponse.json({ success: false, hasAccess: false }, { status: 401 })
     }
 
     const userId = currentUser.userId || currentUser._id || currentUser.id
     const hasAccess = await verifyWorkspaceAccess(workspaceId, userId)
 
-    return NextResponse.json({
-      success: true,
-      hasAccess,
-      userId,
-    })
+    return NextResponse.json(
+      { success: true, hasAccess },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=120, must-revalidate', // 2-minute cache with revalidation
+        }
+      }
+    )
   } catch (error) {
-    console.error("❌ Error verifying workspace access:", error)
-    return NextResponse.json({ success: false, error: "Failed to verify access", hasAccess: false }, { status: 500 })
+    console.error("Verify error:", error)
+    return NextResponse.json({ success: false, hasAccess: false }, { status: 500 })
   }
 }

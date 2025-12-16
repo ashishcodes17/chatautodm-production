@@ -174,56 +174,48 @@ interface Workspace {
 export default function SelectWorkspacePage() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [showCreateWorkspace, setShowCreateWorkspace] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
+    const fetchWithRetry = async (url: string, opts: RequestInit = {}, attempts = 3, timeoutMs = 6000): Promise<Response> => {
+      for (let i = 0; i < attempts; i++) {
+        const controller = new AbortController()
+        const id = setTimeout(() => controller.abort(), timeoutMs)
+        try {
+          const res = await fetch(url, { ...opts, signal: controller.signal })
+          clearTimeout(id)
+          return res
+        } catch (err) {
+          clearTimeout(id)
+          const isLast = i === attempts - 1
+          // If aborted or network error, retry unless last attempt
+          if (isLast) throw err
+          await new Promise(r => setTimeout(r, 500 * Math.pow(2, i)))
+        }
+      }
+      // Should never reach here
+      throw new Error("Failed to fetch after retries")
+    }
+
     const fetchWorkspaces = async () => {
       try {
-        const response = await fetch("/api/workspaces", { 
-          credentials: "include",
-          // Add cache control for faster subsequent loads
-          headers: {
-            'Cache-Control': 'max-age=60' // Cache for 1 minute
-          }
+        const response = await fetchWithRetry("/api/workspaces", { 
+          credentials: "include"
         })
         if (response.ok) {
           const data = await response.json()
           setWorkspaces(data)
-          setError(null)
-          // Cache in sessionStorage for instant loading on return visits
-          sessionStorage.setItem('cached_workspaces', JSON.stringify(data))
-          sessionStorage.setItem('cached_workspaces_time', Date.now().toString())
-        } else if (response.status === 401) {
-          // Not authenticated - check cookie and redirect
-          console.warn("❌ 401 Unauthorized - Cookie might not be set yet")
-          setError("Authentication failed. Redirecting to login...")
-          setTimeout(() => router.push("/"), 1500)
+          setLoading(false)
         } else {
-          console.error("Error fetching workspaces:", response.status)
-          setError(`Failed to load workspaces (${response.status})`)
+          // Any non-OK response (401, 403, 500, etc.) → redirect to home
+          router.push("/")
         }
       } catch (error) {
+        // Network error, timeout, or any other failure → redirect to home
         console.error("Error fetching workspaces:", error)
-        setError("Network error. Please check your connection.")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    // Try to load from cache first for instant display
-    const cachedData = sessionStorage.getItem('cached_workspaces')
-    const cacheTime = sessionStorage.getItem('cached_workspaces_time')
-    
-    if (cachedData && cacheTime) {
-      const age = Date.now() - parseInt(cacheTime)
-      // Use cache if less than 2 minutes old
-      if (age < 2 * 60 * 1000) {
-        setWorkspaces(JSON.parse(cachedData))
-        setLoading(false)
-        return // Skip API call, use cache
+        router.push("/")
       }
     }
 
@@ -237,8 +229,6 @@ export default function SelectWorkspacePage() {
   }
 
   const handleWorkspaceSelect = async (workspaceId: string) => {
-    // Optimistically set workspace as valid to prevent redirect loop
-    sessionStorage.setItem(`ws_valid_${workspaceId}`, Date.now().toString())
     router.push(`/${workspaceId}/dashboard`)
   }
 
@@ -270,32 +260,12 @@ export default function SelectWorkspacePage() {
     )
   }
 
-  // Show error if exists
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center max-w-md px-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-            <p className="text-red-600 font-medium mb-2">⚠️ Error</p>
-            <p className="text-gray-700 text-sm">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   // 🔹 If no workspaces → show only the connect card
   if (workspaces.length === 0) {
     return (
       <div className="bg-muted flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
         <div className="w-full max-w-2xl mx-auto">
-          <ConnectInstagramCard onConnect={handleInstagramConnect} connecting={connecting} />
+          <ConnectInstagramCard />
         </div>
       </div>
     )
