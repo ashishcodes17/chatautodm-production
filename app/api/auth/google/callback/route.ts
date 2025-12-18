@@ -97,7 +97,10 @@ export async function GET(request: NextRequest) {
     const actualHost = forwardedHost || requestUrl.hostname
 
     // Remove www. prefix to make cookie work across www and non-www
-    const cookieDomain = actualHost.startsWith("www.") ? actualHost.substring(4) : actualHost
+    // For Coolify/proxy setups, this ensures cookies work on both www and non-www domains
+    const cookieDomain = actualHost.startsWith("www.") 
+      ? actualHost.substring(4) 
+      : actualHost
 
     console.log("[GOOGLE CALLBACK] Cookie setup:", {
       forwardedHost,
@@ -112,8 +115,8 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.redirect(`${baseUrl}/select-workspace`)
 
-    // Set cookie with proper configuration for localhost
-    const cookieOptions = {
+    // Set cookie with proper configuration
+    const cookieOptions: any = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax" as const,
@@ -121,7 +124,11 @@ export async function GET(request: NextRequest) {
       path: "/",
     }
 
-    // Only add domain for production (not localhost)
+    // Add domain for production (not localhost) to make cookie work across subdomains
+    if (cookieDomain !== "localhost") {
+      cookieOptions.domain = cookieDomain
+    }
+
     response.cookies.set("user_session", cookieValue, cookieOptions)
     
     console.log("[GOOGLE CALLBACK] Cookie set with options:", cookieOptions)
