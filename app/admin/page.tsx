@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Users, MessageCircle, TrendingUp, Activity, Database, Zap, ArrowUpRight, Search, Download } from "lucide-react"
+import { Users, MessageCircle, TrendingUp, Activity, Database, Zap, ArrowUpRight, Search, Download, Crown, Shield } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,6 +35,20 @@ interface UserData {
   lastActive?: string
 }
 
+interface AccountPlan {
+  _id: string
+  username: string
+  workspaceId: string
+  workspaceName: string
+  workspacePlan: string | null
+  currentPlan: string
+  followersCount?: number
+  dmUsed?: number
+  monthlyDmUsed?: number
+  createdAt: string
+  upgradedAt?: string
+}
+
 export default function AdminPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -44,6 +58,11 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [timeRange, setTimeRange] = useState("7d")
   const [es, setEs] = useState<EventSource | null>(null)
+
+  // Plans management state
+  const [accounts, setAccounts] = useState<AccountPlan[]>([])
+  const [planSearchQuery, setPlanSearchQuery] = useState("")
+  const [updatingPlan, setUpdatingPlan] = useState<string | null>(null)
 
   // Data explorer state
   const [activeCollection, setActiveCollection] = useState<"workspaces" | "instagram_accounts" | "automations">("workspaces")
@@ -72,9 +91,10 @@ export default function AdminPage() {
 
   const fetchAdminData = async () => {
     try {
-      const [statsRes, usersRes] = await Promise.all([
+      const [statsRes, usersRes, plansRes] = await Promise.all([
         fetch(`/api/admin/stats?range=${timeRange}`),
         fetch("/api/admin/users"),
+        fetch("/api/admin/plans"),
       ])
 
       if (statsRes.ok) {
@@ -87,10 +107,45 @@ export default function AdminPage() {
         const usersData = await usersRes.json()
         setUsers(usersData.users || [])
       }
+
+      if (plansRes.ok) {
+        const plansData = await plansRes.json()
+        setAccounts(plansData.accounts || [])
+      }
     } catch (error) {
       console.error("Failed to fetch admin data:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const updateUserPlan = async (accountId: string, newPlan: string) => {
+    setUpdatingPlan(accountId)
+    try {
+      const response = await fetch("/api/admin/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId, newPlan }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        // Refresh accounts list
+        const plansRes = await fetch("/api/admin/plans")
+        if (plansRes.ok) {
+          const plansData = await plansRes.json()
+          setAccounts(plansData.accounts || [])
+        }
+        alert(`✅ ${result.message}`)
+      } else {
+        const error = await response.json()
+        alert(`❌ Failed to update plan: ${error.error}`)
+      }
+    } catch (error) {
+      console.error("Failed to update plan:", error)
+      alert("❌ Failed to update plan")
+    } finally {
+      setUpdatingPlan(null)
     }
   }
 
@@ -302,6 +357,7 @@ export default function AdminPage() {
         <Tabs defaultValue="users" className="space-y-6">
           <TabsList className="bg-white border border-gray-200">
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="plans">Plans</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="activity">Activity</TabsTrigger>
             <TabsTrigger value="data">Data</TabsTrigger>
@@ -385,6 +441,149 @@ export default function AdminPage() {
                       ))}
                     </TableBody>
                   </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Plans Tab */}
+          <TabsContent value="plans" className="space-y-4">
+            <Card className="border-0 shadow-lg">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Crown className="h-5 w-5 text-purple-600" />
+                    Plan Management
+                  </CardTitle>
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Search by username..."
+                        value={planSearchQuery}
+                        onChange={(e) => setPlanSearchQuery(e.target.value)}
+                        className="pl-10 w-64"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">
+                  Manage user plans and remove branding for creators
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead>Username</TableHead>
+                        <TableHead>Workspace</TableHead>
+                        <TableHead>Current Plan</TableHead>
+                        <TableHead>Followers</TableHead>
+                        <TableHead>DMs Sent</TableHead>
+                        <TableHead>Joined</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {accounts
+                        .filter((account) => 
+                          account.username.toLowerCase().includes(planSearchQuery.toLowerCase())
+                        )
+                        .map((account) => (
+                          <TableRow key={account._id}>
+                            <TableCell>
+                              <div className="font-medium">@{account.username}</div>
+                            </TableCell>
+                            <TableCell className="text-gray-600">
+                              {account.workspaceName}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={
+                                  account.currentPlan === 'pro' ? 'default' : 
+                                  account.currentPlan === 'elite' ? 'destructive' : 
+                                  'secondary'
+                                }
+                                className={
+                                  account.currentPlan === 'pro' 
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : account.currentPlan === 'elite'
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : 'bg-gray-100 text-gray-700'
+                                }
+                              >
+                                {account.currentPlan === 'pro' && <Crown className="h-3 w-3 mr-1" />}
+                                {account.currentPlan === 'elite' && <Zap className="h-3 w-3 mr-1" />}
+                                {account.currentPlan === 'freeby' && <Shield className="h-3 w-3 mr-1" />}
+                                {account.currentPlan.toUpperCase()}
+                              </Badge>
+                              {account.upgradedAt && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  Upgraded {new Date(account.upgradedAt).toLocaleDateString()}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-gray-600">
+                              {account.followersCount?.toLocaleString() || 'N/A'}
+                            </TableCell>
+                            <TableCell>
+                              <span className="font-medium">
+                                {account.monthlyDmUsed || account.dmUsed || 0}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-gray-600">
+                              {new Date(account.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                {account.currentPlan !== 'freeby' && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => updateUserPlan(account._id, 'freeby')}
+                                    disabled={updatingPlan === account._id}
+                                    className="text-xs"
+                                  >
+                                    {updatingPlan === account._id ? '...' : 'Set Freeby'}
+                                  </Button>
+                                )}
+                                {account.currentPlan !== 'pro' && (
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => updateUserPlan(account._id, 'pro')}
+                                    disabled={updatingPlan === account._id}
+                                    className="text-xs bg-blue-600 hover:bg-blue-700"
+                                  >
+                                    {updatingPlan === account._id ? '...' : 'Set Pro'}
+                                  </Button>
+                                )}
+                                {account.currentPlan !== 'elite' && (
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => updateUserPlan(account._id, 'elite')}
+                                    disabled={updatingPlan === account._id}
+                                    className="text-xs bg-purple-600 hover:bg-purple-700"
+                                  >
+                                    {updatingPlan === account._id ? '...' : 'Set Elite'}
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h4 className="font-semibold text-blue-900 mb-2">Plan Details:</h4>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li><strong>Freeby:</strong> Default plan - Shows "Sent by ChatAutoDM⚡" branding</li>
+                    <li><strong>Pro:</strong> No branding messages (for nice creators who asked)</li>
+                    <li><strong>Elite:</strong> Premium tier - No branding + future benefits</li>
+                  </ul>
                 </div>
               </CardContent>
             </Card>

@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
       userId: user._id,
       name: name.trim(),
       description: description?.trim() || "",
+      plan: 'freeby',
       createdAt: new Date(),
       updatedAt: new Date(),
     }

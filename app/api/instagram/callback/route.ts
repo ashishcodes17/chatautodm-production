@@ -136,6 +136,7 @@ export async function GET(request: NextRequest) {
       name: `@${igUser.username}`,
       instagramUserId: igUser.id, // App-scoped ID
       instagramProfessionalId: igUser.user_id, // Professional account ID (used in webhooks)
+      plan: 'freeby', // Default plan for new workspaces
       createdAt: new Date(),
       updatedAt: new Date(),
     })
@@ -155,6 +156,7 @@ export async function GET(request: NextRequest) {
       profilePictureUrl: igUser.profile_picture_url || null,
       tokenExpiresAt: new Date(Date.now() + (longTokenData.expires_in || 60 * 86400) * 1000),
       isConnected: true,
+      plan: 'freeby', // Default plan for new accounts
       createdAt: new Date(),
       updatedAt: new Date(),
     })

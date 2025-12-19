@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
       userId: user._id,
       name: `@${instagramUsername}`,
       description: `Workspace for Instagram account @${instagramUsername}`,
+      plan: 'freeby',
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -91,6 +92,7 @@ export async function POST(request: NextRequest) {
       mediaCount: mediaCount || 0,
       accountType: accountType || "BUSINESS",
       isConnected: true,
+      plan: 'freeby',
       connectedAt: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
