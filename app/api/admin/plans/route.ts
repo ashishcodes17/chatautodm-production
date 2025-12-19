@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { getDatabase } from "@/lib/mongodb"
+import { invalidateWorkspaceCache } from "@/lib/redis-cache"
 
 const ADMIN_EMAILS = [
   "ashishgampala@gmail.com",
@@ -128,7 +129,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 🚀 INVALIDATE REDIS CACHE - Force fresh data load with new plan
+    await invalidateWorkspaceCache(account.instagramUserId, account.instagramProfessionalId)
+
     console.log(`✅ Admin upgraded @${account.username} to ${newPlan} plan`)
+    console.log(`🗑️ Cache invalidated for workspace - fresh data will load on next webhook`)
 
     return NextResponse.json({
       success: true,

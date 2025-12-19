@@ -68,7 +68,8 @@ export async function warmCache(db: Db): Promise<void> {
         instagramProfessionalId: acc.instagramProfessionalId,
         accessToken: acc.accessToken,
         workspaceId: acc.workspaceId,
-        username: acc.username
+        username: acc.username,
+        plan: acc.plan || 'freeby' // Include plan for branding logic
       };
 
       if (acc.instagramUserId)
@@ -279,7 +280,8 @@ export async function getWorkspaceByInstagramId(instagramId: string, db: Db): Pr
       instagramProfessionalId: account.instagramProfessionalId,
       accessToken: account.accessToken,
       workspaceId: account.workspaceId,
-      username: account.username
+      username: account.username,
+      plan: account.plan || 'freeby' // Include plan for branding logic
     };
 
     await safeRedisSet(cacheKey, normalized, TTL.WORKSPACE);
@@ -297,12 +299,18 @@ export async function getWorkspaceByInstagramId(instagramId: string, db: Db): Pr
   });
 
   if (workspace) {
+    // Fetch instagram account to get plan
+    const instagramAccount = await db.collection("instagram_accounts").findOne({
+      workspaceId: workspace._id
+    });
+    
     const normalized = {
       instagramUserId: workspace.instagramUserId || workspace.instagramAccount?.instagramUserId,
       instagramProfessionalId: workspace.instagramProfessionalId || workspace.instagramAccount?.instagramProfessionalId,
       accessToken: workspace.accessToken || workspace.instagramAccount?.accessToken,
       workspaceId: workspace._id,
-      username: workspace.name?.replace("@", "") || workspace.username
+      username: workspace.name?.replace("@", "") || workspace.username,
+      plan: instagramAccount?.plan || workspace.plan || 'freeby' // Include plan for branding logic
     };
 
     await safeRedisSet(cacheKey, normalized, TTL.WORKSPACE);
@@ -312,6 +320,38 @@ export async function getWorkspaceByInstagramId(instagramId: string, db: Db): Pr
   return null;
 }
 
+/**
+ * Invalidate workspace cache for a specific account
+ * Call this when updating account/workspace data (e.g., plan changes)
+ */
+export async function invalidateWorkspaceCache(instagramUserId?: string, instagramProfessionalId?: string): Promise<void> {
+  if (!REDIS_ENABLED || !isFactoryInitialized()) {
+    console.log("⚠️ Redis not enabled, skipping cache invalidation")
+    return
+  }
+
+  const client = getClient("cache")
+  if (!client) return
+
+  try {
+    const keysToDelete: string[] = []
+    
+    if (instagramUserId) {
+      keysToDelete.push(`workspace:${instagramUserId}`)
+    }
+    
+    if (instagramProfessionalId) {
+      keysToDelete.push(`workspace:${instagramProfessionalId}`)
+    }
+
+    if (keysToDelete.length > 0) {
+      await client.del(keysToDelete)
+      console.log(`🗑️ Invalidated cache for keys:`, keysToDelete)
+    }
+  } catch (err: any) {
+    console.warn("⚠️ Cache invalidation failed:", err?.message || err)
+  }
+}
 
 
 export async function getCacheStats(): Promise<any> {

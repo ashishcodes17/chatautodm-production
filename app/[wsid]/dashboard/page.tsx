@@ -226,7 +226,7 @@ export default function DashboardPage() {
             <CardContent>
               <div className="flex items-center gap-4">
                 <div>
-                  <p className="text-2xl font-bold">Free</p>
+                  <p className="text-2xl font-bold capitalize">{user?.plan || 'Freeby'}</p>
                   <p className="text-sm text-gray-600">Monthly</p>
                 </div>
                 <Badge variant="secondary" className="bg-green-100 text-green-700">

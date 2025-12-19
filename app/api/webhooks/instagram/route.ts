@@ -98,12 +98,19 @@ async function findAccountByInstagramId(instagramId: string, db: any) {
 
   if (workspace) {
     console.log(`🔍 [DEBUG] Found workspace:`, workspace.name)
+    
+    // Also fetch the instagram account to get the plan
+    const instagramAccount = await db.collection("instagram_accounts").findOne({
+      workspaceId: workspace._id,
+    })
+    
     return {
       instagramUserId: workspace.instagramUserId || workspace.instagramAccount?.instagramUserId,
       instagramProfessionalId: workspace.instagramProfessionalId || workspace.instagramAccount?.instagramProfessionalId,
       accessToken: workspace.accessToken || workspace.instagramAccount?.accessToken,
       workspaceId: workspace._id,
       username: workspace.name?.replace("@", "") || workspace.username,
+      plan: instagramAccount?.plan || workspace.plan || 'freeby', // Include plan field
     }
   }
 
@@ -2055,12 +2062,13 @@ async function logAutomation(
 async function sendBrandingMessageIfNeeded(account: any, senderId: string, db: any, automationName: string) {
   // Implementation from your existing code
   try {
-    if (account.plan !== "free" && account.plan) {
-      console.log("⚠️ Skipping branding for paid user")
+    // Skip branding for pro and elite users only
+    if (account.plan === "pro" || account.plan === "elite") {
+      console.log("⚠️ Skipping branding for paid user (plan:", account.plan, ")")
       return
     }
 
-    console.log("🔍 Checking if branding message should be sent...")
+    console.log("🔍 Checking if branding message should be sent for freeby user (plan:", account.plan || "not set", ")...")
 
     const today = new Date()
     today.setHours(0, 0, 0, 0)

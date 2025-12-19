@@ -83,6 +83,7 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
         accountType: userJson.account_type,
         profilePictureUrl: userJson.profile_picture_url,
         posts: userJson.media_count,
+        plan: igAccount.plan || workspace.plan || 'freeby', // Include plan for UI display
         thumbnails: media.map((m: any) => ({
           id: m.id,
           type: m.media_type,

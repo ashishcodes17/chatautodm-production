@@ -91,6 +91,8 @@ export function Sidebar() {
         return "from-blue-500 to-purple-600"
       case "elite":
         return "from-purple-500 to-pink-600"
+      case "freeby":
+      case "free":
       default:
         return "from-gray-400 to-gray-600"
     }
@@ -101,6 +103,8 @@ export function Sidebar() {
         return Crown
       case "elite":
         return Sparkles
+      case "freeby":
+      case "free":
       default:
         return Shield
     }

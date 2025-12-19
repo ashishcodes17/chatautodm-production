@@ -63,6 +63,7 @@ export default function AdminPage() {
   const [accounts, setAccounts] = useState<AccountPlan[]>([])
   const [planSearchQuery, setPlanSearchQuery] = useState("")
   const [updatingPlan, setUpdatingPlan] = useState<string | null>(null)
+  const [clearingCache, setClearingCache] = useState(false)
 
   // Data explorer state
   const [activeCollection, setActiveCollection] = useState<"workspaces" | "instagram_accounts" | "automations">("workspaces")
@@ -146,6 +147,32 @@ export default function AdminPage() {
       alert("❌ Failed to update plan")
     } finally {
       setUpdatingPlan(null)
+    }
+  }
+
+  const clearCache = async () => {
+    if (!confirm("Clear all workspace cache? This will force fresh data load with plan fields.")) {
+      return
+    }
+    
+    setClearingCache(true)
+    try {
+      const response = await fetch("/api/admin/clear-cache", {
+        method: "POST",
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        alert(`✅ ${result.message}\n\nCache cleared! New plan changes will take effect immediately.`)
+      } else {
+        const error = await response.json()
+        alert(`❌ Failed to clear cache: ${error.error}`)
+      }
+    } catch (error) {
+      console.error("Failed to clear cache:", error)
+      alert("❌ Failed to clear cache")
+    } finally {
+      setClearingCache(false)
     }
   }
 
@@ -456,6 +483,15 @@ export default function AdminPage() {
                     Plan Management
                   </CardTitle>
                   <div className="flex items-center gap-3">
+                    <Button
+                      onClick={clearCache}
+                      disabled={clearingCache}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                    >
+                      {clearingCache ? "Clearing..." : "🗑️ Clear Cache"}
+                    </Button>
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
@@ -472,6 +508,12 @@ export default function AdminPage() {
                 </p>
               </CardHeader>
               <CardContent>
+                <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <p className="text-sm text-yellow-800">
+                    <strong>First time?</strong> Click "Clear Cache" button above to remove old cached data. 
+                    After that, plan changes will auto-update the cache.
+                  </p>
+                </div>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
