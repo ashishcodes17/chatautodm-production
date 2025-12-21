@@ -152,230 +152,277 @@
 
 
 
+"use client"
 
-import { useEffect, useState } from "react"
+import React from "react"
 import { useRouter } from "next/navigation"
+import useSWR from "swr"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Instagram } from "lucide-react"
-import { CreateWorkspaceDialog } from "@/components/create-workspace-dialog"
 import { ConnectInstagramCard } from "@/components/instaconnectformdiv"
-import Image from "next/image";
+
+/* ---------------------------------- */
+/* Utils */
+/* ---------------------------------- */
+
+const fetcher = (url: string) =>
+  fetch(url, { credentials: "include" }).then((res) => {
+    if (!res.ok) throw new Error("Fetch failed")
+    return res.json()
+  })
+
+/* ---------------------------------- */
+/* Types */
+/* ---------------------------------- */
 
 interface Workspace {
   _id: string
   name: string
-  description: string
-  createdAt: string
   instagramAccounts: any[]
-  profilePic?: string
 }
 
+/* ---------------------------------- */
+/* Page */
+/* ---------------------------------- */
+
 export default function SelectWorkspacePage() {
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showCreateWorkspace, setShowCreateWorkspace] = useState(false)
-  const [connecting, setConnecting] = useState(false)
   const router = useRouter()
 
-  useEffect(() => {
-    const fetchWithRetry = async (url: string, opts: RequestInit = {}, attempts = 3, timeoutMs = 6000): Promise<Response> => {
-      for (let i = 0; i < attempts; i++) {
-        const controller = new AbortController()
-        const id = setTimeout(() => controller.abort(), timeoutMs)
-        try {
-          const res = await fetch(url, { ...opts, signal: controller.signal })
-          clearTimeout(id)
-          return res
-        } catch (err) {
-          clearTimeout(id)
-          const isLast = i === attempts - 1
-          // If aborted or network error, retry unless last attempt
-          if (isLast) throw err
-          await new Promise(r => setTimeout(r, 500 * Math.pow(2, i)))
-        }
-      }
-      // Should never reach here
-      throw new Error("Failed to fetch after retries")
-    }
+  const {
+    data: workspaces,
+    isLoading,
+    error,
+  } = useSWR<Workspace[]>("/api/workspaces", fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  })
 
-    const fetchWorkspaces = async () => {
-      try {
-        const response = await fetchWithRetry("/api/workspaces", { 
-          credentials: "include"
-        })
-        if (response.ok) {
-          const data = await response.json()
-          setWorkspaces(data)
-          setLoading(false)
-        } else {
-          // Any non-OK response (401, 403, 500, etc.) → redirect to home
-          router.push("/")
-        }
-      } catch (error) {
-        // Network error, timeout, or any other failure → redirect to home
-        console.error("Error fetching workspaces:", error)
-        router.push("/")
-      }
-    }
-
-    fetchWorkspaces()
-  }, [router])
-
-  const handleWorkspaceCreated = (newWorkspace: Workspace) => {
-    setWorkspaces([...workspaces, newWorkspace])
-    setShowCreateWorkspace(false)
-    router.push(`/${newWorkspace._id}/dashboard`)
-  }
-
-  const handleWorkspaceSelect = async (workspaceId: string) => {
-    router.push(`/${workspaceId}/dashboard`)
-  }
-
-  const handleInstagramConnect = async () => {
-    setConnecting(true)
-    try {
-      const res = await fetch("/api/auth/me")
-      const data = await res.json()
-      const token = data.token
-
-      const redirectUri = encodeURIComponent(`${process.env.NEXT_PUBLIC_APP_URL}/api/instagram/callback`)
-      const instagramAuthUrl = `https://www.instagram.com/oauth/authorize?client_id=${process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID}&redirect_uri=${redirectUri}&response_type=code&scope=instagram_business_basic,instagram_business_manage_comments,instagram_business_manage_messages,instagram_business_manage_insights&state=${token}`
-
-      window.location.href = instagramAuthUrl
-    } catch (error) {
-      console.error("Error connecting Instagram:", error)
-      setConnecting(false)
-    }
-  }
-
-  if (loading) {
+  /* ---------- Loading ---------- */
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-2"></div>
-          <p className="text-gray-600 text-sm">Loading workspaces...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-purple-600" />
       </div>
     )
   }
 
-  // 🔹 If no workspaces → show only the connect card
-  if (workspaces.length === 0) {
+  /* ---------- Error ---------- */
+  if (error) {
+    router.push("/")
+    return null
+  }
+
+  /* ---------- No workspaces ---------- */
+  if (!workspaces || workspaces.length === 0) {
     return (
-      <div className="bg-muted flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
-        <div className="w-full max-w-2xl mx-auto">
+      <div className="min-h-screen flex items-center justify-center bg-muted p-6">
+        <div className="w-full max-w-2xl">
           <ConnectInstagramCard />
         </div>
       </div>
     )
   }
 
-  // 🔹 Otherwise → show workspace list in modern card layout
+  /* ---------- Main UI ---------- */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex flex-col items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md mx-auto">
-        {/* Logo/Brand Section */}
-        <div className="text-center mb-8">
-         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl  mb-4 shadow-lg overflow-hidden">
-              <Image
-    src="/favicon.png" // ← your logo
-    alt="ChatAutoDM Logo"
-    width={64}          // 👈 required for optimization
-    height={64}         // 👈 required for optimization
-    className="object-contain rounded-xl"
-    priority
-  />
-                  </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Select Workspace</h1>
-          <p className="text-sm text-gray-500">Choose an account to continue</p>
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#f7f8ff] via-white to-[#fdf7ff] flex items-center justify-center px-4 py-16">
+
+      {/* Background glows */}
+      <div className="pointer-events-none absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-purple-300/20 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full bg-pink-300/20 blur-3xl" />
+
+      <div className="relative w-full max-w-md">
+
+        {/* Header */}
+        <div className="mb-10 text-center">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-xl ring-1 ring-black/5">
+            <Image
+              src="/favicon.png"
+              alt="ChatAutoDM"
+              width={40}
+              height={40}
+              priority
+            />
+          </div>
+
+          <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">
+            Select Workspace
+          </h1>
+          <p className="mt-2 text-sm text-gray-500">
+            Choose the Instagram account you want to manage
+          </p>
         </div>
 
-        {/* Workspace Cards */}
-        <div className="space-y-3 mb-6">
-          {workspaces.map((workspace) => {
-            const profileUrl = workspace.instagramAccounts?.[0]?.profilePictureUrl
-            
-            return (
-            <button
+        {/* Workspace list */}
+        <div className="space-y-4 mb-8">
+          {workspaces.map((workspace) => (
+            <WorkspaceCard
               key={workspace._id}
-              onClick={() => handleWorkspaceSelect(workspace._id)}
-              className="w-full group relative overflow-hidden bg-white rounded-xl border border-gray-200 hover:border-purple-300 hover:shadow-lg transition-all duration-200 p-4 flex items-center gap-4 text-left"
-            >
-              {/* Hover gradient background */}
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 to-pink-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-              
-              {/* Profile Picture - Exact same as Sidebar approach */}
-              <div className="relative z-10 flex-shrink-0">
-                {profileUrl ? (
-                  <img
-                    src={profileUrl}
-                    alt={workspace.name}
-                    className="h-14 w-14 rounded-full object-cover border-2 border-white shadow-sm group-hover:scale-105 transition-transform duration-200"
-                    onError={(e) => {
-                      // Replace with fallback element on error
-                      const parent = e.currentTarget.parentElement
-                      if (parent) {
-                        e.currentTarget.remove()
-                        const fallback = document.createElement('div')
-                        fallback.className = 'w-14 h-14 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center border-2 border-white shadow-sm group-hover:scale-105 transition-transform duration-200'
-                        fallback.innerHTML = `<span class="text-xl font-bold text-purple-600">${workspace.name.charAt(0).toUpperCase()}</span>`
-                        parent.appendChild(fallback)
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center border-2 border-white shadow-sm group-hover:scale-105 transition-transform duration-200">
-                    <span className="text-xl font-bold text-purple-600">
-                      {workspace.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                )}
-              </div>
-              
-              {/* Workspace Info */}
-              <div className="relative z-10 flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900 truncate group-hover:text-purple-700 transition-colors">
-                  {workspace.name}
-                </h3>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  {workspace.instagramAccounts?.length || 0} connected account{workspace.instagramAccounts?.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-              
-              {/* Arrow Icon */}
-              <div className="relative z-10 flex-shrink-0">
-                <div className="w-8 h-8 rounded-full bg-gray-100 group-hover:bg-purple-100 flex items-center justify-center transition-colors">
-                  <svg className="w-4 h-4 text-gray-400 group-hover:text-purple-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-            </button>
-          )})}
+              workspace={workspace}
+              onSelect={() => router.push(`/${workspace._id}/dashboard`)}
+            />
+          ))}
         </div>
 
-        {/* Add New Account Button */}
-        <button
-          onClick={handleInstagramConnect}
-          disabled={connecting}
-          className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-medium py-3.5 px-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 disabled:cursor-not-allowed"
-        >
-          {connecting ? (
-            <span className="flex items-center justify-center gap-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              Connecting...
-            </span>
-          ) : (
-            <span className="flex items-center justify-center gap-2">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add New Account
-            </span>
-          )}
-        </button>
+        {/* Add account */}
+        <AddAccountButton />
       </div>
     </div>
+  )
+}
+
+/* ---------------------------------- */
+/* Workspace Card */
+/* ---------------------------------- */
+
+function WorkspaceCard({
+  workspace,
+  onSelect,
+}: {
+  workspace: Workspace
+  onSelect: () => void
+}) {
+  const { data } = useSWR(
+    `/api/workspaces/${workspace._id}/user`,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 300_000,
+    }
+  )
+
+  const profileUrl =
+    data?.user?.profilePictureUrl ||
+    workspace.instagramAccounts?.[0]?.profilePictureUrl
+
+  const username = data?.user?.username || workspace.name
+
+  return (
+    <button
+      onClick={onSelect}
+      className="group relative w-full overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-300"
+    >
+      {/* Hover overlay */}
+      {/* <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity" /> */}
+
+      <div className="relative z-10 flex items-center gap-4">
+
+        {/* Avatar */}
+        <div className="relative flex-shrink-0">
+          {profileUrl ? (
+            <img
+              src={profileUrl}
+              alt={username}
+              className="h-14 w-14 rounded-full object-cover ring-2 ring-white shadow-md transition-transform duration-300"
+            />
+          ) : (
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-pink-100 ring-2 ring-white shadow-md">
+              <span className="text-xl font-bold text-purple-600">
+                {username.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
+
+          {/* Online indicator */}
+          {/* <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 ring-2 ring-white" /> */}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0 text-left">
+          <h3 className="truncate text-base font-semibold text-gray-900 group-hover:text-gray-900 transition-colors">
+            {username}
+          </h3>
+          {/* <p className="mt-0.5 text-sm text-gray-500">
+            {workspace.instagramAccounts?.length || 0} connected account
+            {workspace.instagramAccounts?.length !== 1 ? "s" : ""}
+          </p> */}
+        </div>
+
+        {/* Arrow */}
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-400 transition-all group-hover:bg-gray-200 group-hover:text-gray-600">
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </button>
+  )
+}
+
+/* ---------------------------------- */
+/* Add Account Button */
+/* ---------------------------------- */
+
+function AddAccountButton() {
+  const [connecting, setConnecting] = React.useState(false)
+
+  const connect = async () => {
+    try {
+      setConnecting(true)
+      const res = await fetch("/api/auth/me")
+      const data = await res.json()
+
+      const redirectUri = encodeURIComponent(
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/instagram/callback`
+      )
+
+      window.location.href =
+        `https://www.instagram.com/oauth/authorize` +
+        `?client_id=${process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID}` +
+        `&redirect_uri=${redirectUri}` +
+        `&response_type=code` +
+        `&scope=instagram_business_basic,instagram_business_manage_comments,instagram_business_manage_messages,instagram_business_manage_insights` +
+        `&state=${data.token}`
+    } catch {
+      setConnecting(false)
+    }
+  }
+  return (
+    <Button
+      onClick={connect}
+      disabled={connecting}
+      className="
+    w-full rounded-2xl bg-gray-900
+    py-4 text-sm font-semibold text-white
+    shadow-lg
+    transition-transform transition-shadow duration-150
+    hover:bg-gray-900 hover:text-white
+    hover:shadow-xl
+    active:scale-[0.98]
+    disabled:opacity-70
+  "
+    >
+      <span className="flex items-center justify-center gap-2">
+        {connecting ? (
+          <>
+            <span className="h-4 w-4 animate-spin rounded-full border-b-2 border-white" />
+            Connecting…
+          </>
+        ) : (
+          <>
+            Add New Account
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+          </>
+        )}
+      </span>
+    </Button>
+
   )
 }

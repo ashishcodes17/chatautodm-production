@@ -2,24 +2,52 @@
 
 import React from "react"
 import Link from "next/link"
-import { usePathname, useParams } from "next/navigation"
+import { usePathname, useParams, useRouter } from "next/navigation"
 import useSWR from "swr"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { LayoutDashboard, LogOut, MessageCircle, Shield, Crown, Sparkles,Settings, Users, Menu } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { LayoutDashboard, LogOut, MessageCircle, Shield, Crown, Sparkles, Settings, Users, Menu, ChevronDown, Plus, Check } from "lucide-react"
 
 const fetcher = (url: string) => fetch(url, { credentials: "include" }).then((res) => res.json())
+
+interface Workspace {
+  _id: string
+  name: string
+  description: string
+  createdAt: string
+  instagramAccounts: Array<{
+    profilePictureUrl?: string
+    username?: string
+  }>
+}
 
 export function Sidebar() {
   const pathname = usePathname()
   const params = useParams()
+  const router = useRouter()
   const wsid = params.wsid as string
-  
+  const swrStaticConfig = {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    revalidateIfStale: false,
+    shouldRetryOnError: false,
+  }
+
   // ✅ Mobile sheet state control
   const [mobileOpen, setMobileOpen] = React.useState(false)
+  const [workspaceDropdownOpen, setWorkspaceDropdownOpen] = React.useState(false)
+  const [connecting, setConnecting] = React.useState(false)
 
   // Authenticated user
   const { data: user } = useSWR("/api/auth/me", fetcher)
@@ -27,12 +55,21 @@ export function Sidebar() {
   // Workspace IG account info
   const { data: userData } = useSWR(wsid ? `/api/workspaces/${wsid}/user` : null, fetcher)
 
+  // Fetch all user workspaces for dropdown - cached to prevent flashing
+  const { data: workspaces } = useSWR<Workspace[]>("/api/workspaces", fetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    revalidateIfStale: false,
+    dedupingInterval: 60000, // Cache for 1 minute
+  })
+
   const { data: statsData } = useSWR(
     wsid ? `/api/workspaces/${wsid}/stats` : null,
     fetcher,
-    { refreshInterval: 10000 }, // refresh every 10 seconds
+    swrStaticConfig
   )
 
+  const user1 = userData?.user;
   const stats = statsData?.stats || {
     dmsSent: 0,
     totalContacts: 0,
@@ -44,35 +81,57 @@ export function Sidebar() {
     window.location.href = "/"
   }
 
+  const handleWorkspaceSwitch = (workspaceId: string) => {
+    setWorkspaceDropdownOpen(false)
+    router.push(`/${workspaceId}/dashboard`)
+  }
+
+  const handleAddAccount = async () => {
+    setConnecting(true)
+    try {
+      const res = await fetch("/api/auth/me")
+      const data = await res.json()
+      const token = data.token
+
+      const redirectUri = encodeURIComponent(`${process.env.NEXT_PUBLIC_APP_URL}/api/instagram/callback`)
+      const instagramAuthUrl = `https://www.instagram.com/oauth/authorize?client_id=${process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID}&redirect_uri=${redirectUri}&response_type=code&scope=instagram_business_basic,instagram_business_manage_comments,instagram_business_manage_messages,instagram_business_manage_insights&state=${token}`
+
+      window.location.href = instagramAuthUrl
+    } catch (error) {
+      console.error("Error connecting Instagram:", error)
+      setConnecting(false)
+    }
+  }
+
   const routes = [
     {
       label: "Dashboard",
       icon: LayoutDashboard,
       href: `/${wsid}/dashboard`,
-      color: "text-blue-500",
-      bgColor: "bg-blue-50",
+      color: "text-gray-500",
+      bgColor: "bg-gray-50",
       description: "Overview & insights",
-     
+
     },
     {
       label: "Automations",
       icon: MessageCircle,
       href: `/${wsid}/automations`,
-      color: "text-purple-500",
-      bgColor: "bg-purple-50",
+      color: "text-gray-500",
+      bgColor: "bg-gray-50",
       description: "Manage flows",
       badge: "Active",
-       
+
     },
-      
+
     {
       label: "Contacts",
       icon: Users,
       href: `/${wsid}/contacts`,
-      color: "text-green-500",
-      bgColor: "bg-green-50",
+      color: "text-gray-500",
+      bgColor: "bg-gray-50",
       description: "Conversations",
-       
+
     },
     {
       label: "Settings",
@@ -88,20 +147,20 @@ export function Sidebar() {
   const getPlanColor = (plan: string) => {
     switch (plan?.toLowerCase()) {
       case "pro":
-        return "from-blue-500 to-purple-600"
+        return "blue-400"
       case "elite":
-        return "from-purple-500 to-pink-600"
+        return "blue-400 "
       case "freeby":
       case "free":
       default:
-        return "from-gray-400 to-gray-600"
+        return "blue-400"
     }
   }
   const getPlanIcon = (plan: string) => {
     switch (plan?.toLowerCase()) {
       case "pro":
         return Crown
-      case "elite":
+      case "ELITE":
         return Sparkles
       case "freeby":
       case "free":
@@ -113,20 +172,59 @@ export function Sidebar() {
 
   const SidebarContent = ({ isMobile = false }: { isMobile?: boolean }) => (
     <div className="flex flex-col h-full">
-      {/* Header */}
+      {/* Header - Workspace Switcher */}
       <div className="border-b border-gray-200/60 p-4 bg-gradient-to-r from-blue-50/50 to-purple-50/50">
         {userData?.user ? (
-          <div className="flex items-center gap-3">
-            <img
-              src={userData.user.profilePictureUrl || "/placeholder.svg"}
-              alt={userData.user.username}
-              className="h-10 w-10 rounded-full object-cover border border-gray-300"
-            />
-            <div>
-              <p className="font-semibold text-gray-900">{userData.user.username}</p>
-              <p className="text-xs text-gray-500">{userData.user.name}</p>
-            </div>
-          </div>
+          <DropdownMenu modal={false} open={workspaceDropdownOpen} onOpenChange={setWorkspaceDropdownOpen}>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-3 w-full hover:bg-white/50 rounded-lg p-2 -m-2 transition-colors group">
+                <img
+                  src={userData.user.profilePictureUrl || "/placeholder.svg"}
+                  alt={userData.user.username}
+                  className="h-10 w-10 rounded-full object-cover border border-gray-300 flex-shrink-0"
+                />
+                <div className="flex-1 text-left min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">{userData.user.username}</p>
+                  <p className="text-xs text-gray-500 truncate">{userData.user.name}</p>
+                </div>
+                <ChevronDown className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors flex-shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64">
+              <DropdownMenuLabel>Switch Workspace</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {workspaces && workspaces.length > 0 ? (
+                <>
+                  {workspaces.map((workspace) => (
+                    <WorkspaceDropdownItem
+                      key={workspace._id}
+                      workspace={workspace}
+                      isActive={workspace._id === wsid}
+                      onSelect={handleWorkspaceSwitch}
+                    />
+                  ))}
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
+              <DropdownMenuItem
+                onClick={handleAddAccount}
+                disabled={connecting}
+                className="flex items-center gap-2 cursor-pointer text-blue-600 font-medium"
+              >
+                {connecting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+                    <span>Connecting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 text-black" />
+                    <span className="text-black">Add New Account</span>
+                  </>
+                )}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : (
           <p className="text-sm text-gray-500">No IG account linked</p>
         )}
@@ -148,7 +246,7 @@ export function Sidebar() {
               className={cn(
                 "group flex items-center rounded-lg px-2 py-2.5 text-sm font-medium transition-all",
                 pathname === route.href
-                  ? `bg-gradient-to-r ${getPlanColor(user?.plan || "free")} text-white`
+                  ? `bg-gradient-to-r ${getPlanColor(user1?.plan || "free")} text-blue-700`
                   : "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
               )}
             >
@@ -161,7 +259,7 @@ export function Sidebar() {
                 )}
               >
                 <route.icon
-                  className={cn("h-3.5 w-3.5", pathname === route.href ? "text-white" : route.color)}
+                  className={cn("h-3.5 w-3.5", pathname === route.href ? "text-blue-500" : route.color)}
                 />
               </div>
               <div className="flex-1 min-w-0">
@@ -179,7 +277,7 @@ export function Sidebar() {
                 <p
                   className={cn(
                     "text-xs mt-0.5 truncate",
-                    pathname === route.href ? "text-white/80" : "text-gray-500",
+                    pathname === route.href ? "text-blue-500" : "text-gray-500",
                   )}
                 >
                   {route.description}
@@ -220,7 +318,7 @@ export function Sidebar() {
                   <p className="text-sm font-bold text-gray-900 truncate">{user.name}</p>
                   <div className="flex items-center gap-1 mt-0.5">
                     {React.createElement(getPlanIcon(user.plan), { className: "h-3 w-3 text-gray-600" })}
-                    <span className="text-xs font-semibold text-gray-600">{user.plan?.toUpperCase() || "FREE"}</span>
+                    <span className="text-xs font-semibold text-gray-600">{user1.plan?.toUpperCase() || "FREE"}</span>
                   </div>
                 </div>
               </div>
@@ -261,34 +359,34 @@ export function Sidebar() {
               </div>
             </div>
 
-              {/* Support + Logout Side by Side */}
-<div className="flex gap-2">
-  {/* Support */}
-  <Button
-    variant="ghost"
-    className="flex-1 justify-center gap-2 text-gray-600 hover:text-gray-900"
-    asChild
-  >
-    <Link
-      href="https://www.instagram.com/direct/t/17845981776481974/"
-      target="_blank"
-      className="flex items-center justify-center gap-2 w-full"
-    >
-      <MessageCircle className="h-3 w-3" />
-      <span className="font-medium text-xs">Support</span>
-    </Link>
-  </Button>
+            {/* Support + Logout Side by Side */}
+            <div className="flex gap-2">
+              {/* Support */}
+              <Button
+                variant="ghost"
+                className="flex-1 justify-center gap-2 text-gray-600 hover:text-gray-900"
+                asChild
+              >
+                <Link
+                  href="https://www.instagram.com/direct/t/17845981776481974/"
+                  target="_blank"
+                  className="flex items-center justify-center gap-2 w-full"
+                >
+                  <MessageCircle className="h-3 w-3" />
+                  <span className="font-medium text-xs">Support</span>
+                </Link>
+              </Button>
 
-  {/* Logout */}
-  <Button
-    variant="ghost"
-    className="flex-1 justify-center gap-2 text-gray-600 hover:text-gray-900"
-    onClick={logout}
-  >
-    <LogOut className="h-3 w-3" />
-    <span className="font-medium text-xs">Sign Out</span>
-  </Button>
-</div>
+              {/* Logout */}
+              <Button
+                variant="ghost"
+                className="flex-1 justify-center gap-2 text-gray-600 hover:text-gray-900"
+                onClick={logout}
+              >
+                <LogOut className="h-3 w-3" />
+                <span className="font-medium text-xs">Sign Out</span>
+              </Button>
+            </div>
 
           </div>
         )}
@@ -325,4 +423,57 @@ export function Sidebar() {
   )
 }
 
+// Separate component for each workspace to prevent SWR re-fetching on dropdown open
+function WorkspaceDropdownItem({
+  workspace,
+  isActive,
+  onSelect,
+}: {
+  workspace: Workspace
+  isActive: boolean
+  onSelect: (id: string) => void
+}) {
+  // Fetch once and cache - won't refetch when dropdown opens/closes
+  const { data: workspaceUser } = useSWR(
+    `/api/workspaces/${workspace._id}/user`,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      revalidateIfStale: false,
+      dedupingInterval: 300000, // 5 minutes
+    }
+  )
+
+  const profileUrl = workspaceUser?.user?.profilePictureUrl || workspace.instagramAccounts?.[0]?.profilePictureUrl
+  const username =
+    workspaceUser?.user?.username || workspace.instagramAccounts?.[0]?.username || workspace.name
+
+  return (
+    <DropdownMenuItem onClick={() => onSelect(workspace._id)} className="flex items-center gap-3 cursor-pointer">
+      {profileUrl ? (
+        <img
+          src={profileUrl}
+          alt={username}
+          className="h-8 w-8 rounded-full object-cover border border-gray-200"
+        />
+      ) : (
+        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center border border-gray-200">
+          <span className="text-sm font-bold text-purple-600">
+            {(username || workspace.name).charAt(0).toUpperCase()}
+          </span>
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{username}</p>
+        <p className="text-xs text-gray-500 truncate">
+          {workspace.instagramAccounts?.length || 0} account{workspace.instagramAccounts?.length !== 1 ? "s" : ""}
+        </p>
+      </div>
+      {isActive && <Check className="h-4 w-4 text-blue-600" />}
+    </DropdownMenuItem>
+  )
+}
+
 export default Sidebar
+

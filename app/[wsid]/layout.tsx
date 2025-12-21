@@ -105,8 +105,9 @@
 "use client"
 
 import { Sidebar } from "@/components/Sidebar"
+// import { LoadingBar } from "@/components/loading-bar"
 import { useParams, useRouter } from "next/navigation"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, Suspense } from "react"
 import useSWR from "swr"
 
 const fetcher = async (url: string) => {
@@ -173,6 +174,9 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   // === AUTH + WORKSPACE VERIFIED, SHOW DASHBOARD ===
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* <Suspense fallback={null}> */}
+        {/* <LoadingBar /> */}
+      {/* </Suspense> */}
       <Sidebar />
       <main className="flex-1 md:ml-64">
         {children}

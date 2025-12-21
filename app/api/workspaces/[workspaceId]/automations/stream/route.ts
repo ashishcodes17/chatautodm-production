@@ -8,15 +8,28 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder()
+      let isClosed = false
 
       function send(event: string, data: any) {
-        controller.enqueue(encoder.encode(`event: ${event}\n`))
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+        if (isClosed) return
+        try {
+          controller.enqueue(encoder.encode(`event: ${event}\n`))
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+        } catch (err) {
+          // Controller is closed, mark as closed to prevent further sends
+          isClosed = true
+        }
       }
 
       // Keep-alive ping every 15s
       const ping = setInterval(() => {
-        controller.enqueue(encoder.encode(`: ping\n\n`))
+        if (isClosed) return
+        try {
+          controller.enqueue(encoder.encode(`: ping\n\n`))
+        } catch (err) {
+          isClosed = true
+          clearInterval(ping)
+        }
       }, 15000)
 
       let changeStream: any | null = null
@@ -28,7 +41,10 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
         const workspace = await db.collection("workspaces").findOne({ _id: workspaceId })
         if (!workspace) {
           send("error", { message: "Workspace not found" })
-          controller.close()
+          isClosed = true
+          try {
+            controller.close()
+          } catch {}
           clearInterval(ping)
           return
         }
@@ -93,19 +109,25 @@ export async function GET(request: NextRequest, { params }: { params: { workspac
         // Handle client disconnects
         const abort = request.signal
         const onAbort = () => {
+          isClosed = true
           try {
             changeStream?.close?.()
           } catch {}
           clearInterval(ping)
-          controller.close()
+          try {
+            controller.close()
+          } catch {}
         }
         if (abort.aborted) onAbort()
         abort.addEventListener("abort", onAbort)
       } catch (error) {
         // Fallback: notify client there is no live stream available
         send("error", { message: "Streaming unavailable" })
+        isClosed = true
         clearInterval(ping)
-        controller.close()
+        try {
+          controller.close()
+        } catch {}
       }
     },
     cancel() {

@@ -812,7 +812,7 @@ export default function Page() {
       </div>
 
       {/* Right Sidebar with Card Layout */}
-      <div className="hidden md:block w-[450px] border-l border-gray-200 bg-gray-50 px-4 py-6 overflow-y-auto h-full space-y-4">
+      <div className="hidden md:block w-[450px] border-l border-gray-200 bg-gray-50 px-4 py-6 overflow-y-scroll flex-shrink-0 space-y-4" style={{ scrollBehavior: 'auto' }}>
         {/* Status */}
         <div className="bg-white rounded-lg border p-4 shadow-sm">
           <div className="flex items-center justify-between">

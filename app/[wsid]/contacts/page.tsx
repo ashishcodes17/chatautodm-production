@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useParams } from "next/navigation"
+import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -53,97 +54,85 @@ interface ContactsResponse {
   instagramUserId: string
 }
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json())
+
 export default function ContactsPage() {
   const params = useParams()
   const wsid = params.wsid as string
-  const [contacts, setContacts] = useState<Contact[]>([])
-  const [stats, setStats] = useState<ContactStats>({ totalContacts: 0, totalInteractions: 0, avgInteractions: 0 })
-  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [sortBy, setSortBy] = useState("lastInteraction")
   const [sortOrder, setSortOrder] = useState("desc")
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
-  const [pagination, setPagination] = useState({
+  const [instagramUserId, setInstagramUserId] = useState<string>("")
+
+  // Fetch workspace info first
+  const { data: workspaceData } = useSWR(
+    wsid ? `/api/workspaces/${wsid}` : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60000,
+    }
+  )
+
+  useEffect(() => {
+    if (workspaceData?.igAccount?.instagramUserId) {
+      setInstagramUserId(workspaceData.igAccount.instagramUserId)
+    }
+  }, [workspaceData])
+
+  // Build query string
+  const queryString = useMemo(() => {
+    if (!instagramUserId) return null
+    const params = new URLSearchParams({
+      instagramUserId,
+      page: currentPage.toString(),
+      limit: "20",
+      search: searchTerm,
+      sortBy,
+      sortOrder,
+    })
+    return params.toString()
+  }, [instagramUserId, currentPage, searchTerm, sortBy, sortOrder])
+
+  // Fetch contacts with SWR
+  const { data: contactsData, error } = useSWR<ContactsResponse>(
+    queryString ? `/api/workspaces/${wsid}/contacts?${queryString}` : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 10000, // Cache for 10s
+      keepPreviousData: true, // Keep showing old data while fetching new
+    }
+  )
+
+  const contacts = contactsData?.contacts || []
+  const stats = contactsData?.stats || { totalContacts: 0, totalInteractions: 0, avgInteractions: 0 }
+  const pagination = contactsData?.pagination || {
     currentPage: 1,
     totalPages: 1,
     totalCount: 0,
     hasNext: false,
     hasPrev: false,
-  })
-  const [instagramUserId, setInstagramUserId] = useState<string>("")
-  const [error, setError] = useState<string | null>(null)
+  }
+  const loading = !contactsData && !error
 
-  useEffect(() => {
-    // Fetch workspace info to get Instagram user ID
-    const fetchWorkspaceInfo = async () => {
-      try {
-        const response = await fetch(`/api/workspaces/${wsid}`)
-        if (response.ok) {
-          const data = await response.json()
-          if (data.igAccount && data.igAccount.instagramUserId) {
-            setInstagramUserId(data.igAccount.instagramUserId)
-          } else {
-            setError("Instagram account not connected. Please connect your Instagram account first.")
-          }
-        } else {
-          console.error("Failed to fetch workspace info:", response.status)
-          setError("Instagram account not connected. Please connect your Instagram account first.")
-        }
-      } catch (error) {
-        console.error("Error fetching workspace info:", error)
-        setError("Failed to load workspace information")
-      }
-    }
-
-    fetchWorkspaceInfo()
-  }, [wsid])
-
-  const fetchContacts = async () => {
-    if (!instagramUserId) {
-      setLoading(false)
-      return
-    }
-
-    try {
-      setLoading(true)
-      const searchParamsObj = new URLSearchParams({
-        instagramUserId,
-        page: currentPage.toString(),
-        limit: "20",
-        search: searchTerm,
-        sortBy,
-        sortOrder,
-      })
-
-      const response = await fetch(`/api/workspaces/${wsid}/contacts?${searchParamsObj}`)
-      if (response.ok) {
-        const data: ContactsResponse = await response.json()
-        setContacts(data.contacts)
-        setStats(data.stats)
-        setPagination(data.pagination)
-        setError(null)
-      } else {
-        console.error("Failed to fetch contacts:", response.status)
-        setError("Failed to load contacts")
-      }
-    } catch (error) {
-      console.error("Error fetching contacts:", error)
-      setError("Failed to load contacts")
-    } finally {
-      setLoading(false)
-    }
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
   }
 
-  useEffect(() => {
-    if (instagramUserId) {
-      fetchContacts()
-    }
-  }, [currentPage, searchTerm, sortBy, sortOrder, instagramUserId])
-
   const handleExport = async (format: "json" | "csv") => {
+    if (!instagramUserId) return
+    
     try {
-      const response = await fetch(`/api/workspaces/${wsid}/contacts/export?format=${format}`)
+      const response = await fetch(`/api/workspaces/${wsid}/contacts/export?format=${format}&instagramUserId=${instagramUserId}`)
 
       if (format === "csv") {
         const blob = await response.blob()
@@ -173,6 +162,8 @@ export default function ContactsPage() {
   }
 
   const handleDeleteContact = async (contactId: string) => {
+    if (!instagramUserId) return
+    
     try {
       const response = await fetch(
         `/api/workspaces/${wsid}/contacts?contactId=${contactId}&instagramUserId=${instagramUserId}`,
@@ -182,21 +173,12 @@ export default function ContactsPage() {
       )
 
       if (response.ok) {
-        fetchContacts()
+        // Trigger a refetch
+        window.location.reload()
       }
     } catch (error) {
       console.error("Error deleting contact:", error)
     }
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
   }
 
   const getInteractionTypeColor = (type: string) => {
@@ -213,6 +195,7 @@ export default function ContactsPage() {
 
   const handleSearch = (value: string) => {
     setSearchTerm(value)
+    setCurrentPage(1) // Reset to first page on new search
   }
 
   const handleSort = (field: string) => {
@@ -228,14 +211,22 @@ export default function ContactsPage() {
     <main className="p-4 sm:p-6 lg:p-8 overflow-y-auto">
       <div className="max-w-7xl mx-auto">
           {/* Loading / Error State */}
-          {error ? (
+          {!instagramUserId && !workspaceData ? (
             <div className="text-center py-10">
-              <div className="text-red-500 mb-2 text-sm sm:text-base">{error}</div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-2"></div>
+              <p className="text-gray-600 text-sm">Loading workspace...</p>
+            </div>
+          ) : !instagramUserId ? (
+            <div className="text-center py-10">
+              <div className="text-red-500 mb-2 text-sm sm:text-base">
+                Instagram account not connected. Please connect your Instagram account first.
+              </div>
+            </div>
+          ) : error ? (
+            <div className="text-center py-10">
+              <div className="text-red-500 mb-2 text-sm sm:text-base">Failed to load contacts</div>
               <Button
-                onClick={() => {
-                  setError(null)
-                  window.location.reload()
-                }}
+                onClick={() => window.location.reload()}
                 variant="outline"
                 size="sm"
               >
@@ -243,7 +234,10 @@ export default function ContactsPage() {
               </Button>
             </div>
           ) : loading ? (
-            <div className="text-center py-10 text-gray-500 text-sm sm:text-base">Loading...</div>
+            <div className="text-center py-10">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-2"></div>
+              <p className="text-gray-600 text-sm">Loading contacts...</p>
+            </div>
           ) : contacts.length === 0 ? (
             <div className="text-center py-10 text-gray-500 text-sm sm:text-base">No contacts found.</div>
           ) : (
@@ -254,7 +248,7 @@ export default function ContactsPage() {
                   <p className="text-gray-600 mt-1 text-sm sm:text-base">Manage your Instagram automation contacts</p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <Button variant="outline" onClick={() => handleExport("csv")} size="sm">
+                  {/* <Button variant="outline" onClick={() => handleExport("csv")} size="sm">
                     <Download className="h-4 w-4 mr-2" />
                     <span className="hidden sm:inline">Export </span>CSV
                   </Button>
@@ -265,7 +259,7 @@ export default function ContactsPage() {
                   >
                     <Download className="h-4 w-4 mr-2" />
                     <span className="hidden sm:inline">Export </span>JSON
-                  </Button>
+                  </Button> */}
                 </div>
               </div>
 

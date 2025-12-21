@@ -79,7 +79,7 @@ export default function AutomationModal({ isOpen, onClose }: AutomationModalProp
               }`}
             >
               <div className="flex items-start justify-between mb-2">
-                <h3 className="font-semibold text-base sm:text-lg text-purple-700 pr-2">{flow.title}</h3>
+                <h3 className="font-semibold text-base sm:text-lg text-gray-900 pr-2">{flow.title}</h3>
                 {flow.badge && (
                   <span
           className={`text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap flex items-center gap-1`}
@@ -102,7 +102,7 @@ export default function AutomationModal({ isOpen, onClose }: AutomationModalProp
         </span>
                 )}
               </div>
-              <p className="text-sm text-gray-700 mb-3">{flow.subtitle}</p>
+              <p className="text-sm text-gray-500 mb-3">{flow.subtitle}</p>
               {flow.points.length > 0 && (
                 <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
                   {flow.points.map((point, i) => (

@@ -406,8 +406,9 @@
 // }
 // "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useRouter, useParams } from "next/navigation"
+import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -455,10 +456,13 @@ interface Workspace {
   createdAt: string
 }
 
+const fetcher = async (url: string) => {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("Failed to fetch")
+  return res.json()
+}
+
 export default function SettingsPage() {
-  const [workspace, setWorkspace] = useState<Workspace | null>(null)
-  const [instagramAccount, setInstagramAccount] = useState<InstagramAccount | null>(null)
-  const [loading, setLoading] = useState(true)
   const [relinking, setRelinking] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const router = useRouter()
@@ -466,39 +470,38 @@ export default function SettingsPage() {
   const wsid = params.wsid as string
   const { toast } = useToast()
 
+  // Use SWR for better performance and caching
+  const { data: workspaceData, error: workspaceError } = useSWR(
+    wsid ? `/api/workspaces/${wsid}` : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60000,
+    }
+  )
+
+  const { data: accountData, error: accountError } = useSWR(
+    wsid ? `/api/workspaces/${wsid}/instagram-accounts` : null,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60000,
+    }
+  )
+
+  const workspace = workspaceData?.workspace || null
+  const instagramAccount = accountData && accountData.length > 0 ? accountData[0] : null
+  const loading = !workspaceData && !workspaceError
+
   useEffect(() => {
-    fetchWorkspaceData()
-  }, [wsid])
-
-  const fetchWorkspaceData = async () => {
-    try {
-      const [workspaceRes, accountRes] = await Promise.all([
-        fetch(`/api/workspaces/${wsid}`),
-        fetch(`/api/workspaces/${wsid}/instagram-accounts`),
-      ])
-
-      if (workspaceRes.ok) {
-        const workspaceData = await workspaceRes.json()
-        setWorkspace(workspaceData.workspace)
-      }
-
-      if (accountRes.ok) {
-        const accountData = await accountRes.json()
-        if (accountData.length > 0) {
-          setInstagramAccount(accountData[0])
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching workspace data:", error)
+    if (workspaceError || accountError) {
       toast({
         title: "Error",
         description: "Failed to load workspace settings",
         variant: "destructive",
       })
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [workspaceError, accountError, toast])
 
   const handleRelinkInstagram = async () => {
     setRelinking(true)
@@ -567,8 +570,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="p-4 md:p-6 overflow-y-auto">
-      <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
+    <main className="w-full min-h-screen p-4 md:p-4 lg:p-8 overflow-y-auto">
+      <div className="max-w-7xl mx-auto space-y-6 md:space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -642,7 +645,7 @@ export default function SettingsPage() {
                     onClick={handleRelinkInstagram}
                     disabled={relinking}
                     variant="outline"
-                    className="flex-1 bg-transparent w-full sm:w-auto"
+                    className="bg-transparent"
                   >
                     {relinking ? (
                       <>
@@ -658,7 +661,6 @@ export default function SettingsPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full sm:w-auto"
                     onClick={() => window.open(`https://instagram.com/${instagramAccount.username}`, "_blank")}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
@@ -673,7 +675,7 @@ export default function SettingsPage() {
                 <p className="text-sm md:text-base text-gray-600 mb-4 px-4">
                   Connect your Instagram business account to start using automation features.
                 </p>
-                <Button onClick={handleRelinkInstagram} disabled={relinking} className="w-full sm:w-auto">
+                <Button onClick={handleRelinkInstagram} disabled={relinking}>
                   {relinking ? "Connecting..." : "Connect Instagram Account"}
                 </Button>
               </div>
@@ -777,7 +779,7 @@ export default function SettingsPage() {
               <p className="text-xs md:text-sm text-gray-600 mb-4">
                 Notification preferences will be available in a future update.
               </p>
-              <Button variant="outline" disabled className="w-full sm:w-auto">
+              <Button variant="outline" disabled>
                 <Bell className="w-4 h-4 mr-2" />
                 Configure Notifications
               </Button>
@@ -796,7 +798,7 @@ export default function SettingsPage() {
               <p className="text-xs md:text-sm text-gray-600 mb-4">
                 Theme and appearance settings will be available in a future update.
               </p>
-              <Button variant="outline" disabled className="w-full sm:w-auto">
+              <Button variant="outline" disabled>
                 <Palette className="w-4 h-4 mr-2" />
                 Customize Theme
               </Button>

@@ -32,12 +32,17 @@ export default function AutomationsPage() {
   const params = useParams()
   const wsid = params.wsid as string
 
-  // SWR for initial and periodic refresh (backup)
-  const { data, error, mutate } = useSWR(wsid ? `/api/workspaces/${wsid}/automations` : null, fetcher, {
-    // Light polling as a fallback; SSE will keep it fresh in real-time
-    refreshInterval: 0,
-    revalidateOnFocus: true,
-  })
+  // SWR with optimized settings for better performance
+  const { data, error, mutate } = useSWR(
+    wsid ? `/api/workspaces/${wsid}/automations` : null, 
+    fetcher, 
+    {
+      refreshInterval: 0,
+      revalidateOnFocus: true,
+      dedupingInterval: 5000, // Prevent duplicate requests within 5s
+      revalidateOnReconnect: false,
+    }
+  )
 
   const [automations, setAutomations] = useState<Automation[]>([])
   const [showAutomationModal, setShowAutomationModal] = useState(false)
@@ -283,7 +288,7 @@ const toggleActive = async (automation: Automation) => {
               </Button> */}
               <Button
                 onClick={() => setShowAutomationModal(true)}
-                className="bg-purple-600 hover:bg-purple-700 text-white w-full md:w-auto"
+                className="bg-gray-800 hover:bg-gray-900 text-white w-full md:w-auto"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 New Automation

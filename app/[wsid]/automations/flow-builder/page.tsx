@@ -7,6 +7,7 @@ import { useParams, useSearchParams, useRouter } from "next/navigation"
 import axios from "axios"
 import { AspectRatio } from '@/components/ui/aspect-ratio'
 import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import { toast, Toaster } from "sonner"
 
 
@@ -1062,10 +1063,11 @@ useEffect(() => {
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100">
       <Toaster position="top-center" richColors closeButton />
-
+  {/* <p className="mb-2 ml-2 text-gray-700 font-semibold">Preview:</p> */}
  {/* Left: Mobile Preview */}
 <div className="flex items-center justify-center w-full md:w-[calc(100%-450px)] bg-gray-100">
-  <div className="relative w-full max-w-sm aspect-[360/520] md:translate-x-28">
+
+  <div className="relative w-full max-w-sm aspect-[360/520] md:translate-x-26">
     <Image
       src="/mobile-frame.png"
       alt="Phone Frame"
@@ -1082,15 +1084,16 @@ useEffect(() => {
 
 
       {/* Right Sidebar with Card Layout - DESKTOP VIEW */}
-      <div className="hidden md:block w-[450px] border-l border-gray-200 bg-gray-50 px-4 py-6 overflow-y-auto h-full space-y-4">
+      <div className="hidden md:block w-[500px] border-l border-gray-200 bg-gray-50 px-4 py-6 overflow-y-scroll flex-shrink-0 space-y-4" style={{ scrollBehavior: 'auto' }}>
         {/* Step 1: Select a Post Card - DESKTOP VIEW */}
+        <h2 className="text-gray-800 text-base">Setup Comment to DM Flow :</h2>
         <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 1 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
+          className={`bg-white rounded-lg p-4 shadow-sm cursor-pointer transition-all ${activeStep === 1 ? "border-gray-500 ring-2 ring-gray-200" : "border-gray-200"}`}
           onClick={() => setActiveStep(1)}
         >
           <div className="flex items-center gap-3 mb-4">
             <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 1 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 1 ? "bg-slate-800 text-white" : "bg-slate-800 text-white"}`}
             >
               1
             </div>
@@ -1098,7 +1101,7 @@ useEffect(() => {
           </div>
 
           {/* Next Post Toggle */}
-          <div className="flex items-center justify-between mb-4 p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+          <div className="flex items-center justify-between mb-4 p-3 bg-gradient-to-r from-blue-50 to-blue-50 rounded-lg border border-gray-200">
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-gray-900">⚡ Next Post</span>
               <span className="text-xs text-gray-600">Create automation before posting</span>
@@ -1114,7 +1117,7 @@ useEffect(() => {
                   setAutomation({ ...automation, postId: null, isNextPost: false })
                 }
               }}
-              className={`${isNextPost ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+              className={`${isNextPost ? "bg-blue-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
             >
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${isNextPost ? "translate-x-6" : "translate-x-1"}`}
@@ -1125,15 +1128,15 @@ useEffect(() => {
           {!isNextPost && (
             <>
               <div className="flex items-center justify-between mb-4">
-                <span className="text-sm text-gray-700">Any post</span>
-                <Switch
+                 <span className=" font-semibold text-gray-800">Choose a Post :</span>
+                {/* <Switch
                   checked={true}
                   onChange={() => {}}
                   className="bg-gray-300 relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
                 >
                   <span className="inline-block h-4 w-4 transform rounded-full bg-white transition translate-x-1" />
-                </Switch>
-              </div>
+                </Switch> */}
+              </div> 
             </>
           )}
 
@@ -1151,7 +1154,7 @@ useEffect(() => {
                     e.stopPropagation()
                     setAutomation({ ...automation, postId: post.id, isNextPost: false })
                   }}
-                  className={`h-24 rounded-lg cursor-pointer overflow-hidden ring-2 ${automation.postId === post.id ? "ring-purple-500" : "ring-transparent"}`}
+                  className={`h-24 rounded-lg cursor-pointer overflow-hidden ring-2 ${automation.postId === post.id ? "ring-blue-500" : "ring-transparent"}`}
                 >
                   <img src={post.thumbnail || "/placeholder.svg"} alt="Post" className="w-full h-full object-cover" />
                 </div>
@@ -1161,15 +1164,15 @@ useEffect(() => {
           )}
 
           {!isNextPost && (
-            <button
+            <Button
             onClick={(e) => {
               e.stopPropagation()
               setShowPostModal(true)
             }}
-            className="col-span-3 mt-3 text-sm text-purple-600 hover:underline"
+            className="col-span-3 bg-transparent mt-3 w-full text-black text-sm hover:bg-transparent border border-gray-300"
           >
             Show More
-          </button>
+          </Button>
           )}
 
           {isNextPost && (
@@ -1184,18 +1187,20 @@ useEffect(() => {
           )}
         </div>
 
+         
+
         {/* Step 2: Setup Keywords Card */}
         <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 2 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
+          className={`bg-white rounded-lg  p-4 shadow-sm cursor-pointer transition-all ${activeStep === 2 ? "border-gray-800 ring-2 ring-gray-100" : "border-gray-800"}`}
           onClick={() => setActiveStep(2)}
         >
           <div className="flex items-center gap-3 mb-4">
             <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 3 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 2 ? "bg-gray-800 text-white" : "bg-slate-800 text-white"}`}
             >
               2
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">Setup Keywords</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Add Keywords</h3>
           </div>
 
           <div className="flex items-center justify-between mb-4">
@@ -1203,7 +1208,7 @@ useEffect(() => {
             <Switch
               checked={automation.trigger.anyReply}
               onChange={(val) => setAutomation({ ...automation, trigger: { ...automation.trigger, anyReply: val } })}
-              className={`${automation.trigger.anyReply ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+              className={`${automation.trigger.anyReply ? "bg-blue-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
             >
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.trigger.anyReply ? "translate-x-6" : "translate-x-1"}`}
@@ -1240,7 +1245,7 @@ useEffect(() => {
             }}
             onClick={(e) => e.stopPropagation()}
             placeholder="Type & Hit Enter to add Keyword"
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
           />
 
           {automation.trigger.keywords.length > 0 && (
@@ -1273,20 +1278,20 @@ useEffect(() => {
         </div>
 
         <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 3 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
+          className={`bg-white rounded-lg  p-4 shadow-sm cursor-pointer transition-all ${activeStep === 3 ? "border-gray-800 ring-2 ring-gray-100" : "border-gray-200"}`}
           onClick={() => setActiveStep(3)}
         >
           <div className="flex items-center gap-3 mb-4">
             <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 3 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 3 ? "bg-slate-800 text-white" : "bg-slate-800 text-white"}`}
             >
               3
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">Send a DM</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Send DM Message</h3>
           </div>
 
           {/* Main DM Composition Area */}
-          <div className="border-2 border-purple-500 rounded-lg p-4 mb-4">
+          <div className="border-2 border-gray-200 rounded-lg p-4 mb-4">
             <textarea
               placeholder="Enter your message here..."
               value={automation.actions.sendDM.message}
@@ -1321,7 +1326,7 @@ useEffect(() => {
                 setEditingButton(null)
                 setShowLinkModal(true)
               }}
-              className="w-full border border-purple-500 text-purple-600 py-2 rounded-md text-sm font-medium hover:bg-purple-50 transition-colors flex items-center justify-center gap-2"
+              className="w-full border border-gray-300 text-gray-800 py-2 rounded-md text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
@@ -1359,7 +1364,7 @@ useEffect(() => {
                   </button>
                 </div>
               ) : (
-                <label className="w-full border-2 border-dashed border-gray-300 hover:border-purple-500 rounded-lg p-4 cursor-pointer transition-colors flex flex-col items-center gap-2">
+                <label className="w-full border-2 border-dashed border-gray-300 hover:border-gray-500 rounded-lg p-4 cursor-pointer transition-colors flex flex-col items-center gap-2">
                   <input
                     type="file"
                     accept="image/*"
@@ -1370,7 +1375,7 @@ useEffect(() => {
                   />
                   {isUploadingImage ? (
                     <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
                       <span className="text-sm text-gray-600">Uploading...</span>
                     </div>
                   ) : (
@@ -1452,7 +1457,7 @@ useEffect(() => {
                   actions: { ...automation.actions, openingDM: { ...automation.actions.openingDM, enabled: val } },
                 })
               }
-              className={`${automation.actions.openingDM.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+              className={`${automation.actions.openingDM.enabled ? "bg-blue-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
             >
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.openingDM.enabled ? "translate-x-6" : "translate-x-1"}`}
@@ -1476,7 +1481,7 @@ useEffect(() => {
                   })
                 }
                 onClick={(e) => e.stopPropagation()}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[120px] resize-y focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[120px] resize-y focus:outline-none"
               />
 
               <div className="text-xs text-gray-400">{automation.actions.openingDM.message.length} / 640</div>
@@ -1579,18 +1584,18 @@ useEffect(() => {
         </div>
 
         <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 4 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
+            className={`bg-white rounded-lg  p-4 shadow-sm cursor-pointer transition-all ${activeStep === 4? "border-gray-800 ring-2 ring-gray-100" : "border-gray-200"}`}
           onClick={() => setActiveStep(4)}
         >
           <div className="flex items-center gap-3 mb-4">
             <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 4 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 4 ? "bg-gray-800 text-white" : "bg-slate-800 text-white"}`}
             >
               4
             </div>
             <h3 className="text-lg font-semibold text-gray-900">Advanced Automations</h3>
           </div>
-          <p className="text-sm text-gray-500 mb-4">Grow your audience faster — with smart, hands-free engagement.</p>
+          <p className="text-sm text-gray-500 mb-4">Smart engagement automations</p>
 
           <div className="space-y-4">
             <div className="space-y-3">
@@ -1613,7 +1618,7 @@ useEffect(() => {
                       },
                     })
                   }}
-                  className={`${automation.actions.publicReply.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                  className={`${automation.actions.publicReply.enabled ? "bg-blue-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.publicReply.enabled ? "translate-x-6" : "translate-x-1"}`}
@@ -1622,19 +1627,19 @@ useEffect(() => {
               </div>
 
               {automation.actions.publicReply.enabled && (
-                <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-4 space-y-3 border border-purple-100">
+                <div className="bg rounded-lg p-4 space-y-3 border border-blue-100">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <label className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {/* <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                        </svg>
-                        Public Replies
+                        </svg> */}
+                      
                       </label>
-                      <span className="text-xs text-purple-600 font-medium">{automation.actions.publicReply.replies.filter(r => r.enabled).length} Active</span>
+                      {/* <span className="text-xs text-blue-600 font-medium">{automation.actions.publicReply.replies.filter(r => r.enabled).length} Active</span> */}
                     </div>
                     {automation.actions.publicReply.replies.map((reply, index) => (
-                      <div key={index} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200 hover:border-purple-300 transition-all group">
+                      <div key={index} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200 hover:border-blue-300 transition-all group">
                         <div className="flex items-start gap-3">
                           <Switch
                             checked={reply.enabled}
@@ -1649,7 +1654,7 @@ useEffect(() => {
                                 },
                               })
                             }}
-                            className={`${reply.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 mt-0.5`}
+                            className={`${reply.enabled ? "bg-blue-600" : "bg-gray-300"} relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 mt-0.5`}
                           >
                             <span
                               className={`inline-block h-3 w-3 transform rounded-full bg-white transition ${reply.enabled ? "translate-x-5" : "translate-x-1"}`}
@@ -1666,7 +1671,7 @@ useEffect(() => {
                               setPublicReplyText(reply.text)
                               setShowPublicReplyModal(true)
                             }}
-                            className="text-gray-400 hover:text-purple-600 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
+                            className="text-gray-400 hover:text-gray-700transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
                           >
                             <svg
                               width="18"
@@ -1702,7 +1707,7 @@ useEffect(() => {
                         setPublicReplyText("")
                         setShowPublicReplyModal(true)
                       }}
-                      className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:from-purple-700 hover:to-blue-700 transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+                      className="w-full bg-black text-white py-2.5 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-700 transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
@@ -1721,7 +1726,7 @@ useEffect(() => {
               <Switch
                 checked={automation.actions.askFollow}
                 onChange={(val) => setAutomation({ ...automation, actions: { ...automation.actions, askFollow: val } })}
-                className={`${automation.actions.askFollow ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                className={`${automation.actions.askFollow ? "bg-blue-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.askFollow ? "translate-x-6" : "translate-x-1"}`}
@@ -1801,7 +1806,7 @@ useEffect(() => {
                     },
                   })
                 }
-                className={`${automation.actions.followUp.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                className={`${automation.actions.followUp.enabled ? "bg-blue-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.followUp.enabled ? "translate-x-6" : "translate-x-1"}`}
@@ -1824,7 +1829,7 @@ useEffect(() => {
                     })
                   }
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px]"
                 />
                 <div className="text-xs text-gray-400">{automation.actions.followUp.message.length} / 640</div>
                 
@@ -1928,12 +1933,12 @@ useEffect(() => {
         <div className="overflow-y-auto h-[calc(90vh-60px)] px-4 pb-6">
 {/* Step 1: Select a Post Card - MOBILE VIEW */}
         <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 1 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
+          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 1 ? "border-gray-500 ring-2 ring-gray-200" : "border-gray-200"}`}
           onClick={() => setActiveStep(1)}
         >
           <div className="flex items-center gap-3 mb-4">
             <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 1 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 1 ? "bg-slate-800 text-white" : "bg-slate-800 text-white"}`}
             >
               1
             </div>
@@ -1941,7 +1946,7 @@ useEffect(() => {
           </div>
 
           {/* Next Post Toggle - Mobile View */}
-          <div className="flex items-center justify-between mb-4 p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+          <div className="flex items-center justify-between mb-4 p-3 bg-gradient-to-r from-blue-50 to-blue-50 rounded-lg border border-gray-200">
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-gray-900">⚡ Next Post</span>
               <span className="text-xs text-gray-600">Create automation before posting</span>
@@ -1957,7 +1962,7 @@ useEffect(() => {
                   setAutomation({ ...automation, postId: null, isNextPost: false })
                 }
               }}
-              className={`${isNextPost ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+              className={`${isNextPost ? "bg-blue-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
             >
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${isNextPost ? "translate-x-6" : "translate-x-1"}`}
@@ -1968,14 +1973,14 @@ useEffect(() => {
           {!isNextPost && (
             <>
               <div className="flex items-center justify-between mb-4">
-                <span className="text-sm text-gray-700">Any post</span>
+                {/* <span className="text-sm text-gray-700">Any post</span>
                 <Switch
                   checked={true}
                   onChange={() => {}}
                   className="bg-gray-300 relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
                 >
                   <span className="inline-block h-4 w-4 transform rounded-full bg-white transition translate-x-1" />
-                </Switch>
+                </Switch> */}
               </div>
             </>
           )}
@@ -1994,7 +1999,7 @@ useEffect(() => {
                     e.stopPropagation()
                     setAutomation({ ...automation, postId: post.id, isNextPost: false })
                   }}
-                  className={`h-24 rounded-lg cursor-pointer overflow-hidden ring-2 ${automation.postId === post.id ? "ring-purple-500" : "ring-transparent"}`}
+                  className={`h-24 rounded-lg cursor-pointer overflow-hidden ring-2 ${automation.postId === post.id ? "ring-gray-500" : "ring-transparent"}`}
                 >
                   <img src={post.thumbnail || "/placeholder.svg"} alt="Post" className="w-full h-full object-cover" />
                 </div>
@@ -2004,15 +2009,15 @@ useEffect(() => {
           )}
 
           {!isNextPost && (
-            <button
+            <Button
             onClick={(e) => {
               e.stopPropagation()
               setShowPostModal(true)
             }}
-            className="col-span-3 mt-3 text-sm text-purple-600 hover:underline"
+            className="col-span-3 mt-3 bg-transparent w-full text-black text-sm hover:bg-transparent border border-gray-300  "
           >
             Show More
-          </button>
+          </Button>
           )}
 
           {isNextPost && (
@@ -2027,18 +2032,22 @@ useEffect(() => {
           )}
         </div>
 
+        <div className="flex items-center">
+  <Separator orientation="vertical" className="mx-4 h-4" />
+</div>
+
         {/* Step 2: Setup Keywords Card */}
         <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 2 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
+          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 2 ? "border-gray-800 ring-2 ring-gray-100" : "border-gray-200"}`}
           onClick={() => setActiveStep(2)}
         >
           <div className="flex items-center gap-3 mb-4">
             <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 2 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 2 ? "bg-gray-800 text-white" : "bg-slate-800 text-white"}`}
             >
               2
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">Setup Keywords</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Add Keywords</h3>
           </div>
 
           <div className="flex items-center justify-between mb-4">
@@ -2046,7 +2055,7 @@ useEffect(() => {
             <Switch
               checked={automation.trigger.anyReply}
               onChange={(val) => setAutomation({ ...automation, trigger: { ...automation.trigger, anyReply: val } })}
-              className={`${automation.trigger.anyReply ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+              className={`${automation.trigger.anyReply ? "bg-blue-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
             >
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.trigger.anyReply ? "translate-x-6" : "translate-x-1"}`}
@@ -2073,7 +2082,7 @@ useEffect(() => {
             }}
             onClick={(e) => e.stopPropagation()}
             placeholder="Type & Hit Enter to add Keyword"
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
           />
 
           {automation.trigger.keywords.length > 0 && (
@@ -2081,7 +2090,7 @@ useEffect(() => {
               {automation.trigger.keywords.map((word, i) => (
                 <div
                   key={i}
-                  className="flex items-center bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full shadow-sm"
+                  className="flex items-center bg-gray-100 text-gray-800 text-sm px-3 py-1 rounded-full shadow-sm"
                 >
                   {word}
                   <button
@@ -2095,7 +2104,7 @@ useEffect(() => {
                         },
                       })
                     }}
-                    className="ml-2 text-purple-500 hover:text-purple-700"
+                    className="ml-2 text-gray-500 hover:text-gray-700"
                   >
                     ×
                   </button>
@@ -2105,21 +2114,25 @@ useEffect(() => {
           )}
         </div>
 
+          <div className="flex items-center">
+  <Separator orientation="vertical" className="mx-4 h-4" />
+</div>
+
         <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 3 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
+          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 3 ? "border-gray-800 ring-2 ring-gray-100" : "border-gray-200"}`}
           onClick={() => setActiveStep(3)}
         >
           <div className="flex items-center gap-3 mb-4">
             <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 3 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 3 ? "bg-slate-800 text-white" : "bg-slate-800 text-white"}`}
             >
               3
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">Send a DM</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Send DM Message</h3>
           </div>
 
           {/* Main DM Composition Area */}
-          <div className="border-2 border-purple-500 rounded-lg p-4 mb-4">
+          <div className="border-2 border-gray-200 rounded-lg p-4 mb-4">
             <textarea
               placeholder="Enter your message here..."
               value={automation.actions.sendDM.message}
@@ -2154,7 +2167,7 @@ useEffect(() => {
                 setEditingButton(null)
                 setShowLinkModal(true)
               }}
-              className="w-full border border-purple-500 text-purple-600 py-2 rounded-md text-sm font-medium hover:bg-purple-50 transition-colors flex items-center justify-center gap-2"
+              className="w-full border border-gray-300 text-gray-800 py-2 rounded-md text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
@@ -2285,7 +2298,7 @@ useEffect(() => {
                   actions: { ...automation.actions, openingDM: { ...automation.actions.openingDM, enabled: val } },
                 })
               }
-              className={`${automation.actions.openingDM.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+              className={`${automation.actions.openingDM.enabled ? "bg-blue-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
             >
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.openingDM.enabled ? "translate-x-6" : "translate-x-1"}`}
@@ -2309,7 +2322,7 @@ useEffect(() => {
                   })
                 }
                 onClick={(e) => e.stopPropagation()}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[120px] resize-y focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[120px] resize-y focus:outline-none"
               />
 
               <div className="text-xs text-gray-400">{automation.actions.openingDM.message.length} / 640</div>
@@ -2411,19 +2424,23 @@ useEffect(() => {
           )}
         </div>
 
+           <div className="flex items-center">
+  <Separator orientation="vertical" className="mx-4 h-4" />
+</div>
+
         <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 4 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"}`}
+          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 4 ? "border-gray-800 ring-2 ring-gray-100" : "border-gray-200"}`}
           onClick={() => setActiveStep(4)}
         >
           <div className="flex items-center gap-3 mb-4">
             <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 4 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"}`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 4 ? "bg-gray-800 text-white" : "bg-slate-800 text-white"}`}
             >
               4
             </div>
             <h3 className="text-lg font-semibold text-gray-900">Advanced Automations</h3>
           </div>
-          <p className="text-sm text-gray-500 mb-4">Grow your audience faster — with smart, hands-free engagement.</p>
+          <p className="text-sm text-gray-500 mb-4">Smart engagement automations</p>
 
           <div className="space-y-4">
             <div className="space-y-3">
@@ -2441,7 +2458,7 @@ useEffect(() => {
                       },
                     })
                   }}
-                  className={`${automation.actions.publicReply.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                  className={`${automation.actions.publicReply.enabled ? "bg-blue-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.publicReply.enabled ? "translate-x-6" : "translate-x-1"}`}
@@ -2450,19 +2467,19 @@ useEffect(() => {
               </div>
 
               {automation.actions.publicReply.enabled && (
-                <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-4 space-y-3 border border-purple-100">
+                <div className="bg rounded-lg p-4 space-y-3 border border-blue-100">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <label className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                         </svg>
                         Public Replies
                       </label>
-                      <span className="text-xs text-purple-600 font-medium">{automation.actions.publicReply.replies.filter(r => r.enabled).length} Active</span>
+                      <span className="text-xs text-blue-600 font-medium">{automation.actions.publicReply.replies.filter(r => r.enabled).length} Active</span>
                     </div>
                     {automation.actions.publicReply.replies.map((reply, index) => (
-                      <div key={index} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200 hover:border-purple-300 transition-all group">
+                      <div key={index} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200 hover:border-blue-300 transition-all group">
                         <div className="flex items-start gap-3">
                           <Switch
                             checked={reply.enabled}
@@ -2477,7 +2494,7 @@ useEffect(() => {
                                 },
                               })
                             }}
-                            className={`${reply.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 mt-0.5`}
+                            className={`${reply.enabled ? "bg-blue-600" : "bg-gray-300"} relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 mt-0.5`}
                           >
                             <span
                               className={`inline-block h-3 w-3 transform rounded-full bg-white transition ${reply.enabled ? "translate-x-5" : "translate-x-1"}`}
@@ -2494,7 +2511,7 @@ useEffect(() => {
                               setPublicReplyText(reply.text)
                               setShowPublicReplyModal(true)
                             }}
-                            className="text-gray-400 hover:text-purple-600 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
+                            className="text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
                           >
                             <svg
                               width="18"
@@ -2530,7 +2547,7 @@ useEffect(() => {
                         setPublicReplyText("")
                         setShowPublicReplyModal(true)
                       }}
-                      className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:from-purple-700 hover:to-blue-700 transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+                      className="w-full bg-gradient-to-r from-gray-600 to-gray-700 text-white py-2.5 rounded-lg text-sm font-medium hover:from-gray-700 hover:to-gray-800 transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
@@ -2549,7 +2566,7 @@ useEffect(() => {
               <Switch
                 checked={automation.actions.askFollow}
                 onChange={(val) => setAutomation({ ...automation, actions: { ...automation.actions, askFollow: val } })}
-                className={`${automation.actions.askFollow ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                className={`${automation.actions.askFollow ? "bg-blue-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.askFollow ? "translate-x-6" : "translate-x-1"}`}
@@ -2566,7 +2583,7 @@ useEffect(() => {
                     setAutomation({ ...automation, actions: { ...automation.actions, followMessage: e.target.value } })
                   }
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[120px] resize-y focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[120px] resize-y focus:outline-none"
                 />
 
                 <div className="text-xs text-gray-400">{automation.actions.followMessage.length} / 640</div>
@@ -2628,7 +2645,7 @@ useEffect(() => {
                     },
                   })
                 }
-                className={`${automation.actions.followUp.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                className={`${automation.actions.followUp.enabled ? "bg-blue-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.followUp.enabled ? "translate-x-6" : "translate-x-1"}`}
@@ -2651,7 +2668,7 @@ useEffect(() => {
                     })
                   }
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px]"
                 />
                 <div className="text-xs text-gray-400">{automation.actions.followUp.message.length} / 1000</div>
 
@@ -2669,7 +2686,7 @@ useEffect(() => {
                       })
                     }
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none"
                   >
                     <option value={1}>1 minute</option>
                     <option value={5}>5 minutes</option>

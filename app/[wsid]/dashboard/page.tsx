@@ -111,7 +111,7 @@ export default function DashboardPage() {
               <Button
                 onClick={() => router.push(`/${wsid}/contacts`)}
                 variant="outline"
-                className="mt-4 border-purple-500 text-purple-600 hover:bg-purple-50"
+                className="mt-4 border-blue-500 text-blue-600 hover:bg-purple-50"
               >
                 View Stats
               </Button>
@@ -273,16 +273,16 @@ export default function DashboardPage() {
                 {/* Comment to DM */}
                 <Card
                   onClick={() => router.push(`/${wsid}/automations/flow-builder`)}
-                  className="cursor-pointer border-2 border-purple-200 hover:border-purple-400 transition-all duration-200"
+                  className="cursor-pointer transition-all duration-200"
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center gap-4">
-                      <div className="p-3 bg-gradient-to-r from-purple-500 to-blue-600 rounded-xl">
+                      {/* <div className="p-3 bg-gradient-to-r from-purple-500 to-blue-600 rounded-xl">
                         <MessageCircle className="h-6 w-6 text-white" />
-                      </div>
+                      </div> */}
                       <div>
-                        <h4 className="font-semibold">Comment to DM Flow</h4>
-                        <p className="text-sm text-gray-600">Auto-reply to comments with DMs</p>
+                        <h1 className="font-semibold">Comment Trigger DMs</h1>
+                        <p className="text-sm mt-2 text-gray-600">Automatically reply to comments and send personalized DMs with interactive buttons</p>
                       </div>
                     </div>
                   </CardContent>
@@ -291,16 +291,16 @@ export default function DashboardPage() {
                 {/* DM Auto Responder */}
                 <Card
                   onClick={() => router.push(`/${wsid}/automations/story-builder`)}
-                  className="cursor-pointer border-2 border-green-200 hover:border-green-400 transition-all duration-200"
+                  className="cursor-pointer transition-all duration-200"
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center gap-4">
-                      <div className="p-3 bg-gradient-to-r from-green-500 to-blue-600 rounded-xl">
+                      {/* <div className="p-3 bg-gradient-to-r from-green-500 to-blue-600 rounded-xl">
                         <Zap className="h-6 w-6 text-white" />
-                      </div>
+                      </div> */}
                       <div>
-                        <h4 className="font-semibold">Story Reply Flow</h4>
-                        <p className="text-sm text-gray-600">Respond to DMs with options</p>
+                        <h1 className="font-semibold">Story DM Auto-Replies</h1>
+                        <p className="text-sm mt-2 text-gray-600">Respond to story replies instantly and convert viewers into customers with automated DMs</p>
                       </div>
                     </div>
                   </CardContent>

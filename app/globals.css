@@ -13,7 +13,8 @@
   color: #1a1a1a;
 }
 
-html {
+/* Smooth scroll - disabled for automation builders */
+html:not([data-disable-smooth-scroll]) {
   scroll-behavior: smooth;
 }
 

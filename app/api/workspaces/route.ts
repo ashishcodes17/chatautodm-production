@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getUser(request)
     const db = await getDatabase()
-    
+
     // Fetch workspaces and Instagram accounts in parallel (much faster!)
     const [workspaces, allInstagramAccounts] = await Promise.all([
       db.collection("workspaces")

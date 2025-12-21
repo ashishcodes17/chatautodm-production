@@ -360,7 +360,14 @@ const HeroSection = () => {
           <div className="bg-gradient-to-br from-gray-50 to-white rounded-3xl  pb-18 shadow-xl transition-all overflow-visible relative">
             
             {/* iOS Notification Banner */}
-            <div className="absolute -top-1 left-8 right-8 z-50 bg-white/90 backdrop-blur-2xl rounded-[1.125rem] shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white/20 p-3.5 opacity-0 animate-[slideDownOnce_0.6s_ease-out_3.2s_forwards]">
+            <div className="absolute -top-1 left-8 right-8 z-50
+    bg-white/90 backdrop-blur-2xl
+    rounded-[1.125rem]
+    shadow-[0_8px_32px_rgba(0,0,0,0.12)]
+    border border-white/20
+    p-3.5
+    opacity-0
+    animate-[slideDownOnce_0.6s_ease-out_3.2s_forwards]">
               <div className="flex items-start gap-3">
                 <div className="w-11 h-11 rounded-full flex-shrink-0 ring-2 ring-white/50 overflow-hidden">
                 <img src="/blank_user.png" className="w-full h-full object-cover" alt="Profile"></img>

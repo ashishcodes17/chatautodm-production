@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Dialog, Switch, DialogPanel, DialogTitle } from "@headlessui/react"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import { toast, Toaster } from "sonner"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import axios from "axios"
@@ -386,70 +387,70 @@ export default function Page() {
 
 
 
-const handleSubmit = async () => {
-  try {
-    setIsSubmitting(true)
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true)
 
-    // 🧩 Step 1: Validate story selection
-    if (!automation.storyId) {
-      toast.error("Story Required", {
-        description: "Please select a story before saving your automation.",
-      })
-      setIsSubmitting(false)
-      return
-    }
-
-    // 🧩 Step 2: Validate required fields
-    if (!automation.actions.sendDM.message.trim()) {
-      toast.error("Missing Message", {
-        description: "Please enter a main DM message before saving your automation.",
-      })
-      setIsSubmitting(false)
-      return
-    }
-
-    // 🧠 Step 2: Build payload and send API request depending on mode
-    const payload = {
-      ...automation,
-      type: "story_reply_flow",
-      storyId: automation.storyId,
-    }
-
-    let response
-    if (isEditMode && automationId) {
-      response = await axios.put(`/api/automations/${automationId}`, payload)
-    } else {
-      response = await axios.post(`/api/workspaces/${wsid}/automations`, payload)
-    }
-
-    // 💡 Step 3: Handle successful or failed response
-    if (response.data.success) {
-      toast.success(`Automation ${isEditMode ? "Updated" : "Saved"} Successfully`, {
-        description: isEditMode
-          ? "Your automation changes have been saved successfully."
-          : "Your new automation has been created and activated.",
-      })
-
-      // Add a short delay so users can see the toast before redirect
-      if (!isEditMode) {
-        setTimeout(() => router.push(`/${wsid}/automations`), 1500)
+      // 🧩 Step 1: Validate story selection
+      if (!automation.storyId) {
+        toast.error("Story Required", {
+          description: "Please select a story before saving your automation.",
+        })
+        setIsSubmitting(false)
+        return
       }
-    } else {
-      toast.error(`Failed to ${isEditMode ? "Update" : "Save"} Automation`, {
-        description: "Something went wrong. Please try again.",
+
+      // 🧩 Step 2: Validate required fields
+      if (!automation.actions.sendDM.message.trim()) {
+        toast.error("Missing Message", {
+          description: "Please enter a main DM message before saving your automation.",
+        })
+        setIsSubmitting(false)
+        return
+      }
+
+      // 🧠 Step 2: Build payload and send API request depending on mode
+      const payload = {
+        ...automation,
+        type: "story_reply_flow",
+        storyId: automation.storyId,
+      }
+
+      let response
+      if (isEditMode && automationId) {
+        response = await axios.put(`/api/automations/${automationId}`, payload)
+      } else {
+        response = await axios.post(`/api/workspaces/${wsid}/automations`, payload)
+      }
+
+      // 💡 Step 3: Handle successful or failed response
+      if (response.data.success) {
+        toast.success(`Automation ${isEditMode ? "Updated" : "Saved"} Successfully`, {
+          description: isEditMode
+            ? "Your automation changes have been saved successfully."
+            : "Your new automation has been created and activated.",
+        })
+
+        // Add a short delay so users can see the toast before redirect
+        if (!isEditMode) {
+          setTimeout(() => router.push(`/${wsid}/automations`), 1500)
+        }
+      } else {
+        toast.error(`Failed to ${isEditMode ? "Update" : "Save"} Automation`, {
+          description: "Something went wrong. Please try again.",
+        })
+      }
+    } catch (error) {
+      // ⚠️ Step 4: Handle unexpected errors gracefully
+      console.error("Error saving automation:", error)
+      toast.error("Unexpected Error", {
+        description: `Failed to ${isEditMode ? "update" : "save"} automation. Please try again.`,
       })
+    } finally {
+      // 🔄 Step 5: Reset loading state
+      setIsSubmitting(false)
     }
-  } catch (error) {
-    // ⚠️ Step 4: Handle unexpected errors gracefully
-    console.error("Error saving automation:", error)
-    toast.error("Unexpected Error", {
-      description: `Failed to ${isEditMode ? "update" : "save"} automation. Please try again.`,
-    })
-  } finally {
-    // 🔄 Step 5: Reset loading state
-    setIsSubmitting(false)
   }
-}
 
 
   // Get selected story
@@ -919,7 +920,7 @@ const handleSubmit = async () => {
 
       {/* Left: Mobile Preview */}
       <div className="flex items-center justify-center w-full md:w-[calc(100%-450px)] bg-gray-100 ">
-        <div className="relative w-full max-w-sm aspect-[360/520] md:translate-x-28">
+        <div className="relative w-full max-w-sm aspect-[360/520] md:translate-x-26">
           <Image
             src="/mobile-frame.png"
             alt="Phone Frame"
@@ -935,19 +936,17 @@ const handleSubmit = async () => {
       </div>
 
       {/* Right Sidebar with Card Layout */}
-      <div className="hidden md:block w-[450px] border-l border-gray-200 bg-gray-50 px-4 py-6 overflow-y-auto h-full space-y-4">
+      <div className="hidden md:block w-[500px] border-l border-gray-200 bg-gray-50 px-4 py-6 overflow-y-scroll flex-shrink-0 space-y-4" style={{ scrollBehavior: 'auto' }}>
         {/* Step 1: Select a Story Card */}
         <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${
-            activeStep === 1 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
-          }`}
+          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 1 ? "border-gray-500 ring-2 ring-gray-200" : "border-gray-200"
+            }`}
           onClick={() => setActiveStep(1)}
         >
           <div className="flex items-center gap-3 mb-4">
             <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${
-                activeStep === 1 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
-              }`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 1 ? "bg-slate-800 text-white" : "bg-slate-800 text-white"
+                }`}
             >
               1
             </div>
@@ -958,7 +957,7 @@ const handleSubmit = async () => {
             <span className="text-sm text-gray-700">Any story</span>
             <Switch
               checked={true}
-              onChange={() => {}}
+              onChange={() => { }}
               className="bg-gray-300 relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
             >
               <span className="inline-block h-4 w-4 transform rounded-full bg-white transition translate-x-1" />
@@ -978,9 +977,8 @@ const handleSubmit = async () => {
                     e.stopPropagation()
                     setAutomation({ ...automation, storyId: story.id })
                   }}
-                  className={`h-24 rounded-lg cursor-pointer overflow-hidden ring-2 ${
-                    automation.storyId === story.id ? "ring-purple-500" : "ring-transparent"
-                  }`}
+                  className={`h-24 rounded-lg cursor-pointer overflow-hidden ring-2 ${automation.storyId === story.id ? "ring-gray-500" : "ring-transparent"
+                    }`}
                 >
                   <img
                     src={story.thumbnail_url || story.media_url}
@@ -992,33 +990,33 @@ const handleSubmit = async () => {
             )}
           </div>
 
-          <button
+          <Button
             onClick={(e) => {
               e.stopPropagation()
               setShowStoryModal(true)
             }}
-            className="col-span-3 mt-3 text-sm text-purple-600 hover:underline"
+            className="col-span-3 bg-transparent mt-3 w-full text-black text-sm hover:bg-transparent border border-gray-300"
           >
             Show More
-          </button>
+          </Button>
         </div>
+
+        <Separator className="my-4" />
 
         {/* Step 2: Setup Keywords Card */}
         <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${
-            activeStep === 2 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
-          }`}
+          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 2 ? "border-gray-800 ring-2 ring-gray-100" : "border-gray-200"
+            }`}
           onClick={() => setActiveStep(2)}
         >
           <div className="flex items-center gap-3 mb-4">
             <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${
-                activeStep === 2 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
-              }`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 2 ? "bg-gray-800 text-white" : "bg-slate-800 text-white"
+                }`}
             >
               2
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">Setup Keywords</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Add Keywords</h3>
           </div>
 
           <div className="flex items-center justify-between mb-4">
@@ -1026,14 +1024,12 @@ const handleSubmit = async () => {
             <Switch
               checked={automation.trigger.anyReply}
               onChange={(val) => setAutomation({ ...automation, trigger: { ...automation.trigger, anyReply: val } })}
-              className={`${
-                automation.trigger.anyReply ? "bg-purple-600" : "bg-gray-300"
-              } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+              className={`${automation.trigger.anyReply ? "bg-blue-600" : "bg-gray-300"
+                } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                  automation.trigger.anyReply ? "translate-x-6" : "translate-x-1"
-                }`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.trigger.anyReply ? "translate-x-6" : "translate-x-1"
+                  }`}
               />
             </Switch>
           </div>
@@ -1060,7 +1056,7 @@ const handleSubmit = async () => {
             }}
             onClick={(e) => e.stopPropagation()}
             placeholder="Type & Hit Enter to add Keyword"
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 "
           />
 
           {automation.trigger.keywords.length > 0 && (
@@ -1068,7 +1064,7 @@ const handleSubmit = async () => {
               {automation.trigger.keywords.map((word, i) => (
                 <div
                   key={i}
-                  className="flex items-center bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full shadow-sm"
+                  className="flex items-center bg-gray-100 text-gray-800 text-sm px-3 py-1 rounded-full shadow-sm"
                 >
                   {word}
                   <button
@@ -1082,7 +1078,7 @@ const handleSubmit = async () => {
                         },
                       })
                     }}
-                    className="ml-2 text-purple-500 hover:text-purple-700"
+                    className="ml-2 text-gray-500 hover:text-gray-700"
                   >
                     ×
                   </button>
@@ -1092,26 +1088,26 @@ const handleSubmit = async () => {
           )}
         </div>
 
+        <Separator className="my-4" />
+
         {/* Step 3: Send a DM Card */}
         <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${
-            activeStep === 3 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
-          }`}
+          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 3 ? "border-gray-800 ring-2 ring-gray-100" : "border-gray-200"
+            }`}
           onClick={() => setActiveStep(3)}
         >
           <div className="flex items-center gap-3 mb-4">
             <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${
-                activeStep === 3 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
-              }`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 3 ? "bg-slate-800 text-white" : "bg-slate-800 text-white"
+                }`}
             >
               3
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">Send a DM</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Send DM Message</h3>
           </div>
 
           {/* Main DM Composition Area */}
-          <div className="border-2 border-purple-500 rounded-lg p-4 mb-4">
+          <div className="border-2 border-gray-200 rounded-lg p-4 mb-4">
             <div className="flex items-center gap-2 mb-3 text-gray-500">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" strokeWidth="2" />
@@ -1173,7 +1169,7 @@ const handleSubmit = async () => {
                   </button>
                 </div>
               ) : (
-                <label className="w-full border-2 border-dashed border-gray-300 hover:border-purple-500 rounded-lg p-4 cursor-pointer transition-colors flex flex-col items-center gap-2">
+                <label className="w-full border-2 border-dashed border-gray-300 hover:border-gray-500 rounded-lg p-4 cursor-pointer transition-colors flex flex-col items-center gap-2">
                   <input
                     type="file"
                     accept="image/*"
@@ -1184,7 +1180,7 @@ const handleSubmit = async () => {
                   />
                   {isUploadingImage ? (
                     <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
                       <span className="text-sm text-gray-600">Uploading...</span>
                     </div>
                   ) : (
@@ -1206,7 +1202,7 @@ const handleSubmit = async () => {
                 setEditingButton(null)
                 setShowLinkModal(true)
               }}
-              className="w-full border border-purple-500 text-purple-600 py-2 rounded-md text-sm font-medium hover:bg-purple-50 transition-colors flex items-center justify-center gap-2"
+              className="w-full border border-gray-300 text-gray-800 py-2 rounded-md text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
@@ -1288,14 +1284,12 @@ const handleSubmit = async () => {
                   },
                 })
               }
-              className={`${
-                automation.actions.openingDM.enabled ? "bg-purple-600" : "bg-gray-300"
-              } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+              className={`${automation.actions.openingDM.enabled ? "bg-blue-600" : "bg-gray-300"
+                } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                  automation.actions.openingDM.enabled ? "translate-x-6" : "translate-x-1"
-                }`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.openingDM.enabled ? "translate-x-6" : "translate-x-1"
+                  }`}
               />
             </Switch>
           </div>
@@ -1361,23 +1355,24 @@ const handleSubmit = async () => {
           )}
         </div>
 
+        <Separator className="my-4" />
+
         {/* Step 4: Advanced Automations Card */}
         <div
-          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${
-            activeStep === 4 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
-          }`}
+          className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 4 ? "border-gray-800 ring-2 ring-gray-100" : "border-gray-200"
+            }`}
           onClick={() => setActiveStep(4)}
         >
           <div className="flex items-center gap-3 mb-4">
             <div
-              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${
-                activeStep === 4 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
-              }`}
+              className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 4 ? "bg-gray-800 text-white" : "bg-slate-800 text-white"
+                }`}
             >
               4
             </div>
             <h3 className="text-lg font-semibold text-gray-900">Advanced Automations</h3>
           </div>
+          <p className="text-sm text-gray-500 mb-4">Smart engagement automations</p>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -1393,14 +1388,12 @@ const handleSubmit = async () => {
                     },
                   })
                 }
-                className={`${
-                  automation.actions.askFollow ? "bg-purple-600" : "bg-gray-300"
-                } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                className={`${automation.actions.askFollow ? "bg-blue-600" : "bg-gray-300"
+                  } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                    automation.actions.askFollow ? "translate-x-6" : "translate-x-1"
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.askFollow ? "translate-x-6" : "translate-x-1"
+                    }`}
                 />
               </Switch>
             </div>
@@ -1461,8 +1454,8 @@ const handleSubmit = async () => {
               </div>
             )}
 
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-700">Ask for emails in DMs</span>
+            {/* <div className="flex items-center justify-between"> */}
+            {/* <span className="text-sm text-gray-700">Ask for emails in DMs</span>
               <Switch
                 checked={automation.actions.askEmail}
                 onChange={(val) =>
@@ -1474,17 +1467,15 @@ const handleSubmit = async () => {
                     },
                   })
                 }
-                className={`${
-                  automation.actions.askEmail ? "bg-purple-600" : "bg-gray-300"
-                } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                className={`${automation.actions.askEmail ? "bg-blue-600" : "bg-gray-300"
+                  } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                    automation.actions.askEmail ? "translate-x-6" : "translate-x-1"
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.askEmail ? "translate-x-6" : "translate-x-1"
+                    }`}
                 />
-              </Switch>
-            </div>
+              </Switch> */}
+            {/* </div> */}
 
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-700">React with heart</span>
@@ -1499,14 +1490,12 @@ const handleSubmit = async () => {
                     },
                   })
                 }
-                className={`${
-                  automation.actions.reactHeart ? "bg-purple-600" : "bg-gray-300"
-                } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                className={`${automation.actions.reactHeart ? "bg-blue-600" : "bg-gray-300"
+                  } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                    automation.actions.reactHeart ? "translate-x-6" : "translate-x-1"
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.reactHeart ? "translate-x-6" : "translate-x-1"
+                    }`}
                 />
               </Switch>
             </div>
@@ -1525,7 +1514,7 @@ const handleSubmit = async () => {
                     },
                   })
                 }
-                className={`${automation.actions.followUp.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                className={`${automation.actions.followUp.enabled ? "bg-blue-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.followUp.enabled ? "translate-x-6" : "translate-x-1"}`}
@@ -1548,10 +1537,10 @@ const handleSubmit = async () => {
                     })
                   }
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px] focus:outline-none"
                 />
                 <div className="text-xs text-gray-400">{automation.actions.followUp.message.length} / 640</div>
-                
+
                 {/* Delay selector */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">Send after:</label>
@@ -1567,7 +1556,7 @@ const handleSubmit = async () => {
                       })
                     }
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none"
                   >
                     <option value="60000">1 minute</option>
                     <option value="300000">5 minutes</option>
@@ -1593,9 +1582,9 @@ const handleSubmit = async () => {
       <div className="md:hidden fixed bottom-6 inset-x-0 flex justify-center z-[40]">
         <button
           onClick={() => setShowMobileDrawer(true)}
-          className="bg-purple-600 text-white px-6 py-3 rounded-full shadow-lg"
+          className="bg-gray-800 text-white px-6 py-2 rounded-full shadow-lg"
         >
-          Edit
+          Edit Flow
         </button>
       </div>
 
@@ -1616,16 +1605,14 @@ const handleSubmit = async () => {
         <div className="overflow-y-auto h-[calc(90vh-60px)] px-4 pb-6">
           {/* Step 1: Select a Story Card */}
           <div
-            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${
-              activeStep === 1 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
-            }`}
+            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 1 ? "border-gray-500 ring-2 ring-gray-200" : "border-gray-200"
+              }`}
             onClick={() => setActiveStep(1)}
           >
             <div className="flex items-center gap-3 mb-4">
               <div
-                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${
-                  activeStep === 1 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
-                }`}
+                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 1 ? "bg-slate-800 text-white" : "bg-slate-800 text-white"
+                  }`}
               >
                 1
               </div>
@@ -1636,7 +1623,7 @@ const handleSubmit = async () => {
               <span className="text-sm text-gray-700">Any story</span>
               <Switch
                 checked={true}
-                onChange={() => {}}
+                onChange={() => { }}
                 className="bg-gray-300 relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
               >
                 <span className="inline-block h-4 w-4 transform rounded-full bg-white transition translate-x-1" />
@@ -1656,9 +1643,8 @@ const handleSubmit = async () => {
                       e.stopPropagation()
                       setAutomation({ ...automation, storyId: story.id })
                     }}
-                    className={`h-24 rounded-lg cursor-pointer overflow-hidden ring-2 ${
-                      automation.storyId === story.id ? "ring-purple-500" : "ring-transparent"
-                    }`}
+                    className={`h-24 rounded-lg cursor-pointer overflow-hidden ring-2 ${automation.storyId === story.id ? "ring-gray-500" : "ring-transparent"
+                      }`}
                   >
                     <img
                       src={story.thumbnail_url || story.media_url}
@@ -1670,33 +1656,33 @@ const handleSubmit = async () => {
               )}
             </div>
 
-            <button
+            <Button
               onClick={(e) => {
                 e.stopPropagation()
                 setShowStoryModal(true)
               }}
-              className="col-span-3 mt-3 text-sm text-purple-600 hover:underline"
+              className="col-span-3 mt-3 bg-transparent w-full text-black text-sm hover:bg-transparent border border-gray-300"
             >
               Show More
-            </button>
+            </Button>
           </div>
+
+          <Separator className="my-4" />
 
           {/* Step 2: Setup Keywords Card */}
           <div
-            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${
-              activeStep === 2 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
-            }`}
+            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 2 ? "border-gray-800 ring-2 ring-gray-100" : "border-gray-200"
+              }`}
             onClick={() => setActiveStep(2)}
           >
             <div className="flex items-center gap-3 mb-4">
               <div
-                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${
-                  activeStep === 2 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
-                }`}
+                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 2 ? "bg-gray-800 text-white" : "bg-slate-800 text-white"
+                  }`}
               >
                 2
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">Setup Keywords</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Add Keywords</h3>
             </div>
 
             <div className="flex items-center justify-between mb-4">
@@ -1704,14 +1690,12 @@ const handleSubmit = async () => {
               <Switch
                 checked={automation.trigger.anyReply}
                 onChange={(val) => setAutomation({ ...automation, trigger: { ...automation.trigger, anyReply: val } })}
-                className={`${
-                  automation.trigger.anyReply ? "bg-purple-600" : "bg-gray-300"
-                } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                className={`${automation.trigger.anyReply ? "bg-blue-600" : "bg-gray-300"
+                  } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                    automation.trigger.anyReply ? "translate-x-6" : "translate-x-1"
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.trigger.anyReply ? "translate-x-6" : "translate-x-1"
+                    }`}
                 />
               </Switch>
             </div>
@@ -1738,7 +1722,7 @@ const handleSubmit = async () => {
               }}
               onClick={(e) => e.stopPropagation()}
               placeholder="Type & Hit Enter to add Keyword"
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
             />
 
             {automation.trigger.keywords.length > 0 && (
@@ -1746,7 +1730,7 @@ const handleSubmit = async () => {
                 {automation.trigger.keywords.map((word, i) => (
                   <div
                     key={i}
-                    className="flex items-center bg-purple-100 text-purple-800 text-sm px-3 py-1 rounded-full shadow-sm"
+                    className="flex items-center bg-gray-100 text-gray-800 text-sm px-3 py-1 rounded-full shadow-sm"
                   >
                     {word}
                     <button
@@ -1760,7 +1744,7 @@ const handleSubmit = async () => {
                           },
                         })
                       }}
-                      className="ml-2 text-purple-500 hover:text-purple-700"
+                      className="ml-2 text-gray-500 hover:text-gray-700"
                     >
                       ×
                     </button>
@@ -1770,26 +1754,26 @@ const handleSubmit = async () => {
             )}
           </div>
 
+          <Separator className="my-4" />
+
           {/* Step 3: Send a DM Card */}
           <div
-            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${
-              activeStep === 3 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
-            }`}
+            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 3 ? "border-gray-800 ring-2 ring-gray-100" : "border-gray-200"
+              }`}
             onClick={() => setActiveStep(3)}
           >
             <div className="flex items-center gap-3 mb-4">
               <div
-                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${
-                  activeStep === 3 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
-                }`}
+                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 3 ? "bg-slate-800 text-white" : "bg-slate-800 text-white"
+                  }`}
               >
                 3
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">Send a DM</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Send DM Message</h3>
             </div>
 
             {/* Main DM Composition Area */}
-            <div className="border-2 border-purple-500 rounded-lg p-4 mb-4">
+            <div className="border-2 border-gray-200 rounded-lg p-4 mb-4">
               <div className="flex items-center gap-2 mb-3 text-gray-500">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" strokeWidth="2" />
@@ -1884,7 +1868,7 @@ const handleSubmit = async () => {
                   setEditingButton(null)
                   setShowLinkModal(true)
                 }}
-                className="w-full border border-purple-500 text-purple-600 py-2 rounded-md text-sm font-medium hover:bg-purple-50 transition-colors flex items-center justify-center gap-2"
+                className="w-full border border-gray-300 text-gray-800 py-2 rounded-md text-sm font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
@@ -1966,14 +1950,12 @@ const handleSubmit = async () => {
                     },
                   })
                 }
-                className={`${
-                  automation.actions.openingDM.enabled ? "bg-purple-600" : "bg-gray-300"
-                } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                className={`${automation.actions.openingDM.enabled ? "bg-blue-600" : "bg-gray-300"
+                  } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                    automation.actions.openingDM.enabled ? "translate-x-6" : "translate-x-1"
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.openingDM.enabled ? "translate-x-6" : "translate-x-1"
+                    }`}
                 />
               </Switch>
             </div>
@@ -1997,7 +1979,7 @@ const handleSubmit = async () => {
                     })
                   }
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[60px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[60px] focus:outline-none"
                 />
 
                 <div className="text-xs text-gray-400">{automation.actions.openingDM.message.length} / 640</div>
@@ -2039,23 +2021,24 @@ const handleSubmit = async () => {
             )}
           </div>
 
+          <Separator className="my-4" />
+
           {/* Step 4: Advanced Automations Card */}
           <div
-            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${
-              activeStep === 4 ? "border-purple-500 ring-2 ring-purple-200" : "border-gray-200"
-            }`}
+            className={`bg-white rounded-lg border p-4 shadow-sm cursor-pointer transition-all ${activeStep === 4 ? "border-gray-800 ring-2 ring-gray-100" : "border-gray-200"
+              }`}
             onClick={() => setActiveStep(4)}
           >
             <div className="flex items-center gap-3 mb-4">
               <div
-                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${
-                  activeStep === 4 ? "bg-purple-600 text-white" : "bg-slate-800 text-white"
-                }`}
+                className={`flex items-center justify-center w-6 h-6 rounded-full text-sm font-semibold ${activeStep === 4 ? "bg-gray-800 text-white" : "bg-slate-800 text-white"
+                  }`}
               >
                 4
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Advanced Automations</h3>
             </div>
+            <p className="text-sm text-gray-500 mb-4">Smart engagement automations</p>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -2071,14 +2054,12 @@ const handleSubmit = async () => {
                       },
                     })
                   }
-                  className={`${
-                    automation.actions.askFollow ? "bg-purple-600" : "bg-gray-300"
-                  } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                  className={`${automation.actions.askFollow ? "bg-blue-600" : "bg-gray-300"
+                    } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                      automation.actions.askFollow ? "translate-x-6" : "translate-x-1"
-                    }`}
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.askFollow ? "translate-x-6" : "translate-x-1"
+                      }`}
                   />
                 </Switch>
               </div>
@@ -2098,7 +2079,7 @@ const handleSubmit = async () => {
                       })
                     }
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[60px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[60px] focus:outline-none focus:ring-2 "
                   />
 
                   <div className="text-xs text-gray-400">{automation.actions.followMessage.length} / 640</div>
@@ -2145,7 +2126,7 @@ const handleSubmit = async () => {
                 </div>
               )}
 
-              <div className="flex items-center justify-between">
+              {/* <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-700">Ask for emails in DMs</span>
                 <Switch
                   checked={automation.actions.askEmail}
@@ -2158,17 +2139,15 @@ const handleSubmit = async () => {
                       },
                     })
                   }
-                  className={`${
-                    automation.actions.askEmail ? "bg-purple-600" : "bg-gray-300"
-                  } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                  className={`${automation.actions.askEmail ? "bg-purple-600" : "bg-gray-300"
+                    } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                      automation.actions.askEmail ? "translate-x-6" : "translate-x-1"
-                    }`}
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.askEmail ? "translate-x-6" : "translate-x-1"
+                      }`}
                   />
                 </Switch>
-              </div>
+              </div> */}
 
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-700">React with heart</span>
@@ -2183,14 +2162,12 @@ const handleSubmit = async () => {
                       },
                     })
                   }
-                  className={`${
-                    automation.actions.reactHeart ? "bg-purple-600" : "bg-gray-300"
-                  } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                  className={`${automation.actions.reactHeart ? "bg-blue-600" : "bg-gray-300"
+                    } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                      automation.actions.reactHeart ? "translate-x-6" : "translate-x-1"
-                    }`}
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.reactHeart ? "translate-x-6" : "translate-x-1"
+                      }`}
                   />
                 </Switch>
               </div>
@@ -2209,7 +2186,7 @@ const handleSubmit = async () => {
                       },
                     })
                   }
-                  className={`${automation.actions.followUp.enabled ? "bg-purple-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+                  className={`${automation.actions.followUp.enabled ? "bg-blue-600" : "bg-gray-300"} relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${automation.actions.followUp.enabled ? "translate-x-6" : "translate-x-1"}`}
@@ -2232,10 +2209,10 @@ const handleSubmit = async () => {
                       })
                     }
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[80px] focus:outline-none"
                   />
                   <div className="text-xs text-gray-400">{automation.actions.followUp.message.length} / 640</div>
-                  
+
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">Send after:</label>
                     <select
@@ -2250,7 +2227,7 @@ const handleSubmit = async () => {
                         })
                       }
                       onClick={(e) => e.stopPropagation()}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
                     >
                       <option value="60000">1 minute</option>
                       <option value="300000">5 minutes</option>
@@ -2276,205 +2253,204 @@ const handleSubmit = async () => {
 
       {/* Story Selection Modal */}
       {/* Story Selection Modal */}
-<Dialog open={showStoryModal} onClose={() => setShowStoryModal(false)} className="relative z-[80]">
-  <div className="fixed inset-0 bg-black/40" />
-  <div className="fixed inset-0 flex items-center justify-center p-4">
-    <div className="bg-white p-6 rounded-lg w-full max-w-lg relative">
-      <h2 className="text-lg font-semibold mb-4">Select Story</h2>
+      <Dialog open={showStoryModal} onClose={() => setShowStoryModal(false)} className="relative z-[80]">
+        <div className="fixed inset-0 bg-black/40" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-lg relative">
+            <h2 className="text-lg font-semibold mb-4">Select Story</h2>
 
-      {/* Close button */}
-      <button
-        onClick={() => setShowStoryModal(false)}
-        className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl font-bold"
-      >
-        ✕
-      </button>
+            {/* Close button */}
+            <button
+              onClick={() => setShowStoryModal(false)}
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl font-bold"
+            >
+              ✕
+            </button>
 
-      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[60vh] overflow-y-auto">
-        {stories.map((story: any) => (
-          <div
-            key={story.id}
-            onClick={() => setAutomation({ ...automation, storyId: story.id })}
-            className={`relative h-24 bg-gray-200 rounded-lg overflow-hidden cursor-pointer border-2 ${
-              automation.storyId === story.id ? "border-purple-600" : "border-transparent"
-            }`}
-          >
-            <img
-              src={story.thumbnail_url || story.media_url}
-              alt="Story"
-              className="w-full h-full object-cover"
-            />
-            {automation.storyId === story.id && (
-              <div className="absolute top-1 right-1 bg-purple-600 text-white text-xs rounded-full p-1">✓</div>
-            )}
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 max-h-[60vh] overflow-y-auto">
+              {stories.map((story: any) => (
+                <div
+                  key={story.id}
+                  onClick={() => setAutomation({ ...automation, storyId: story.id })}
+                  className={`relative h-24 bg-gray-200 rounded-lg overflow-hidden cursor-pointer border-2 ${automation.storyId === story.id ? "border-purple-600" : "border-transparent"
+                    }`}
+                >
+                  <img
+                    src={story.thumbnail_url || story.media_url}
+                    alt="Story"
+                    className="w-full h-full object-cover"
+                  />
+                  {automation.storyId === story.id && (
+                    <div className="absolute top-1 right-1 bg-purple-600 text-white text-xs rounded-full p-1">✓</div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <Button onClick={() => setShowStoryModal(false)} className="mt-4 w-full">
+              Confirm Selection
+            </Button>
           </div>
-        ))}
-      </div>
+        </div>
+      </Dialog>
 
-      <Button onClick={() => setShowStoryModal(false)} className="mt-4 w-full">
-        Confirm Selection
-      </Button>
-    </div>
-  </div>
-</Dialog>
+      {/* Main DM Link Modal */}
+      <Dialog open={showLinkModal} onClose={() => setShowLinkModal(false)} className="relative z-[80]">
+        <div className="fixed inset-0 bg-black/40" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md relative">
+            <h2 className="text-lg font-semibold mb-4">{editingButton ? "Edit Link" : "Add Link"}</h2>
 
-{/* Main DM Link Modal */}
-<Dialog open={showLinkModal} onClose={() => setShowLinkModal(false)} className="relative z-[80]">
-  <div className="fixed inset-0 bg-black/40" />
-  <div className="fixed inset-0 flex items-center justify-center p-4">
-    <div className="bg-white p-6 rounded-lg w-full max-w-md relative">
-      <h2 className="text-lg font-semibold mb-4">{editingButton ? "Edit Link" : "Add Link"}</h2>
+            {/* Close button */}
+            <button
+              onClick={() => setShowLinkModal(false)}
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl font-bold"
+            >
+              ✕
+            </button>
 
-      {/* Close button */}
-      <button
-        onClick={() => setShowLinkModal(false)}
-        className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl font-bold"
-      >
-        ✕
-      </button>
+            <input
+              type="text"
+              placeholder="Button Text"
+              value={buttonText}
+              onChange={(e) => setButtonText(e.target.value)}
+              className="w-full mb-3 border border-gray-300 rounded px-3 py-1.5 text-sm"
+            />
+            <input
+              type="text"
+              placeholder="Paste your link"
+              value={link}
+              onChange={(e) => {
+                setLink(e.target.value)
+                setValidLink(validateLink(e.target.value))
+              }}
+              className={`w-full mb-2 border ${validLink ? "border-gray-300" : "border-red-500"} rounded px-3 py-1.5 text-sm`}
+            />
+            {!validLink && <p className="text-red-500 text-xs mb-2">Please enter a valid link (https://…)</p>}
 
-      <input
-        type="text"
-        placeholder="Button Text"
-        value={buttonText}
-        onChange={(e) => setButtonText(e.target.value)}
-        className="w-full mb-3 border border-gray-300 rounded px-3 py-1.5 text-sm"
-      />
-      <input
-        type="text"
-        placeholder="Paste your link"
-        value={link}
-        onChange={(e) => {
-          setLink(e.target.value)
-          setValidLink(validateLink(e.target.value))
-        }}
-        className={`w-full mb-2 border ${validLink ? "border-gray-300" : "border-red-500"} rounded px-3 py-1.5 text-sm`}
-      />
-      {!validLink && <p className="text-red-500 text-xs mb-2">Please enter a valid link (https://…)</p>}
+            <Button
+              onClick={() => {
+                if (validateLink(link) && buttonText.trim()) {
+                  if (editingButton) {
+                    saveEditedButton()
+                  } else {
+                    setAutomation({
+                      ...automation,
+                      actions: {
+                        ...automation.actions,
+                        sendDM: {
+                          ...automation.actions.sendDM,
+                          buttons: [...automation.actions.sendDM.buttons, { text: buttonText, link }],
+                        },
+                      },
+                    })
+                    setShowLinkModal(false)
+                    setLink("")
+                    setButtonText("")
+                  }
+                }
+              }}
+              disabled={!buttonText.trim() || !validLink}
+              className="w-full"
+            >
+              {editingButton ? "Update" : "Save"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
 
-      <Button
-        onClick={() => {
-          if (validateLink(link) && buttonText.trim()) {
-            if (editingButton) {
-              saveEditedButton()
-            } else {
-              setAutomation({
-                ...automation,
-                actions: {
-                  ...automation.actions,
-                  sendDM: {
-                    ...automation.actions.sendDM,
-                    buttons: [...automation.actions.sendDM.buttons, { text: buttonText, link }],
-                  },
-                },
-              })
-              setShowLinkModal(false)
-              setLink("")
-              setButtonText("")
-            }
-          }
-        }}
-        disabled={!buttonText.trim() || !validLink}
-        className="w-full"
-      >
-        {editingButton ? "Update" : "Save"}
-      </Button>
-    </div>
-  </div>
-</Dialog>
+      {/* Opening DM Link Modal */}
+      <Dialog open={showOpeningLinkModal} onClose={() => setShowOpeningLinkModal(false)} className="relative z-[80]">
+        <div className="fixed inset-0 bg-black/40" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md relative">
+            <h2 className="text-lg font-semibold mb-4">Edit Opening Button</h2>
 
-{/* Opening DM Link Modal */}
-<Dialog open={showOpeningLinkModal} onClose={() => setShowOpeningLinkModal(false)} className="relative z-[80]">
-  <div className="fixed inset-0 bg-black/40" />
-  <div className="fixed inset-0 flex items-center justify-center p-4">
-    <div className="bg-white p-6 rounded-lg w-full max-w-md relative">
-      <h2 className="text-lg font-semibold mb-4">Edit Opening Button</h2>
+            {/* Close button */}
+            <button
+              onClick={() => setShowOpeningLinkModal(false)}
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl font-bold"
+            >
+              ✕
+            </button>
 
-      {/* Close button */}
-      <button
-        onClick={() => setShowOpeningLinkModal(false)}
-        className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl font-bold"
-      >
-        ✕
-      </button>
+            <input
+              type="text"
+              placeholder="Button Text"
+              value={openingButtonText}
+              onChange={(e) => setOpeningButtonText(e.target.value)}
+              className="w-full mb-3 border border-gray-300 rounded px-3 py-1.5 text-sm"
+            />
 
-      <input
-        type="text"
-        placeholder="Button Text"
-        value={openingButtonText}
-        onChange={(e) => setOpeningButtonText(e.target.value)}
-        className="w-full mb-3 border border-gray-300 rounded px-3 py-1.5 text-sm"
-      />
+            <Button
+              onClick={() => {
+                if (validateLink(openingLink) && openingButtonText.trim()) {
+                  saveEditedOpeningButton()
+                }
+              }}
+              disabled={!openingButtonText.trim() || !validOpeningLink}
+              className="w-full"
+            >
+              Update
+            </Button>
+          </div>
+        </div>
+      </Dialog>
 
-      <Button
-        onClick={() => {
-          if (validateLink(openingLink) && openingButtonText.trim()) {
-            saveEditedOpeningButton()
-          }
-        }}
-        disabled={!openingButtonText.trim() || !validOpeningLink}
-        className="w-full"
-      >
-        Update
-      </Button>
-    </div>
-  </div>
-</Dialog>
+      {/* Follow Button Modal */}
+      <Dialog open={showFollowButtonModal} onClose={() => setShowFollowButtonModal(false)} className="relative z-[80]">
+        <div className="fixed inset-0 bg-black/40" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md relative">
+            <h2 className="text-lg font-semibold mb-4">
+              {editingFollowButton !== null ? "Edit Follow Button" : "Add Follow Button"}
+            </h2>
 
-{/* Follow Button Modal */}
-<Dialog open={showFollowButtonModal} onClose={() => setShowFollowButtonModal(false)} className="relative z-[80]">
-  <div className="fixed inset-0 bg-black/40" />
-  <div className="fixed inset-0 flex items-center justify-center p-4">
-    <div className="bg-white p-6 rounded-lg w-full max-w-md relative">
-      <h2 className="text-lg font-semibold mb-4">
-        {editingFollowButton !== null ? "Edit Follow Button" : "Add Follow Button"}
-      </h2>
+            {/* Close button */}
+            <button
+              onClick={() => setShowFollowButtonModal(false)}
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl font-bold"
+            >
+              ✕
+            </button>
 
-      {/* Close button */}
-      <button
-        onClick={() => setShowFollowButtonModal(false)}
-        className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl font-bold"
-      >
-        ✕
-      </button>
+            <input
+              type="text"
+              placeholder="Button Text (e.g., Visit Profile, I'm following)"
+              value={followButtonText}
+              onChange={(e) => setFollowButtonText(e.target.value)}
+              className="w-full mb-3 border border-gray-300 rounded px-3 py-1.5 text-sm"
+            />
 
-      <input
-        type="text"
-        placeholder="Button Text (e.g., Visit Profile, I'm following)"
-        value={followButtonText}
-        onChange={(e) => setFollowButtonText(e.target.value)}
-        className="w-full mb-3 border border-gray-300 rounded px-3 py-1.5 text-sm"
-      />
-
-      <Button
-        onClick={() => {
-          if (followButtonText.trim()) {
-            if (editingFollowButton !== null) {
-              saveEditedFollowButton()
-            } else {
-              setAutomation({
-                ...automation,
-                actions: {
-                  ...automation.actions,
-                  followButtons: [
-                    ...automation.actions.followButtons,
-                    { text: followButtonText, type: "profile" },
-                  ],
-                },
-              })
-              setShowFollowButtonModal(false)
-              setFollowButtonText("")
-            }
-          }
-        }}
-        disabled={!followButtonText.trim()}
-        className="w-full"
-      >
-        {editingFollowButton !== null ? "Update" : "Save"}
-      </Button>
-    </div>
-  </div>
-</Dialog>
+            <Button
+              onClick={() => {
+                if (followButtonText.trim()) {
+                  if (editingFollowButton !== null) {
+                    saveEditedFollowButton()
+                  } else {
+                    setAutomation({
+                      ...automation,
+                      actions: {
+                        ...automation.actions,
+                        followButtons: [
+                          ...automation.actions.followButtons,
+                          { text: followButtonText, type: "profile" },
+                        ],
+                      },
+                    })
+                    setShowFollowButtonModal(false)
+                    setFollowButtonText("")
+                  }
+                }
+              }}
+              disabled={!followButtonText.trim()}
+              className="w-full"
+            >
+              {editingFollowButton !== null ? "Update" : "Save"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
 
     </div>
   )
