@@ -98,12 +98,12 @@ async function findAccountByInstagramId(instagramId: string, db: any) {
 
   if (workspace) {
     console.log(`🔍 [DEBUG] Found workspace:`, workspace.name)
-    
+
     // Also fetch the instagram account to get the plan
     const instagramAccount = await db.collection("instagram_accounts").findOne({
       workspaceId: workspace._id,
     })
-    
+
     return {
       instagramUserId: workspace.instagramUserId || workspace.instagramAccount?.instagramUserId,
       instagramProfessionalId: workspace.instagramProfessionalId || workspace.instagramAccount?.instagramProfessionalId,
@@ -1101,7 +1101,7 @@ async function handleStoryReplyFlowEnhanced(
         }
 
         // Send branding message for free users
-        await sendBrandingMessageIfNeeded(account, senderId, db, automation.name)
+        // await sendBrandingMessageIfNeeded(account, senderId, db, automation.name)
       }
     }
 
@@ -1436,7 +1436,7 @@ async function sendMainDM(automation: any, account: any, senderId: string, db: a
       }
 
       // Send branding message for free users
-      await sendBrandingMessageIfNeeded(account, senderId, db, automation.name)
+      // await sendBrandingMessageIfNeeded(account, senderId, db, automation.name)
     }
   }
 }
@@ -1973,9 +1973,9 @@ async function updateAccountUsage(account: any, triggerType: string, automationN
     // Prepare update operation based on whether it's a new month
     const updateOperation: any = {
       $inc: { dmUsed: 1 },
-      $set: { 
-        lastDMSent: new Date(), 
-        updatedAt: new Date(), 
+      $set: {
+        lastDMSent: new Date(),
+        updatedAt: new Date(),
         currentMonth,
       }
     }
@@ -1996,19 +1996,19 @@ async function updateAccountUsage(account: any, triggerType: string, automationN
     )
 
     console.log(`📊 [DEBUG] Update operation:`, { isNewMonth, currentMonth, accountMonth: accountData?.currentMonth })
-        // 📝 COMMENTED OUT: Usage history disabled to prevent DB bloat with 100k-1M DMs
-        // Only tracking the count now via dmUsed
-        // $push: {
-        //   // cast to any due to generic Document typing
-        //   usageHistory: {
-        //     type: "dm_sent",
-        //     timestamp: new Date(),
-        //     count: 1,
-        //     triggeredBy: triggerType,
-        //     messageText: messageText.substring(0, 100),
-        //     automationName: automationName,
-        //   } as any,
-        // } as any,
+    // 📝 COMMENTED OUT: Usage history disabled to prevent DB bloat with 100k-1M DMs
+    // Only tracking the count now via dmUsed
+    // $push: {
+    //   // cast to any due to generic Document typing
+    //   usageHistory: {
+    //     type: "dm_sent",
+    //     timestamp: new Date(),
+    //     count: 1,
+    //     triggeredBy: triggerType,
+    //     messageText: messageText.substring(0, 100),
+    //     automationName: automationName,
+    //   } as any,
+    // } as any,
 
     console.log(`📊 [DEBUG] Update result:`, updateResult)
 
@@ -2734,7 +2734,7 @@ async function handleCommentToDMFlow(
         }
 
         // Send branding message for free users
-        await sendBrandingMessageIfNeeded(account, commenterId, db, automation.name)
+        // await sendBrandingMessageIfNeeded(account, commenterId, db, automation.name)
       }
     }
 
@@ -3468,7 +3468,7 @@ async function handleDMAutomationFlowEnhanced(
         }
 
         // Send branding message for free users
-        await sendBrandingMessageIfNeeded(account, senderId, db, automation.name)
+        // await sendBrandingMessageIfNeeded(account, senderId, db, automation.name)
       }
     }
 

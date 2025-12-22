@@ -225,7 +225,7 @@ export default function SelectWorkspacePage() {
 
   /* ---------- Main UI ---------- */
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#f7f8ff] via-white to-[#fdf7ff] flex items-center justify-center px-4 py-16">
+    <div className="relative min-h-screen overflow-hidden bg-white flex items-center justify-center px-4 py-16">
 
       {/* Background glows */}
       <div className="pointer-events-none absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-purple-300/20 blur-3xl" />
