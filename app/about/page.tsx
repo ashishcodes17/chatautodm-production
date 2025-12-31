@@ -97,8 +97,8 @@ function Hero() {
         </span>
         Building the automation layer for lean growth teams
       </div>
-      <h1 className="mt-8 max-w-5xl text-4xl font-semibold leading-[1.08] tracking-tight text-slate-900 md:text-6xl">
-        Crafting a faster path from <span className="bg-gradient-to-r from-sky-500 via-indigo-500 to-fuchsia-500 bg-clip-text text-transparent">idea to scaled workflow</span>
+      <h1 className="mt-8 max-w-5xl text-4xl font-black leading-[1.08] tracking-tight text-slate-900 md:text-6xl">
+        Crafting a faster path from <span className="bg-gradient-to-r from-sky-500 via-indigo-500 to-fuchsia-500 bg-clip-text text-transparent"><br />idea to scaled workflow</span>
       </h1>
       <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
         We reduce the drag between a growth hypothesis and a production‑grade automated system while keeping clarity, safety and speed.

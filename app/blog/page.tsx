@@ -80,7 +80,7 @@ export default function BlogPage() {
       <div className="min-h-screen bg-white">
         {/* Header */}
         <header className="border-b border-gray-100">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto px-4 lg:px-8">
             <div className="flex justify-between items-center py-6">
               <Link href="/" className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
@@ -107,7 +107,7 @@ export default function BlogPage() {
         </header>
 
         {/* Hero Section */}
-        <section className="py-20 bg-gradient-to-br from-gray-50 to-white">
+        <section className="py-6 bg-gradient-to-br from-gray-50 to-white">
           <div className="max-w-4xl mx-auto px-6 text-center">
             <h1 className="text-5xl md:text-6xl font-bold text-black mb-6 tracking-tight">Blog.</h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
