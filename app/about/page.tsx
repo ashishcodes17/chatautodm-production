@@ -59,10 +59,10 @@ const timeline = [
 ];
 
 const stats = [
-  { label: "Early Builders", value: "1000+" },
-  { label: "Automations Run", value: "48K+" },
+  { label: "Early Builders", value: "3000+" },
+  { label: "Automations Run", value: "1M+" },
   { label: "Avg Success Rate", value: "99.3%" },
-  { label: "Countries", value: "60+" },
+  { label: "Countries", value: "90+" },
 ];
 
 export default function AboutPage() {
@@ -97,7 +97,7 @@ function Hero() {
         </span>
         Building the automation layer for lean growth teams
       </div>
-      <h1 className="mt-8 max-w-5xl text-4xl font-black leading-[1.08] tracking-tight text-slate-900 md:text-6xl">
+      <h1 className="mt-8 max-w-5xl text-4xl font-black leading-[1.08] tracking-tight text-black md:text-6xl lg:text-7xl">
         Crafting a faster path from <span className="bg-gradient-to-r from-sky-500 via-indigo-500 to-fuchsia-500 bg-clip-text text-transparent"><br />idea to scaled workflow</span>
       </h1>
       <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
@@ -105,7 +105,7 @@ function Hero() {
       </p>
       <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
         <Link href="/">
-          <Button size="lg" className="bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-sm">
+          <Button size="lg" className="bg-slate-900 hover:bg-slate-800 rounded-full text-white font-semibold shadow-sm">
             Start Free
           </Button>
         </Link>
@@ -141,7 +141,7 @@ function Mission() {
       <div className="relative lg:col-span-5">
         <div className="sticky top-28 flex flex-col gap-6">
           <Badge className="w-fit bg-slate-900 text-white">Mission</Badge>
-          <h2 className="text-3xl font-semibold leading-tight text-slate-900 md:text-4xl">
+          <h2 className="text-3xl font-bold leading-tight text-slate-900 md:text-4xl">
             Remove friction from building & iterating automation.
           </h2>
           <p className="text-sm leading-relaxed text-slate-600 md:text-[15px]">
@@ -345,17 +345,17 @@ function CTA() {
         <Link href="/">
           <Button
             size="lg"
-            className="bg-white text-slate-900 hover:bg-slate-100 font-semibold shadow-sm"
+            className="bg-white text-slate-900 rounded-full hover:bg-slate-100 font-semibold shadow-sm"
           >
             Start Free
           </Button>
         </Link>
-        <Link
+        {/* <Link
           href="/pricing"
           className="text-sm font-medium text-slate-300 hover:text-white"
         >
           Compare Plans →
-        </Link>
+        </Link> */}
       </div>
     </section>
   );
@@ -373,7 +373,7 @@ function CompanySection() {
            flex flex-col md:flex-row items-center md:items-center gap-11 md:gap-20">
 
       <div className="max-w-3xl">
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-4xl">
+        <h2 className="text-2xl font-bold tracking-tight text-gray-900 md:text-4xl lg-text:4xl">
           About The Company
         </h2>
         <p className="mt-4 text-sm leading-relaxed text-slate-600 md:text-[16px]">
@@ -381,7 +381,7 @@ function CompanySection() {
           platform dynamics while giving creators, lean growth teams and solo
           builders leverage. Early focus is Instagram outreach, engagement
           workflows and smart follow-up sequences. The roadmap expands into a
-          multi-platform orchestration surface (Instagram, LinkedIn, X, email &
+          multi-platform orchestration surface (Instagram, Facebook, Tiktok, Email &
           more) with an AI decision layer for adaptive branching, message
           generation and anomaly detection.
         </p>

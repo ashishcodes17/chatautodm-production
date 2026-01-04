@@ -111,65 +111,70 @@ interface ComparisonSection { category: string; items: ComparisonItem[] }
 
 const comparisonSections: ComparisonSection[] = [
   {
+    category: "Key Features",
+    items: [
+      { label: "Unlimited Contacts", free: true, pro: true, elite: true },
+      { label: "Teams", free: false, pro: true, elite: true },
+      { label: "Integrations", free: 'soon', pro: 'soon', elite: 'soon' },
+      { label: "Support ", free: true, pro: true, elite: true },
+    ],
+  },
+  {
     category: "Core Automation",
     items: [
       { label: "Visual Flow Builder", free: true, pro: true, elite: true },
-      { label: "Unlimited Flows", free: true, pro: true, elite: true, note: "Fair-use monitoring" },
-      { label: "Scheduled Runs", free: true, pro: true, elite: true },
-      { label: "Parallel Branching", free: false, pro: true, elite: true },
-      { label: "Conditional Logic", free: true, pro: true, elite: true },
-      { label: "AI Text Generation Blocks", free: false, pro: true, elite: true },
-      { label: "Custom Code Step", free: false, pro: 'soon', elite: true },
+      { label: "Comment to DM Flow", free: true, pro: true, elite: true},
+      { label: "Story Reply Flow", free: true, pro: true, elite: true},
+      { label: "DM Auto-Responder Flow", free: true, pro: true, elite: true},
+      { label: "Ask to follow before DM", free: true, pro: true, elite: true},
+      { label: "Unlimited DMs", free: true, pro: true, elite: true, note: "Fair-use monitoring" },
+      { label: "Collect Data", free: true, pro: true, elite: true, note: "Ask questions and collect Data from your audience" },
+      { label: "Send Reactions to DMs", free: false, pro: true, elite: true, note: "Like or React to Messages for Human Feel Responses" },
+      { label: "Send Images & Links with Buttons", free: true, pro: true, elite: true },
+      // { label: "AI Text Generation Blocks", free: false, pro: true, elite: true },
+      // { label: "Custom Code Step", free: false, pro: 'soon', elite: true },
     ],
   },
+  
+  // {
+  //   category: "Messaging & Channels",
+  //   items: [
+  //     { label: "Instagram DMs", free: true, pro: true, elite: true },
+  //     { label: "Multi‑Account Rotation", free: false, pro: true, elite: true },
+  //     { label: "Auto‑Follow + DM Combo", free: false, pro: true, elite: true },
+  //     { label: "Keyword Triggered Replies", free: true, pro: true, elite: true },
+  //     { label: "Link Click Triggers", free: false, pro: true, elite: true },
+  //     { label: "Webhook Outbound", free: false, pro: 'soon', elite: true },
+  //   ],
+  // },
+  // {
+  //   category: "Performance & Scale",
+  //   items: [
+  //     { label: "Daily Execution Quota", free: true, pro: true, elite: true, note: "Tiered caps" },
+  //     { label: "Concurrent Runs", free: false, pro: true, elite: true },
+  //     { label: "Priority Queueing", free: false, pro: false, elite: true },
+  //     { label: "Adaptive Rate Control", free: false, pro: true, elite: true },
+  //     { label: "Error Auto‑Retry", free: false, pro: true, elite: true },
+  //   ],
+  // },
   {
-    category: "Audience & Targeting",
+    category: "AI-Features",
     items: [
-      { label: "Basic Filters", free: true, pro: true, elite: true },
-      { label: "Multi‑attribute Segments", free: false, pro: true, elite: true },
-      { label: "Saved Dynamic Segments", free: false, pro: true, elite: true },
-      { label: "Lookalike Suggestions", free: false, pro: false, elite: 'soon' },
+      { label: "FAQ's with AI", free: false, pro: true, elite: true },
+      { label: "AI Comment Replies", free: false, pro: true, elite: true },
+      { label: "Auto Respond DMs", free: false, pro: true, elite: true, note: "Higher limits on paid" },
+      // { label: "Shared Component Library", free: false, pro: 'soon', elite: true },
     ],
   },
-  {
-    category: "Messaging & Channels",
-    items: [
-      { label: "Instagram DMs", free: true, pro: true, elite: true },
-      { label: "Multi‑Account Rotation", free: false, pro: true, elite: true },
-      { label: "Auto‑Follow + DM Combo", free: false, pro: true, elite: true },
-      { label: "Keyword Triggered Replies", free: true, pro: true, elite: true },
-      { label: "Link Click Triggers", free: false, pro: true, elite: true },
-      { label: "Webhook Outbound", free: false, pro: 'soon', elite: true },
-    ],
-  },
-  {
-    category: "Performance & Scale",
-    items: [
-      { label: "Daily Execution Quota", free: true, pro: true, elite: true, note: "Tiered caps" },
-      { label: "Concurrent Runs", free: false, pro: true, elite: true },
-      { label: "Priority Queueing", free: false, pro: false, elite: true },
-      { label: "Adaptive Rate Control", free: false, pro: true, elite: true },
-      { label: "Error Auto‑Retry", free: false, pro: true, elite: true },
-    ],
-  },
-  {
-    category: "Collaboration",
-    items: [
-      { label: "Team Members", free: true, pro: true, elite: true, note: "Higher limits on paid" },
-      { label: "Role Permissions", free: false, pro: true, elite: true },
-      { label: "Flow Version History", free: false, pro: true, elite: true },
-      { label: "Shared Component Library", free: false, pro: 'soon', elite: true },
-    ],
-  },
-  {
-    category: "Support & Success",
-    items: [
-      { label: "Email Support", free: true, pro: true, elite: true },
-      { label: "Priority Support", free: false, pro: false, elite: true },
-      { label: "Roadmap Input Calls", free: false, pro: false, elite: true },
-      { label: "Migration Assistance", free: false, pro: false, elite: true },
-    ],
-  },
+  // {
+  //   category: "Support & Success",
+  //   items: [
+  //     { label: "Email Support", free: true, pro: true, elite: true },
+  //     { label: "Priority Support", free: false, pro: false, elite: true },
+  //     { label: "Roadmap Input Calls", free: false, pro: false, elite: true },
+  //     { label: "Migration Assistance", free: false, pro: false, elite: true },
+  //   ],
+  // },
 ];
 
 export default function PricingPage() {
@@ -198,23 +203,23 @@ export default function PricingPage() {
 
 function HeroSection() {
   return (
-    <section className="flex flex-col items-center text-center">
-      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-medium tracking-wide text-slate-600 shadow-sm">
+    <section className="flex flex-col items-center bg-white text-center">
+      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-medium tracking-wide text-slate-700 shadow-sm">
         <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400/60" />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-500/60" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-500" />
         </span>
        <p>Founder Launch: Paid plans are temporarily free  </p>
       </div>
-      <h1 className="mt-8 text-4xl font-black leading-tight tracking-tight text-slate-900 md:text-6xl">
+      <h1 className="mt-8 text-5xl font-black leading-tight tracking-tight text-black md:text-6xl lg:text-7xl">
         Simple pricing for <br /> serious automation
       </h1>
-      <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
+      <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-slate-700 md:text-lg">
         Start building without cost friction. When billing begins you choose: stay free, upgrade, or lock a legacy discount.
       </p>
       <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
         <Link href="/">
-          <Button size="lg" className="bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-sm">
+          <Button  size="lg" className="bg-gray-900 hover:bg-slate-800 rounded-full text-white py-6 px-12 text-lg font-semibold shadow-lg">
             Start Free
           </Button>
         </Link>
@@ -715,9 +720,9 @@ function PlanCard({ plan }: { plan: (typeof plans)[number] }) {
 function FounderNote() {
   return (
     <section className="relative mx-auto max-w-4xl rounded-3xl border border-slate-200 bg-white p-10 shadow-sm">
-      <h2 className="text-2xl font-semibold text-slate-900 md:text-3xl">
+      <h1 className="text-2xl font-semibold text-slate-900 md:text-3xl">
         Why is everything free right now?
-      </h2>
+      </h1>
       <p className="mt-4 text-sm leading-relaxed text-slate-600 md:text-base">
         We want ambitious builders using the product immediately. Your real usage guides polish & prioritization before general pricing. When pricing activates you'll get advance notice plus a legacy discount option if you helped shape early feedback.
       </p>
@@ -725,9 +730,9 @@ function FounderNote() {
         <Button asChild variant="outline" className="border-slate-300 bg-white text-slate-800 hover:bg-slate-50">
           <Link href="/">Start Building</Link>
         </Button>
-        <Link href="/compare/manychat" className="text-xs font-medium text-slate-600 hover:text-slate-900">
+        {/* <Link href="/compare/manychat" className="text-xs font-medium text-slate-600 hover:text-slate-900">
           Compare vs ManyChat →
-        </Link>
+        </Link> */}
       </div>
     </section>
   );
@@ -737,7 +742,7 @@ function FAQSection() {
   return (
     <section className="mx-auto flex w-full max-w-5xl flex-col gap-10">
       <div className="text-center">
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">Frequently Asked Questions</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl lg:text-4xl">Frequently Asked Questions</h2>
         {/* <p className="mt-3 text-sm text-slate-600">More questions? Email <a href="mailto:info@chatautodm.xyz" className="font-medium underline underline-offset-4">founder@example.com</a></p> */}
       </div>
       <Accordion type="single" collapsible className="divide-y rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -761,7 +766,7 @@ function PlanComparisonTable() {
     // Removed max-w-6xl; now full width
     <section className="relative mt-4 w-full">
       <div className="mb-10 text-center">
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">Compare Plan Features</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl lg:text-4xl">Compare Plan Features</h2>
         <p className="mt-3 text-sm text-slate-600">Granular breakdown of what each tier unlocks. Items marked "Coming" will land before billing activates.</p>
       </div>
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:rounded-2xl">
